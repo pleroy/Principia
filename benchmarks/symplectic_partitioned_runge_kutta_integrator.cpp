@@ -17,41 +17,58 @@
 
 #include <algorithm>
 
+#include "quantities/elementary_functions.hpp"
+#include "quantities/named_quantities.hpp"
+#include "quantities/quantities.hpp"
+
 // Must come last to avoid conflicts when defining the CHECK macros.
 #include "benchmark/benchmark.h"
 
 using principia::integrators::SPRKIntegrator;
+using principia::quantities::Abs;
+using principia::quantities::AngularFrequency;
+using principia::quantities::Cos;
+using principia::quantities::Length;
+using principia::quantities::Max;
+using principia::quantities::Momentum;
+using principia::quantities::Sin;
 
 namespace principia {
 namespace benchmarks {
 
+template<typename Position, typename Momentum>
 void SolveHarmonicOscillatorAndComputeError(benchmark::State* state,
-                                            double* q_error,
-                                            double* p_error) {
-  SPRKIntegrator::Solution solution;
+                                            Position* q_error,
+                                            Momentum* p_error) {
+  SPRKIntegrator::Solution<Position, Momentum> solution;
 
-  SolveHarmonicOscillator(&solution);
+  SolveHarmonicOscillator<Position, Momentum>(&solution);
 
   state->PauseTiming();
-  *q_error = 0;
-  *p_error = 0;
+  *q_error = 0 * Position::SIUnit();
+  *p_error = 0 * Momentum::SIUnit();
   for (size_t i = 0; i < solution.time.quantities.size(); ++i) {
-    *q_error = std::max(*q_error,
-                        std::abs(solution.position[0].quantities[i] -
-                                 std::cos(solution.time.quantities[i])));
-    *p_error = std::max(*p_error,
-                        std::abs(solution.momentum[0].quantities[i] +
-                                 std::sin(solution.time.quantities[i])));
+    *q_error = Max(
+        *q_error,
+        Abs(solution.position[0].quantities[i] -
+            1 * Length::SIUnit() * Cos(1 * AngularFrequency::SIUnit() *
+                                           solution.time.quantities[i])));
+    *p_error = Max(
+        *p_error,
+        Abs(solution.momentum[0].quantities[i] +
+            1 * Momentum::SIUnit() * Sin(1 * AngularFrequency::SIUnit() *
+                                             solution.time.quantities[i])));
   }
   state->ResumeTiming();
 }
 
 static void BM_SolveHarmonicOscillator(
     benchmark::State& state) {  // NOLINT(runtime/references)
-  double q_error;
-  double p_error;
+  Length   q_error;
+  Momentum p_error;
   while (state.KeepRunning()) {
-    SolveHarmonicOscillatorAndComputeError(&state, &q_error, &p_error);
+    SolveHarmonicOscillatorAndComputeError<Length, Momentum>(
+        &state, &q_error, &p_error);
   }
   std::stringstream ss;
   ss << q_error << ", " << p_error;

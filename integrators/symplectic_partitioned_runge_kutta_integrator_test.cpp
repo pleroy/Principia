@@ -12,11 +12,24 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "quantities/dimensionless.hpp"
+#include "quantities/elementary_functions.hpp"
+#include "quantities/named_quantities.hpp"
+#include "quantities/quantities.hpp"
 #include "testing_utilities/numerical_analysis.hpp"
 #include "testing_utilities/numerics.hpp"
 #include "testing_utilities/statistics.hpp"
 
+using principia::quantities::Abs;
+using principia::quantities::AngularFrequency;
+using principia::quantities::Cos;
 using principia::quantities::Dimensionless;
+using principia::quantities::Force;
+using principia::quantities::Length;
+using principia::quantities::Log10;
+using principia::quantities::Max;
+using principia::quantities::Momentum;
+using principia::quantities::Sin;
+using principia::quantities::Speed;
 using principia::testing_utilities::AbsoluteError;
 using principia::testing_utilities::BidimensionalDatasetMathematicaInput;
 using principia::testing_utilities::ComputeHarmonicOscillatorForce;
@@ -41,67 +54,75 @@ class SPRKTest : public testing::Test {
     integrator_.Initialize(integrator_.Order5Optimal());
   }
 
-  SPRKIntegrator             integrator_;
-  SPRKIntegrator::Parameters parameters_;
-  SPRKIntegrator::Solution   solution_;
+  SPRKIntegrator                               integrator_;
+  SPRKIntegrator::Parameters<Length, Momentum> parameters_;
+  SPRKIntegrator::Solution<Length, Momentum>   solution_;
 };
 
 TEST_F(SPRKTest, HarmonicOscillator) {
-  parameters_.q0 = {1.0};
-  parameters_.p0 = {0.0};
-  parameters_.t0 = 0.0;
+  parameters_.q0 = {1.0 * Length::SIUnit()};
+  parameters_.p0 = {0.0 * Momentum::SIUnit()};
+  parameters_.t0 = 0.0 * Time::SIUnit();
 #ifdef _DEBUG
-  parameters_.tmax = 100.0;
+  parameters_.tmax = 100.0 * Time::SIUnit();
 #else
-  parameters_.tmax = 1000.0;
+  parameters_.tmax = 1000.0 * Time::SIUnit();
 #endif
-  parameters_.Δt = 1.0E-4;
+  parameters_.Δt = 1.0E-4 * Time::SIUnit();
   parameters_.sampling_period = 1;
-  integrator_.Solve(&ComputeHarmonicOscillatorForce,
-                    &ComputeHarmonicOscillatorVelocity,
+  integrator_.Solve(&ComputeHarmonicOscillatorForce<Length, Momentum>,
+                    &ComputeHarmonicOscillatorVelocity<Length, Momentum>,
                     parameters_, &solution_);
-  double q_error = 0;
-  double p_error = 0;
+  Length   q_error = 0 * Length::SIUnit();
+  Momentum p_error = 0 * Momentum::SIUnit();
   for (size_t i = 0; i < solution_.time.quantities.size(); ++i) {
-    q_error = std::max(q_error,
-                       std::abs(solution_.position[0].quantities[i] -
-                                std::cos(solution_.time.quantities[i])));
-    p_error = std::max(p_error,
-                       std::abs(solution_.momentum[0].quantities[i] +
-                                std::sin(solution_.time.quantities[i])));
+    q_error = Max(
+        q_error,
+        Abs(solution_.position[0].quantities[i] -
+            Length::SIUnit() * Cos(AngularFrequency::SIUnit() *
+                                       solution_.time.quantities[i])));
+    p_error = Max(
+        p_error,
+        Abs(solution_.momentum[0].quantities[i] +
+            Momentum::SIUnit() * Sin(AngularFrequency::SIUnit() *
+                                         solution_.time.quantities[i])));
   }
   LOG(INFO) << "q_error = " << q_error;
   LOG(INFO) << "p_error = " << p_error;
-  EXPECT_THAT(q_error, Lt(2E-16 * parameters_.tmax));
-  EXPECT_THAT(p_error, Lt(2E-16 * parameters_.tmax));
+  EXPECT_THAT(q_error, Lt(2E-16 * Speed::SIUnit() * parameters_.tmax));
+  EXPECT_THAT(p_error, Lt(2E-16 * Force::SIUnit() * parameters_.tmax));
 }
 
 TEST_F(SPRKTest, Convergence) {
-  parameters_.q0 = {1.0};
-  parameters_.p0 = {0.0};
-  parameters_.t0 = 0.0;
-  parameters_.tmax = 100;
+  parameters_.q0 = {1.0 * Length::SIUnit()};
+  parameters_.p0 = {0.0 * Momentum::SIUnit()};
+  parameters_.t0 = 0.0 * Time::SIUnit();
+  parameters_.tmax = 100 * Time::SIUnit();
   parameters_.sampling_period = 0;
   // For 0.2 * 1.1⁻²¹ < |Δt| < 0.2 , the correlation between step size and error
   // is very strong. It the step is small enough to converge and large enough to
   // stay clear of floating point inaccuracy.
-  parameters_.Δt = 0.2;
+  parameters_.Δt = 0.2 * Time::SIUnit();
   int const step_sizes = 22;
   double const step_reduction = 1.1;
   std::vector<Dimensionless> log_step_sizes(step_sizes);
   std::vector<Dimensionless> log_q_errors(step_sizes);
   std::vector<Dimensionless> log_p_errors(step_sizes);
   for (int i = 0; i < step_sizes; ++i, parameters_.Δt /= step_reduction) {
-    integrator_.Solve(&ComputeHarmonicOscillatorForce,
-                      &ComputeHarmonicOscillatorVelocity,
+    integrator_.Solve(&ComputeHarmonicOscillatorForce<Length, Momentum>,
+                      &ComputeHarmonicOscillatorVelocity<Length, Momentum>,
                       parameters_, &solution_);
-    log_step_sizes[i] = std::log10(parameters_.Δt);
-    log_q_errors[i] = std::log10(
-        std::abs(solution_.position[0].quantities[0] -
-                 std::cos(solution_.time.quantities[0])));
-    log_p_errors[i] = std::log10(
-        std::abs(solution_.momentum[0].quantities[0] +
-                 std::sin(solution_.time.quantities[0])));
+    log_step_sizes[i] = Log10(parameters_.Δt / (1 * Time::SIUnit()));
+    log_q_errors[i] = Log10(
+        Abs((solution_.position[0].quantities[0] -
+             Length::SIUnit() * Cos(AngularFrequency::SIUnit() *
+                                        solution_.time.quantities[0])) /
+                 Length::SIUnit()));
+    log_p_errors[i] = Log10(
+        Abs((solution_.momentum[0].quantities[0] +
+             Momentum::SIUnit() * Sin(AngularFrequency::SIUnit() *
+                                          solution_.time.quantities[0])) /
+                 Momentum::SIUnit()));
   }
   Dimensionless const q_convergence_order = Slope(log_step_sizes, log_q_errors);
   Dimensionless const q_correlation =

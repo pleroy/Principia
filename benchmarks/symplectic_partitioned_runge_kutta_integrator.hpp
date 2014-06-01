@@ -9,7 +9,9 @@ using principia::integrators::SPRKIntegrator;
 namespace principia {
 namespace benchmarks {
 
-inline void SolveHarmonicOscillator(SPRKIntegrator::Solution* solution);
+template<typename Position, typename Momentum>
+void SolveHarmonicOscillator(
+    SPRKIntegrator::Solution<Position, Momentum>* solution);
 
 }  // namespace benchmarks
 }  // namespace principia

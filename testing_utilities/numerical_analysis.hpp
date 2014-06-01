@@ -1,9 +1,14 @@
 #pragma once
 
-#include<vector>
+#include <vector>
+
+#include "quantities/quantities.hpp"
 
 // Right-hand sides for various differential equations frequently used to test
 // the properties of integrators.
+
+using principia::quantities::Quotient;
+using principia::quantities::Time;
 
 namespace principia {
 namespace testing_utilities {
@@ -12,12 +17,16 @@ namespace testing_utilities {
 // q' = p,  |ComputeHarmonicOscillatorVelocity|,
 // p' = -q, |ComputeHarmonicOscillatorForce|.
 
-void ComputeHarmonicOscillatorVelocity(std::vector<double> const& p,
-                                       std::vector<double>* result);
+template<typename Position, typename Momentum>
+void ComputeHarmonicOscillatorVelocity(
+    std::vector<Momentum> const& p,
+    std::vector<Quotient<Position, Time>>* result);
 
-void ComputeHarmonicOscillatorForce(double const t,
-                                    std::vector<double> const& q,
-                                    std::vector<double>* result);
+template<typename Position, typename Momentum>
+void ComputeHarmonicOscillatorForce(
+    Time const t,
+    std::vector<Position> const& q,
+    std::vector<Quotient<Momentum, Time>>* result);
 
 }  // namespace testing_utilities
 }  // namespace principia

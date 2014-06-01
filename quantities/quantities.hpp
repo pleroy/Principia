@@ -148,6 +148,8 @@ class Quantity {
 
   template<typename D>
   friend Quantity<D> Abs(Quantity<D> const&);
+  template<typename D>
+  friend Quantity<D> Max(Quantity<D> const&, Quantity<D> const&);
 
   template<typename D>
   friend SquareRoot<Quantity<D>> Sqrt(Quantity<D> const& x);

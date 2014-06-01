@@ -48,6 +48,7 @@ bool operator==(Dimensionless const&, Dimensionless const&);
 bool operator!=(Dimensionless const&, Dimensionless const&);
 
 Dimensionless Abs(Dimensionless const&);
+Dimensionless Max(Dimensionless const&, Dimensionless const&);
 
 std::string ToString(Dimensionless const& number,
                      unsigned char const precision = DBL_DIG + 1);

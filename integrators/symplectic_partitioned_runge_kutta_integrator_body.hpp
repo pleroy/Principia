@@ -10,6 +10,8 @@
 #include "glog/logging.h"
 #endif
 
+#include "integrators/symplectic_partitioned_runge_kutta_integrator.hpp"
+
 namespace principia {
 namespace integrators {
 
@@ -69,38 +71,40 @@ inline void SPRKIntegrator::Initialize(Coefficients const& coefficients) {
   }
 }
 
-template<typename AutonomousRightHandSideComputation,
+template<typename Position,
+         typename Momentum,
+         typename AutonomousRightHandSideComputation,
          typename RightHandSideComputation>
 void SPRKIntegrator::Solve(
       RightHandSideComputation const compute_force,
       AutonomousRightHandSideComputation const compute_velocity,
-      Parameters const& parameters,
-      Solution* solution) {
+      Parameters<Position, Momentum> const& parameters,
+      Solution<Position, Momentum>* solution) {
 #ifndef _MANAGED
   CHECK_NOTNULL(solution);
 #endif
 
   int const dimension = parameters.q0.size();
-  std::unique_ptr<std::vector<double>> q_error(
+  std::unique_ptr<std::vector<Position>> q_error(
       PointerOrNew(dimension, parameters.q_error));
-  std::unique_ptr<std::vector<double>> p_error(
+  std::unique_ptr<std::vector<Momentum>> p_error(
       PointerOrNew(dimension, parameters.p_error));
-  double t_error = parameters.t_error;
+  Time t_error = parameters.t_error;
 
-  std::vector<double> Δqstage0(dimension);
-  std::vector<double> Δqstage1(dimension);
-  std::vector<double> Δpstage0(dimension);
-  std::vector<double> Δpstage1(dimension);
-  std::vector<double>* Δqstage_current = &Δqstage1;
-  std::vector<double>* Δqstage_previous = &Δqstage0;
-  std::vector<double>* Δpstage_current = &Δpstage1;
-  std::vector<double>* Δpstage_previous = &Δpstage0;
+  std::vector<Position> Δqstage0(dimension);
+  std::vector<Position> Δqstage1(dimension);
+  std::vector<Momentum> Δpstage0(dimension);
+  std::vector<Momentum> Δpstage1(dimension);
+  std::vector<Position>* Δqstage_current = &Δqstage1;
+  std::vector<Position>* Δqstage_previous = &Δqstage0;
+  std::vector<Momentum>* Δpstage_current = &Δpstage1;
+  std::vector<Momentum>* Δpstage_previous = &Δpstage0;
 
   // Dimension the result.
   int const capacity = parameters.sampling_period == 0 ?
     1 :
     static_cast<int>(
-        ceil((((parameters.tmax - parameters.t0) / parameters.Δt) + 1) /
+        ceil((((parameters.tmax - parameters.t0) / parameters.Δt).value() + 1) /
                 parameters.sampling_period)) + 1;
   solution->time.quantities.clear();
   solution->time.quantities.reserve(capacity);
@@ -121,17 +125,17 @@ void SPRKIntegrator::Solve(
     }
   }
 
-  std::vector<double> q_last(parameters.q0);
-  std::vector<double> p_last(parameters.p0);
-  double t_last = parameters.t0;
+  std::vector<Position> q_last(parameters.q0);
+  std::vector<Momentum> p_last(parameters.p0);
+  Time t_last = parameters.t0;
   int sampling_phase = 0;
 
-  std::vector<double> q_stage(dimension);
-  std::vector<double> p_stage(dimension);
-  double tn = parameters.t0;  // Current time.
-  double const h = parameters.Δt;  // Constant for now.
-  std::vector<double> f(dimension);  // Current forces.
-  std::vector<double> v(dimension);  // Current velocities.
+  std::vector<Position> q_stage(dimension);
+  std::vector<Momentum> p_stage(dimension);
+  Time tn = parameters.t0;  // Current time.
+  Time const h = parameters.Δt;  // Constant for now.
+  std::vector<Quotient<Momentum, Time>> f(dimension);  // Current forces.
+  std::vector<Quotient<Position, Time>> v(dimension);  // Current velocities.
 
 #ifdef TRACE_SYMPLECTIC_PARTITIONED_RUNGE_KUTTA_INTEGRATOR
   int percentage = 0;
@@ -147,8 +151,8 @@ void SPRKIntegrator::Solve(
     // Increment SPRK step from "'SymplecticPartitionedRungeKutta' Method
     // for NDSolve", algorithm 3.
     for (int k = 0; k < dimension; ++k) {
-      (*Δqstage_current)[k] = 0;
-      (*Δpstage_current)[k] = 0;
+      (*Δqstage_current)[k] = 0 * Position::SIUnit();
+      (*Δpstage_current)[k] = 0 * Momentum::SIUnit();
       q_stage[k] = q_last[k];
     }
     for (int i = 0; i < stages_; ++i) {
@@ -158,13 +162,13 @@ void SPRKIntegrator::Solve(
       // another.
       compute_force(tn + c_[i] * h, q_stage, &f);
       for (int k = 0; k < dimension; ++k) {
-        double const Δp = (*Δpstage_previous)[k] + h * b_[i] * f[k];
+        Momentum const Δp = (*Δpstage_previous)[k] + h * b_[i] * f[k];
         p_stage[k] = p_last[k] + Δp;
         (*Δpstage_current)[k] = Δp;
       }
       compute_velocity(p_stage, &v);
       for (int k = 0; k < dimension; ++k) {
-        double const Δq = (*Δqstage_previous)[k] + h * a_[i] * v[k];
+        Position const Δq = (*Δqstage_previous)[k] + h * a_[i] * v[k];
         q_stage[k] = q_last[k] + Δq;
         (*Δqstage_current)[k] = Δq;
       }
@@ -172,17 +176,17 @@ void SPRKIntegrator::Solve(
     // Compensated summation from "'SymplecticPartitionedRungeKutta' Method
     // for NDSolve", algorithm 2.
     for (int k = 0; k < dimension; ++k) {
-      double const Δq = (*Δqstage_current)[k] + (*q_error)[k];
+      Position const Δq = (*Δqstage_current)[k] + (*q_error)[k];
       q_stage[k] = q_last[k] + Δq;
       (*q_error)[k] = (q_last[k] - q_stage[k]) + Δq;
       q_last[k] = q_stage[k];
-      double const Δp = (*Δpstage_current)[k] + (*p_error)[k];
+      Momentum const Δp = (*Δpstage_current)[k] + (*p_error)[k];
       p_stage[k] = p_last[k] + Δp;
       (*p_error)[k] = (p_last[k] - p_stage[k]) + Δp;
       p_last[k] = p_stage[k];
     }
 
-    double const δt = h + t_error;
+    Time const δt = h + t_error;
     tn += δt;
     t_error = (t_last - tn) + δt;
     t_last = tn;
@@ -200,7 +204,7 @@ void SPRKIntegrator::Solve(
 
 #ifdef TRACE_SYMPLECTIC_PARTITIONED_RUNGE_KUTTA_INTEGRATOR
     running_time += clock();
-    if (floor(tn / parameters.tmax * 100) > percentage) {
+    if (floor((tn / parameters.tmax).value() * 100) > percentage) {
       LOG(INFO) << "SPRK: " << percentage << "%\ttn = " << tn
                 << "\tRunning time: " << running_time / (CLOCKS_PER_SEC / 1000)
                 << " ms";
