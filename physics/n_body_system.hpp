@@ -33,22 +33,23 @@ class NBodySystem {
   std::vector<Body<InertialFrame> const*> massless_bodies() const;
   std::vector<Body<InertialFrame> const*> bodies() const;
 
-  // The |integrator| must already have been initialized.
+  // The |integrator| must already have been initialized.  Performs an
+  // integration for all the bodies passed at construction.
+  //TODO(phl): From which time?
   void IntegrateFull(Integrator const& integrator,
                      Time const& tmax,
                      Time const& Δt,
                      int const sampling_period);
 
+  // The |integrator| must already have been initialized.  Performs an
+  // integration for only the given |massless_bodies| (which may be a subset of
+  // the ones passed at construction).  All the other bodies are assumed to
+  // remain stationary.
   void IntegrateSubset(std::vector<Body<InertialFrame>> const& massless_bodies,
                        Integrator const& integrator,
                        Time const& tmax,
                        Time const& Δt,
                        int const sampling_period);
-
-  Integrator::SystemState StateAt(Time const& time) const;
-
-  void RemoveAfter(Time const& time);
-  void RemoveBefore(Time const& time);
 
  private:
   void ComputeGravitationalAccelerations(

@@ -47,6 +47,15 @@ class Body {
   std::vector<Vector<Speed, Frame>> const& velocities() const;
   std::vector<Time> const& times() const;
 
+  // The functions return the position/velocity of the body at the given time.
+  Vector<Length, Frame> position_at(Time const& time) const;
+  Vector<Speed, Frame> velocity_at(Time const& time) const;
+
+  // Remove the parts of the trajectory strictly after or before the given
+  // |time|.
+  void RemoveAfter(Time const& time);
+  void RemoveBefore(Time const& time);
+
  private:
   GravitationalParameter const gravitational_parameter_;
   Mass const mass_;
