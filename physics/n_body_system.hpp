@@ -20,6 +20,7 @@ template<typename InertialFrame>
 class NBodySystem {
  public:
   typedef std::vector<std::unique_ptr<Body<InertialFrame>>> Bodies;
+  typedef SymplecticIntegrator<Length, Speed> Integrator;
 
   // NOTE(phl): We would prefer to pass the unique_ptr<> by value, but that
   // confuses the compiler.  So for now, we'll use r-value references.
@@ -33,10 +34,21 @@ class NBodySystem {
   std::vector<Body<InertialFrame> const*> bodies() const;
 
   // The |integrator| must already have been initialized.
-  void Integrate(SymplecticIntegrator<Length, Speed> const& integrator,
-                 Time const& tmax,
-                 Time const& Δt,
-                 int const sampling_period);
+  void IntegrateFull(Integrator const& integrator,
+                     Time const& tmax,
+                     Time const& Δt,
+                     int const sampling_period);
+
+  void IntegrateSubset(std::vector<Body<InertialFrame>> const& massless_bodies,
+                       Integrator const& integrator,
+                       Time const& tmax,
+                       Time const& Δt,
+                       int const sampling_period);
+
+  Integrator::SystemState StateAt(Time const& time) const;
+
+  void RemoveAfter(Time const& time);
+  void RemoveBefore(Time const& time);
 
  private:
   void ComputeGravitationalAccelerations(
