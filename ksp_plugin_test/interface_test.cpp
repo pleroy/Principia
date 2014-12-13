@@ -72,7 +72,7 @@ class InterfaceTest : public testing::Test {
   std::unique_ptr<StrictMock<MockPlugin>> plugin_;
 
  private:
-  base::HeapChecker heap_checker_;
+  principia::base::HeapChecker heap_checker_;
 };
 
 using InterfaceDeathTest = InterfaceTest;
