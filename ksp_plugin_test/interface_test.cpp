@@ -361,6 +361,7 @@ TEST_F(InterfaceTest, LineAndIterator) {
   EXPECT_THAT(line_and_iterator, Not(IsNull()));
   principia__DeleteLineAndIterator(&line_and_iterator);
   EXPECT_THAT(line_and_iterator, IsNull());
+  principia__DeleteRenderingFrame(&frame);
 }
 
 }  // namespace
