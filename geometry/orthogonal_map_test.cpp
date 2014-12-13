@@ -1,3 +1,4 @@
+#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/orthogonal_map.hpp"
 #include "geometry/rotation.hpp"
@@ -43,6 +44,9 @@ class OrthogonalMapTest : public testing::Test {
   Orth orthogonal_a_;
   Orth orthogonal_b_;
   Orth orthogonal_c_;
+
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 TEST_F(OrthogonalMapTest, Identity) {

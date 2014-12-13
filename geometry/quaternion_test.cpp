@@ -1,4 +1,6 @@
 #include "geometry/quaternion.hpp"
+
+#include "base/heap_checker.hpp"
 #include "glog/logging.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -23,6 +25,9 @@ class QuaternionTest : public testing::Test {
   Quaternion q1_;
   Quaternion q2_;
   Quaternion q3_;
+
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 TEST_F(QuaternionTest, RealPart) {

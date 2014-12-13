@@ -1,7 +1,9 @@
+#include "geometry/rotation.hpp"
+
+#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/orthogonal_map.hpp"
 #include "geometry/r3_element.hpp"
-#include "geometry/rotation.hpp"
 #include "glog/logging.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -48,6 +50,9 @@ class RotationTest : public testing::Test {
   Rot rotation_a_;
   Rot rotation_b_;
   Rot rotation_c_;
+
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 TEST_F(RotationTest, Identity) {

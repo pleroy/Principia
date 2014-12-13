@@ -1,5 +1,6 @@
 #include "ksp_plugin/interface.hpp"
 
+#include "base/heap_checker.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "quantities/si.hpp"
@@ -69,6 +70,9 @@ class InterfaceTest : public testing::Test {
   BarycentricRotatingFrame* barycentric_rotating_frame_placeholder_;
 
   std::unique_ptr<StrictMock<MockPlugin>> plugin_;
+
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 using InterfaceDeathTest = InterfaceTest;

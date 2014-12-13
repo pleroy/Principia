@@ -1,6 +1,8 @@
+#include "geometry/r3x3_matrix.hpp"
+
 #include <utility>
 
-#include "geometry/r3x3_matrix.hpp"
+#include "base/heap_checker.hpp"
 #include "glog/logging.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -22,6 +24,9 @@ class R3x3MatrixTest : public testing::Test {
   R3x3Matrix m1_;
   R3x3Matrix m2_;
   R3x3Matrix m3_;
+
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 using R3x3MatrixDeathTest = R3x3MatrixTest;

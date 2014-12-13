@@ -1,4 +1,6 @@
 #include "geometry/sign.hpp"
+
+#include "base/heap_checker.hpp"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
@@ -9,6 +11,9 @@ class SignTest : public testing::Test {
  protected:
   Sign const positive_ = Sign(1);
   Sign const negative_ = Sign(-1);
+
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 TEST_F(SignTest, Integer) {

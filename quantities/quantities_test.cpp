@@ -1,6 +1,7 @@
 ﻿
 #include <string>
 
+#include "base/heap_checker.hpp"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "quantities/astronomy.hpp"
@@ -58,7 +59,8 @@ namespace principia {
 namespace quantities {
 
 class QuantitiesTest : public testing::Test {
- protected:
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 TEST_F(QuantitiesTest, AbsoluteValue) {

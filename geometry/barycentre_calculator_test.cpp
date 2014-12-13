@@ -4,6 +4,7 @@
 
 #include <vector>
 
+#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "gtest/gtest.h"
 #include "quantities/named_quantities.hpp"
@@ -37,6 +38,9 @@ class BarycentreCalculatorTest : public testing::Test {
   Bivector<Entropy, World> b2_;
   KinematicViscosity k1_;
   KinematicViscosity k2_;
+
+private:
+  base::HeapChecker heap_checker_;
 };
 
 using BarycentreCalculatorDeathTest = BarycentreCalculatorTest;

@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "base/heap_checker.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "quantities/quantities.hpp"
@@ -35,6 +36,9 @@ class StatisticsTest : public testing::Test {
   Speed const v_ = 42 * Metre / Second;
   std::vector<Time> t_;
   std::vector<Length> x_;
+
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 TEST_F(StatisticsTest, UniformPerfectlyCorrelated) {

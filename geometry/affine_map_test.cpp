@@ -3,6 +3,7 @@
 #include <limits>
 #include <vector>
 
+#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/named_quantities.hpp"
 #include "geometry/orthogonal_map.hpp"
@@ -78,6 +79,9 @@ class AffineMapTest : public testing::Test {
   Position<World> front_right_top_;
   std::vector<Position<World>> vertices_;
   std::vector<Displacement<World>> originated_vertices_;
+
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 TEST_F(AffineMapTest, Cube) {

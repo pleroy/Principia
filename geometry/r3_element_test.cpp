@@ -1,4 +1,6 @@
 ﻿#include "geometry/r3_element.hpp"
+
+#include "base/heap_checker.hpp"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "quantities/astronomy.hpp"
@@ -44,6 +46,8 @@ class R3ElementTest : public testing::Test {
   R3Element<Speed> const a_ = {88 * Mile / Hour,
                                300 * Metre / Second,
                                46 * Knot};
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 using R3ElementDeathTest = R3ElementTest;

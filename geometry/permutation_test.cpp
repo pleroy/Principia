@@ -1,6 +1,7 @@
 
 #include <vector>
 
+#include "base/heap_checker.hpp"
 #include "geometry/permutation.hpp"
 #include "geometry/orthogonal_map.hpp"
 #include "geometry/r3_element.hpp"
@@ -37,6 +38,9 @@ class PermutationTest : public testing::Test {
   Vector<quantities::Length, World1> vector_;
   Bivector<quantities::Length, World1> bivector_;
   Trivector<quantities::Length, World1> trivector_;
+
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 TEST_F(PermutationTest, Identity) {

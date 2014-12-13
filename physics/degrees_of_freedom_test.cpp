@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "base/heap_checker.hpp"
 #include "geometry/named_quantities.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -50,6 +51,9 @@ class DegreesOfFreedomTest : public testing::Test {
   DegreesOfFreedom<World> d1_;
   DegreesOfFreedom<World> d2_;
   DegreesOfFreedom<World> d3_;
+
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 using DegreesOfFreedomDeathTest = DegreesOfFreedomTest;

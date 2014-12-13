@@ -5,13 +5,14 @@
 #include <map>
 #include <string>
 
-#include "body.hpp"
+#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/named_quantities.hpp"
 #include "geometry/point.hpp"
 #include "geometry/r3_element.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "physics/body.hpp"
 #include "physics/frame.hpp"
 #include "physics/massive_body.hpp"
 #include "physics/massless_body.hpp"
@@ -118,6 +119,9 @@ class TrajectoryTest : public testing::Test {
                                         Trajectory<World> const*)> transform_;
   Trajectory<World>::Transform<World> massive_transform_;
   Trajectory<World>::Transform<World> massless_transform_;
+
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 using TrajectoryDeathTest = TrajectoryTest;

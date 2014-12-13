@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "base/heap_checker.hpp"
 #include "geometry/epoch.hpp"
 #include "gmock/gmock.h"
 #include "quantities/quantities.hpp"
@@ -20,7 +21,8 @@ using testing::Eq;
 using testing_utilities::AlmostEquals;
 
 class AffineSpaceTest : public testing::Test {
- protected:
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 using AffineSpaceDeathTest = AffineSpaceTest;

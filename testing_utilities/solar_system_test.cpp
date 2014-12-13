@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -99,6 +100,9 @@ class SolarSystemTest : public testing::Test {
   }
 
   std::unique_ptr<SolarSystem> solar_system_;
+
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 using SolarSystemDeathTest = SolarSystemTest;

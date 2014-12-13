@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/named_quantities.hpp"
 #include "geometry/point.hpp"
@@ -149,6 +150,9 @@ class NBodySystemTest : public testing::Test {
   SPRKIntegrator<Length, Speed> integrator_;
   Time period_;
   std::unique_ptr<NBodySystem<EarthMoonOrbitPlane>> system_;
+
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 using NBodySystemDeathTest = NBodySystemTest;

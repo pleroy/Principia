@@ -2,6 +2,7 @@
 
 #include <limits>
 
+#include "base/heap_checker.hpp"
 #include "glog/logging.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -17,7 +18,10 @@ using testing::Ne;
 namespace principia {
 namespace testing_utilities {
 
-class VanishesBeforeTest : public testing::Test {};
+class VanishesBeforeTest : public testing::Test {
+ private:
+  base::HeapChecker heap_checker_;
+};
 
 TEST_F(VanishesBeforeTest, Dimensionless) {
   double const y = 3000.0 * std::numeric_limits<double>::epsilon();

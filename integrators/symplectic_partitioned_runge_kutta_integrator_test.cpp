@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "base/heap_checker.hpp"
 #include "geometry/sign.hpp"
 #include "glog/logging.h"
 #include "gmock/gmock.h"
@@ -58,6 +59,9 @@ class SPRKTest : public testing::Test {
   SPRKIntegrator<Length, Momentum>                           integrator_;
   SPRKIntegrator<Length, Momentum>::Parameters               parameters_;
   std::vector<SPRKIntegrator<Length, Momentum>::SystemState> solution_;
+
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 TEST_F(SPRKTest, HarmonicOscillator) {

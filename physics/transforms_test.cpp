@@ -2,6 +2,7 @@
 
 #include <limits>
 
+#include "base/heap_checker.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "physics/degrees_of_freedom.hpp"
@@ -102,6 +103,9 @@ class TransformsTest : public testing::Test {
   std::unique_ptr<Trajectory<From>> satellite_from_;
 
   std::unique_ptr<Transforms<From, Through, To>> transforms_;
+
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 // This transform is simple enough that we can compute its effect by hand.  This

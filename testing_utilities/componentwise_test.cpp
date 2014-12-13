@@ -2,6 +2,7 @@
 
 #include <limits>
 
+#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/r3_element.hpp"
 #include "glog/logging.h"
@@ -25,7 +26,10 @@ namespace testing_utilities {
 
 struct World;
 
-class ComponentwiseTest : public testing::Test {};
+class ComponentwiseTest : public testing::Test {
+ private:
+  base::HeapChecker heap_checker_;
+};
 
 TEST_F(ComponentwiseTest, R3Element) {
   R3Element<double> r({1.0 + 1.0E-12, 1.0E-10, 3.5});

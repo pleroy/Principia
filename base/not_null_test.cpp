@@ -4,6 +4,7 @@
 #include <utility>
 #include <string>
 
+#include "base/heap_checker.hpp"
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
@@ -23,6 +24,9 @@ class NotNullTest : public testing::Test {
            not_null<int const*> const source) {
     *destination -= *source;
   }
+
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 using NotNullDeathTest = NotNullTest;

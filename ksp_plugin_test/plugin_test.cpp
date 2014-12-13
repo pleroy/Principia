@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 
+#include "base/heap_checker.hpp"
 #include "geometry/permutation.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -199,6 +200,9 @@ class PluginTest : public testing::Test {
   // These initial conditions will yield a low circular orbit around Earth.
   Displacement<AliceSun> satellite_initial_displacement_;
   Velocity<AliceSun> satellite_initial_velocity_;
+
+ private:
+  base::HeapChecker heap_checker_;
 };
 
 using PluginDeathTest = PluginTest;
