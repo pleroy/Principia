@@ -9,6 +9,12 @@
 namespace principia {
 namespace base {
 
+//TODO(phl): Comment
+//  class AlmostEqualsTest : public testing::Test {
+// private:
+//  base::HeapChecker heap_checker_;
+//};
+
 class HeapChecker {
  public:
   HeapChecker() {

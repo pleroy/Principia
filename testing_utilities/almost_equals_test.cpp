@@ -34,7 +34,7 @@ struct World;
 }  // namespace
 
 class AlmostEqualsTest : public testing::Test {
-protected:
+ private:
   base::HeapChecker heap_checker_;
 };
 
@@ -50,7 +50,6 @@ TEST_F(AlmostEqualsTest, Dimensionless) {
   EXPECT_THAT(e_accumulated, Ne(e));
   EXPECT_THAT(e_accumulated, Not(AlmostEquals(e, 0)));
   EXPECT_THAT(e_accumulated, AlmostEquals(e, 1));
-  int* x = new int(4);
 }
 
 TEST_F(AlmostEqualsTest, Quantity) {
