@@ -68,6 +68,9 @@
     <ClInclude Include="componentwise_body.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="heap_checked_test.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="almost_equals_test.cpp">

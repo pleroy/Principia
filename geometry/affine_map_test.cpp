@@ -15,6 +15,7 @@
 #include "quantities/numbers.hpp"
 #include "quantities/si.hpp"
 #include "testing_utilities/almost_equals.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 #include "testing_utilities/numerics.hpp"
 
 namespace principia {
@@ -29,7 +30,7 @@ using testing::Lt;
 using testing_utilities::AlmostEquals;
 using testing_utilities::RelativeError;
 
-class AffineMapTest : public testing::Test {
+class AffineMapTest : public testing_utilities::HeapCheckedTest {
  protected:
   struct World;
   using Orth = OrthogonalMap<World, World>;
@@ -79,9 +80,6 @@ class AffineMapTest : public testing::Test {
   Position<World> front_right_top_;
   std::vector<Position<World>> vertices_;
   std::vector<Displacement<World>> originated_vertices_;
-
- private:
-  base::HeapChecker heap_checker_;
 };
 
 TEST_F(AffineMapTest, Cube) {

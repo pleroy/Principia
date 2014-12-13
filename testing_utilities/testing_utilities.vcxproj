@@ -23,6 +23,7 @@
     <ClInclude Include="componentwise_body.hpp" />
     <ClInclude Include="explicit_operators.hpp" />
     <ClInclude Include="explicit_operators_body.hpp" />
+    <ClInclude Include="heap_checked_test.hpp" />
     <ClInclude Include="numerical_analysis.hpp" />
     <ClInclude Include="numerical_analysis_body.hpp" />
     <ClInclude Include="numerics.hpp" />
