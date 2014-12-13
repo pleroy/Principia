@@ -32,6 +32,9 @@
     <ClInclude Include="heap_checker.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="heap_checker_body.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="not_null_test.cpp">

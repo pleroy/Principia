@@ -1,48 +1,37 @@
 #pragma once
 
-#define _CRTDBG_MAP_ALLOC
-#include <stdlib.h>
+#ifdef _DEBUG
 #include <crtdbg.h>
-
-#include "gtest/gtest.h"
+#endif
 
 namespace principia {
 namespace base {
 
-//TODO(phl): Comment
-//  class AlmostEqualsTest : public testing::Test {
-// private:
-//  base::HeapChecker heap_checker_;
-//};
-
+// This is a RAII class that is intented to be used in test to detect storage
+// leaks.  Just declare an object of this type in the test fixture and it will
+// automatically compare memory usage before and after the test and fail the
+// test in case of discrepancy:
+//
+//  class MyFunkyTest : public testing::Test {
+//   private:
+//    base::HeapChecker heap_checker_;
+//  };
+//
+// The output is not so nice as it doesn't report where the leak comes from.
+// Sorry about that.
+// This class is mostly harmless in Release builds.
 class HeapChecker {
  public:
-  HeapChecker() {
-    _CrtMemCheckpoint(&memory_at_construction_);
-    _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
-    _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDOUT);
-    _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
-    _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDOUT );
-    _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
-    _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDOUT);
-  }
+  HeapChecker();
+  ~HeapChecker();
 
-  ~HeapChecker() {
-    _CrtMemState memory_at_destruction;
-    _CrtMemCheckpoint(&memory_at_destruction);
-    _CrtMemState leaks;
-    bool const has_leaks = _CrtMemDifference(&leaks,
-                                             &memory_at_construction_,
-                                             &memory_at_destruction) != 0;
-    if (has_leaks) {
-      _CrtMemDumpAllObjectsSince(&memory_at_construction_);
-      EXPECT_FALSE(has_leaks) << "Storage leak detected:";
-      _CrtMemDumpStatistics(&leaks);
-    }
-  }
-
+ private:
+#ifdef _DEBUG
   _CrtMemState memory_at_construction_;
+#endif
 };
 
 }  // namespace base
 }  // namespace principia
+
+#include "base/heap_checker_body.hpp"
