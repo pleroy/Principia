@@ -1,6 +1,5 @@
 ﻿#include "geometry/r3_element.hpp"
 
-#include "base/heap_checker.hpp"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "quantities/astronomy.hpp"
@@ -10,6 +9,7 @@
 #include "quantities/uk.hpp"
 #include "testing_utilities/algebra.hpp"
 #include "testing_utilities/explicit_operators.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 
 using principia::astronomy::JulianYear;
 using principia::astronomy::Parsec;
@@ -33,7 +33,7 @@ using principia::uk::Rod;
 namespace principia {
 namespace geometry {
 
-class R3ElementTest : public testing::Test {
+class R3ElementTest : public testing_utilities::HeapCheckedTest {
  protected:
   R3Element<Speed> const null_velocity_ = {0 * Knot, 0 * Knot, 0 * Knot};
   R3Element<Speed> const u_ = {3 * Knot, -42 * Parsec / JulianYear, 0 * Knot};
@@ -46,8 +46,6 @@ class R3ElementTest : public testing::Test {
   R3Element<Speed> const a_ = {88 * Mile / Hour,
                                300 * Metre / Second,
                                46 * Knot};
- private:
-  base::HeapChecker heap_checker_;
 };
 
 using R3ElementDeathTest = R3ElementTest;

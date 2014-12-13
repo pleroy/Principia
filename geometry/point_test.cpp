@@ -2,13 +2,13 @@
 
 #include <vector>
 
-#include "base/heap_checker.hpp"
 #include "geometry/epoch.hpp"
 #include "gmock/gmock.h"
 #include "quantities/quantities.hpp"
 #include "quantities/named_quantities.hpp"
 #include "quantities/si.hpp"
 #include "testing_utilities/almost_equals.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 
 namespace principia {
 namespace geometry {
@@ -20,10 +20,7 @@ using si::Litre;
 using testing::Eq;
 using testing_utilities::AlmostEquals;
 
-class AffineSpaceTest : public testing::Test {
- private:
-  base::HeapChecker heap_checker_;
-};
+class AffineSpaceTest : public testing_utilities::HeapCheckedTest {};
 
 using AffineSpaceDeathTest = AffineSpaceTest;
 

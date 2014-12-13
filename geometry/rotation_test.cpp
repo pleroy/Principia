@@ -1,6 +1,5 @@
 #include "geometry/rotation.hpp"
 
-#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/orthogonal_map.hpp"
 #include "geometry/r3_element.hpp"
@@ -9,6 +8,7 @@
 #include "gtest/gtest.h"
 #include "quantities/si.hpp"
 #include "testing_utilities/almost_equals.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 
 namespace principia {
 namespace geometry {
@@ -17,7 +17,7 @@ using si::Metre;
 using testing::Eq;
 using testing_utilities::AlmostEquals;
 
-class RotationTest : public testing::Test {
+class RotationTest : public testing_utilities::HeapCheckedTest {
  protected:
   struct World;
   using Orth = OrthogonalMap<World, World>;
@@ -50,9 +50,6 @@ class RotationTest : public testing::Test {
   Rot rotation_a_;
   Rot rotation_b_;
   Rot rotation_c_;
-
- private:
-  base::HeapChecker heap_checker_;
 };
 
 TEST_F(RotationTest, Identity) {

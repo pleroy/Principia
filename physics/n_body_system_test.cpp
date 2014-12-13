@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 
-#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/named_quantities.hpp"
 #include "geometry/point.hpp"
@@ -19,6 +18,7 @@
 #include "quantities/numbers.hpp"
 #include "quantities/si.hpp"
 #include "testing_utilities/almost_equals.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 #include "testing_utilities/numerics.hpp"
 #include "testing_utilities/solar_system.hpp"
 
@@ -45,7 +45,7 @@ using testing::Lt;
 namespace principia {
 namespace physics {
 
-class NBodySystemTest : public testing::Test {
+class NBodySystemTest : public testing_utilities::HeapCheckedTest {
  protected:
   enum class Tag {
     kEarthMoonOrbitPlane,
@@ -150,9 +150,6 @@ class NBodySystemTest : public testing::Test {
   SPRKIntegrator<Length, Speed> integrator_;
   Time period_;
   std::unique_ptr<NBodySystem<EarthMoonOrbitPlane>> system_;
-
- private:
-  base::HeapChecker heap_checker_;
 };
 
 using NBodySystemDeathTest = NBodySystemTest;

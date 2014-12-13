@@ -2,13 +2,13 @@
 
 #include <vector>
 
-#include "base/heap_checker.hpp"
 #include "geometry/named_quantities.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "quantities/named_quantities.hpp"
 #include "quantities/quantities.hpp"
 #include "testing_utilities/almost_equals.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 
 using principia::geometry::Displacement;
 using principia::geometry::Position;
@@ -22,12 +22,12 @@ using principia::testing_utilities::AlmostEquals;
 namespace principia {
 namespace physics {
 
-class DegreesOfFreedomTest : public testing::Test {
+class DegreesOfFreedomTest : public testing_utilities::HeapCheckedTest {
  protected:
   struct World;
 
   DegreesOfFreedomTest()
-      : testing::Test(),
+      : testing_utilities::HeapCheckedTest(),
         d1_(origin_ + Displacement<World>({1 * SIUnit<Length>(),
                                            2 * SIUnit<Length>(),
                                            3 * SIUnit<Length>()}),
@@ -51,9 +51,6 @@ class DegreesOfFreedomTest : public testing::Test {
   DegreesOfFreedom<World> d1_;
   DegreesOfFreedom<World> d2_;
   DegreesOfFreedom<World> d3_;
-
- private:
-  base::HeapChecker heap_checker_;
 };
 
 using DegreesOfFreedomDeathTest = DegreesOfFreedomTest;

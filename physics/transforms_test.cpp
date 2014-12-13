@@ -2,7 +2,6 @@
 
 #include <limits>
 
-#include "base/heap_checker.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "physics/degrees_of_freedom.hpp"
@@ -13,6 +12,7 @@
 #include "quantities/quantities.hpp"
 #include "testing_utilities/almost_equals.hpp"
 #include "testing_utilities/componentwise.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 #include "testing_utilities/vanishes_before.hpp"
 
 using principia::quantities::Length;
@@ -33,7 +33,7 @@ namespace {
 const int kNumberOfPoints = 20;
 }  // namespace
 
-class TransformsTest : public testing::Test {
+class TransformsTest : public testing_utilities::HeapCheckedTest {
  protected:
   enum class Tag {
     kFrom,
@@ -103,9 +103,6 @@ class TransformsTest : public testing::Test {
   std::unique_ptr<Trajectory<From>> satellite_from_;
 
   std::unique_ptr<Transforms<From, Through, To>> transforms_;
-
- private:
-  base::HeapChecker heap_checker_;
 };
 
 // This transform is simple enough that we can compute its effect by hand.  This

@@ -1,10 +1,10 @@
 #include "geometry/quaternion.hpp"
 
-#include "base/heap_checker.hpp"
 #include "glog/logging.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "testing_utilities/algebra.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 
 using principia::testing_utilities::TestSkewField;
 using testing::Eq;
@@ -12,7 +12,7 @@ using testing::Eq;
 namespace principia {
 namespace geometry {
 
-class QuaternionTest : public testing::Test {
+class QuaternionTest : public testing_utilities::HeapCheckedTest {
  protected:
   using R3 = R3Element<double>;
 
@@ -25,9 +25,6 @@ class QuaternionTest : public testing::Test {
   Quaternion q1_;
   Quaternion q2_;
   Quaternion q3_;
-
- private:
-  base::HeapChecker heap_checker_;
 };
 
 TEST_F(QuaternionTest, RealPart) {

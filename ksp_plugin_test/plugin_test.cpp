@@ -7,13 +7,13 @@
 #include <map>
 #include <memory>
 
-#include "base/heap_checker.hpp"
 #include "geometry/permutation.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "physics/mock_n_body_system.hpp"
 #include "quantities/si.hpp"
 #include "testing_utilities/almost_equals.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 #include "testing_utilities/numerics.hpp"
 #include "testing_utilities/solar_system.hpp"
 
@@ -97,7 +97,7 @@ class TestablePlugin : public Plugin {
   }
 };
 
-class PluginTest : public testing::Test {
+class PluginTest : public testing_utilities::HeapCheckedTest {
  protected:
   PluginTest()
       : looking_glass_(Permutation<ICRFJ2000Ecliptic, AliceSun>::XZY),
@@ -200,9 +200,6 @@ class PluginTest : public testing::Test {
   // These initial conditions will yield a low circular orbit around Earth.
   Displacement<AliceSun> satellite_initial_displacement_;
   Velocity<AliceSun> satellite_initial_velocity_;
-
- private:
-  base::HeapChecker heap_checker_;
 };
 
 using PluginDeathTest = PluginTest;

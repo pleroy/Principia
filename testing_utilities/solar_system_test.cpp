@@ -4,10 +4,10 @@
 #include <string>
 #include <vector>
 
-#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "testing_utilities/heap_checked_test.hpp"
 #include "testing_utilities/numerics.hpp"
 
 using principia::geometry::Bivector;
@@ -30,7 +30,7 @@ using testing::Ge;
 namespace principia {
 namespace testing_utilities {
 
-class SolarSystemTest : public testing::Test {
+class SolarSystemTest : public testing_utilities::HeapCheckedTest {
  protected:
   // The maximal separation of |primary| and |secondary| ignoring the influence
   // of any other bodies.
@@ -100,9 +100,6 @@ class SolarSystemTest : public testing::Test {
   }
 
   std::unique_ptr<SolarSystem> solar_system_;
-
- private:
-  base::HeapChecker heap_checker_;
 };
 
 using SolarSystemDeathTest = SolarSystemTest;

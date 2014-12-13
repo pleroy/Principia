@@ -1,10 +1,10 @@
 #include "ksp_plugin/interface.hpp"
 
-#include "base/heap_checker.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "quantities/si.hpp"
 #include "ksp_plugin/mock_plugin.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 
 using principia::geometry::Displacement;
 using principia::ksp_plugin::AliceSun;
@@ -50,7 +50,7 @@ ACTION_TEMPLATE(FillUniquePtr,
   std::tr1::get<k>(args)->reset(ptr);
 }
 
-class InterfaceTest : public testing::Test {
+class InterfaceTest : public principia::testing_utilities::HeapCheckedTest {
  protected:
   InterfaceTest()
       : body_centred_non_rotating_frame_placeholder_(nullptr),
@@ -70,9 +70,6 @@ class InterfaceTest : public testing::Test {
   BarycentricRotatingFrame* barycentric_rotating_frame_placeholder_;
 
   std::unique_ptr<StrictMock<MockPlugin>> plugin_;
-
- private:
-  principia::base::HeapChecker heap_checker_;
 };
 
 using InterfaceDeathTest = InterfaceTest;

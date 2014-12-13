@@ -2,7 +2,6 @@
 
 #include <limits>
 
-#include "base/heap_checker.hpp"
 #include "glog/logging.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -10,6 +9,7 @@
 #include "quantities/named_quantities.hpp"
 #include "quantities/numbers.hpp"
 #include "quantities/quantities.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 
 using principia::bipm::Knot;
 using principia::quantities::Speed;
@@ -18,10 +18,7 @@ using testing::Ne;
 namespace principia {
 namespace testing_utilities {
 
-class VanishesBeforeTest : public testing::Test {
- private:
-  base::HeapChecker heap_checker_;
-};
+class VanishesBeforeTest : public testing_utilities::HeapCheckedTest {};
 
 TEST_F(VanishesBeforeTest, Dimensionless) {
   double const y = 3000.0 * std::numeric_limits<double>::epsilon();

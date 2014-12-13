@@ -7,13 +7,13 @@
 #include <string>
 #include <vector>
 
-#include "base/heap_checker.hpp"
 #include "geometry/sign.hpp"
 #include "glog/logging.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "quantities/quantities.hpp"
 #include "quantities/named_quantities.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 #include "testing_utilities/numerical_analysis.hpp"
 #include "testing_utilities/numerics.hpp"
 #include "testing_utilities/statistics.hpp"
@@ -45,7 +45,7 @@ using testing::Ne;
 namespace principia {
 namespace integrators {
 
-class SPRKTest : public testing::Test {
+class SPRKTest : public testing_utilities::HeapCheckedTest {
  public:
   static void SetUpTestCase() {
     google::LogToStderr();
@@ -59,9 +59,6 @@ class SPRKTest : public testing::Test {
   SPRKIntegrator<Length, Momentum>                           integrator_;
   SPRKIntegrator<Length, Momentum>::Parameters               parameters_;
   std::vector<SPRKIntegrator<Length, Momentum>::SystemState> solution_;
-
- private:
-  base::HeapChecker heap_checker_;
 };
 
 TEST_F(SPRKTest, HarmonicOscillator) {

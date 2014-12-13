@@ -3,7 +3,6 @@
 #include <cmath>
 #include <limits>
 
-#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/r3_element.hpp"
 #include "glog/logging.h"
@@ -12,6 +11,7 @@
 #include "quantities/elementary_functions.hpp"
 #include "quantities/si.hpp"
 #include "testing_utilities/almost_equals.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 
 namespace principia {
 namespace testing_utilities {
@@ -32,16 +32,13 @@ namespace {
 struct World;
 }  // namespace
 
-class NumericsTest : public testing::Test {
+class NumericsTest : public testing_utilities::HeapCheckedTest {
  protected:
   struct World;
 
   R3Element<double> const i_ = {1, 0, 0};
   R3Element<double> const j_ = {0, 1, 0};
   R3Element<double> const k_ = {0, 0, 1};
-
- private:
-  base::HeapChecker heap_checker_;
 };
 
 double DoubleAbs(const double x) {

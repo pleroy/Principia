@@ -1,7 +1,7 @@
 ﻿
 #include <string>
 
-#include "base/heap_checker.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "quantities/astronomy.hpp"
@@ -58,10 +58,7 @@ using testing::Lt;
 namespace principia {
 namespace quantities {
 
-class QuantitiesTest : public testing::Test {
- private:
-  base::HeapChecker heap_checker_;
-};
+class QuantitiesTest : public testing_utilities::HeapCheckedTest {};
 
 TEST_F(QuantitiesTest, AbsoluteValue) {
   EXPECT_EQ(Abs(-1729), 1729);

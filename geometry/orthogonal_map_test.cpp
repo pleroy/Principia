@@ -1,12 +1,13 @@
-#include "base/heap_checker.hpp"
-#include "geometry/grassmann.hpp"
 #include "geometry/orthogonal_map.hpp"
+
+#include "geometry/grassmann.hpp"
 #include "geometry/rotation.hpp"
 #include "glog/logging.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "quantities/si.hpp"
 #include "testing_utilities/almost_equals.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 
 namespace principia {
 namespace geometry {
@@ -15,7 +16,7 @@ using si::Metre;
 using testing::Eq;
 using testing_utilities::AlmostEquals;
 
-class OrthogonalMapTest : public testing::Test {
+class OrthogonalMapTest : public testing_utilities::HeapCheckedTest {
  protected:
   struct World;
   using Orth = OrthogonalMap<World, World>;
@@ -44,9 +45,6 @@ class OrthogonalMapTest : public testing::Test {
   Orth orthogonal_a_;
   Orth orthogonal_b_;
   Orth orthogonal_c_;
-
- private:
-  base::HeapChecker heap_checker_;
 };
 
 TEST_F(OrthogonalMapTest, Identity) {

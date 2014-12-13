@@ -1,8 +1,8 @@
 
+#include "geometry/permutation.hpp"
+
 #include <vector>
 
-#include "base/heap_checker.hpp"
-#include "geometry/permutation.hpp"
 #include "geometry/orthogonal_map.hpp"
 #include "geometry/r3_element.hpp"
 #include "glog/logging.h"
@@ -10,6 +10,7 @@
 #include "gtest/gtest.h"
 #include "quantities/si.hpp"
 #include "testing_utilities/almost_equals.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 
 using principia::quantities::Length;
 using principia::si::Metre;
@@ -19,7 +20,7 @@ using testing::Eq;
 namespace principia {
 namespace geometry {
 
-class PermutationTest : public testing::Test {
+class PermutationTest : public testing_utilities::HeapCheckedTest {
  protected:
   struct World1;
   struct World2;
@@ -38,9 +39,6 @@ class PermutationTest : public testing::Test {
   Vector<quantities::Length, World1> vector_;
   Bivector<quantities::Length, World1> bivector_;
   Trivector<quantities::Length, World1> trivector_;
-
- private:
-  base::HeapChecker heap_checker_;
 };
 
 TEST_F(PermutationTest, Identity) {

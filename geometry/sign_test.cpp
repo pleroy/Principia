@@ -1,19 +1,16 @@
 #include "geometry/sign.hpp"
 
-#include "base/heap_checker.hpp"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "testing_utilities/heap_checked_test.hpp"
 
 namespace principia {
 namespace geometry {
 
-class SignTest : public testing::Test {
+class SignTest : public testing_utilities::HeapCheckedTest {
  protected:
   Sign const positive_ = Sign(1);
   Sign const negative_ = Sign(-1);
-
- private:
-  base::HeapChecker heap_checker_;
 };
 
 TEST_F(SignTest, Integer) {

@@ -2,12 +2,12 @@
 
 #include <vector>
 
-#include "base/heap_checker.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "quantities/quantities.hpp"
 #include "quantities/si.hpp"
 #include "testing_utilities/almost_equals.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 
 namespace principia {
 namespace testing_utilities {
@@ -19,7 +19,7 @@ using si::Metre;
 using si::Second;
 using testing::Eq;
 
-class StatisticsTest : public testing::Test {
+class StatisticsTest : public testing_utilities::HeapCheckedTest {
  protected:
   void SetUp() override {
     t_ = std::vector<Time>(population_size_);
@@ -36,9 +36,6 @@ class StatisticsTest : public testing::Test {
   Speed const v_ = 42 * Metre / Second;
   std::vector<Time> t_;
   std::vector<Length> x_;
-
- private:
-  base::HeapChecker heap_checker_;
 };
 
 TEST_F(StatisticsTest, UniformPerfectlyCorrelated) {

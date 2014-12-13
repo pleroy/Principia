@@ -4,12 +4,12 @@
 
 #include <vector>
 
-#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "gtest/gtest.h"
 #include "quantities/named_quantities.hpp"
 #include "quantities/quantities.hpp"
 #include "testing_utilities/almost_equals.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 
 using principia::geometry::Bivector;
 using principia::quantities::Entropy;
@@ -20,7 +20,7 @@ using principia::testing_utilities::AlmostEquals;
 namespace principia {
 namespace geometry {
 
-class BarycentreCalculatorTest : public testing::Test {
+class BarycentreCalculatorTest : public testing_utilities::HeapCheckedTest {
  protected:
   struct World;
 
@@ -38,9 +38,6 @@ class BarycentreCalculatorTest : public testing::Test {
   Bivector<Entropy, World> b2_;
   KinematicViscosity k1_;
   KinematicViscosity k2_;
-
-private:
-  base::HeapChecker heap_checker_;
 };
 
 using BarycentreCalculatorDeathTest = BarycentreCalculatorTest;

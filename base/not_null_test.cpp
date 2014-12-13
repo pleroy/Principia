@@ -4,16 +4,16 @@
 #include <utility>
 #include <string>
 
-#include "base/heap_checker.hpp"
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "testing_utilities/heap_checked_test.hpp"
 
 using testing::Eq;
 
 namespace principia {
 namespace base {
 
-class NotNullTest : public testing::Test {
+class NotNullTest : public testing_utilities::HeapCheckedTest {
  protected:
   // A very convoluted wrapper for the x86 add...
   void Add(not_null<int*> const destination,
@@ -24,9 +24,6 @@ class NotNullTest : public testing::Test {
            not_null<int const*> const source) {
     *destination -= *source;
   }
-
- private:
-  base::HeapChecker heap_checker_;
 };
 
 using NotNullDeathTest = NotNullTest;

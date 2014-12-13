@@ -5,7 +5,6 @@
 #include <map>
 #include <string>
 
-#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/named_quantities.hpp"
 #include "geometry/point.hpp"
@@ -19,6 +18,7 @@
 #include "physics/oblate_body.hpp"
 #include "quantities/quantities.hpp"
 #include "quantities/si.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 
 using principia::geometry::Instant;
 using principia::geometry::Point;
@@ -41,7 +41,7 @@ using testing::Ref;
 namespace principia {
 namespace physics {
 
-class TrajectoryTest : public testing::Test {
+class TrajectoryTest : public testing_utilities::HeapCheckedTest {
  protected:
   enum class Tag {
     kWorld,
@@ -119,9 +119,6 @@ class TrajectoryTest : public testing::Test {
                                         Trajectory<World> const*)> transform_;
   Trajectory<World>::Transform<World> massive_transform_;
   Trajectory<World>::Transform<World> massless_transform_;
-
- private:
-  base::HeapChecker heap_checker_;
 };
 
 using TrajectoryDeathTest = TrajectoryTest;

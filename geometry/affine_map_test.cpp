@@ -3,7 +3,6 @@
 #include <limits>
 #include <vector>
 
-#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/named_quantities.hpp"
 #include "geometry/orthogonal_map.hpp"

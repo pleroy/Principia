@@ -1,6 +1,5 @@
 ﻿#include "testing_utilities/almost_equals.hpp"
 
-#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "glog/logging.h"
 #include "gmock/gmock.h"
@@ -11,6 +10,7 @@
 #include "quantities/numbers.hpp"
 #include "quantities/quantities.hpp"
 #include "quantities/uk.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 
 namespace principia {
 namespace testing_utilities {
@@ -33,10 +33,7 @@ namespace {
 struct World;
 }  // namespace
 
-class AlmostEqualsTest : public testing::Test {
- private:
-  base::HeapChecker heap_checker_;
-};
+class AlmostEqualsTest : public testing_utilities::HeapCheckedTest {};
 
 TEST_F(AlmostEqualsTest, Dimensionless) {
   double const y = e;

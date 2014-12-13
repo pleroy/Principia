@@ -3,7 +3,6 @@
 #include <functional>
 #include <iostream>  // NOLINT(readability/streams)
 
-#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/r3_element.hpp"
 #include "gmock/gmock.h"
@@ -18,6 +17,7 @@
 #include "testing_utilities/algebra.hpp"
 #include "testing_utilities/almost_equals.hpp"
 #include "testing_utilities/explicit_operators.hpp"
+#include "testing_utilities/heap_checked_test.hpp"
 
 using principia::astronomy::JulianYear;
 using principia::astronomy::Parsec;
@@ -42,7 +42,7 @@ using testing::Eq;
 namespace principia {
 namespace geometry {
 
-class GrassmannTest : public testing::Test {
+class GrassmannTest : public testing_utilities::HeapCheckedTest {
  protected:
   struct World;
 
@@ -68,9 +68,6 @@ class GrassmannTest : public testing::Test {
   R3Element<Length> const v_ = {-π * Metre, -e * Metre, -1 * Metre};
   R3Element<Length> const w_ = {2 * Metre, 2 * Metre, 2 * Metre};
   R3Element<Length> const a_ = {1 * Inch, 2 * Foot, 3 * Fathom};
-
- private:
-  base::HeapChecker heap_checker_;
 };
 
 TEST_F(GrassmannTest, Operators) {
