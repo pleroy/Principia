@@ -5,6 +5,7 @@
 
 #include <string>
 
+#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/quaternion.hpp"
 #include "geometry/r3_element.hpp"

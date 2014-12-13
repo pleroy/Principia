@@ -1,5 +1,6 @@
 ﻿#include "testing_utilities/almost_equals.hpp"
 
+#include "base/heap_checker.hpp"
 #include "geometry/grassmann.hpp"
 #include "glog/logging.h"
 #include "gmock/gmock.h"
@@ -32,7 +33,10 @@ namespace {
 struct World;
 }  // namespace
 
-class AlmostEqualsTest : public testing::Test {};
+class AlmostEqualsTest : public testing::Test {
+protected:
+  base::HeapChecker heap_checker_;
+};
 
 TEST_F(AlmostEqualsTest, Dimensionless) {
   double const y = e;
@@ -46,6 +50,7 @@ TEST_F(AlmostEqualsTest, Dimensionless) {
   EXPECT_THAT(e_accumulated, Ne(e));
   EXPECT_THAT(e_accumulated, Not(AlmostEquals(e, 0)));
   EXPECT_THAT(e_accumulated, AlmostEquals(e, 1));
+  int* x = new int(4);
 }
 
 TEST_F(AlmostEqualsTest, Quantity) {
