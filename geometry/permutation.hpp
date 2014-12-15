@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 #include "geometry/grassmann.hpp"
 #include "geometry/linear_map.hpp"
 #include "geometry/r3_element.hpp"
@@ -64,6 +66,13 @@ class Permutation : public LinearMap<FromFrame, ToFrame> {
   R3Element<Scalar> operator()(R3Element<Scalar> const& r3_element) const;
 
   CoordinatePermutation coordinate_permutation_;
+
+  using PFT = Permutation<FromFrame, ToFrame>;
+  using PTF = Permutation<ToFrame, FromFrame>;
+
+  static std::map<typename PFT::CoordinatePermutation,
+                  typename PTF::CoordinatePermutation> const inverse_;
+  static std::map<CoordinatePermutation, Quaternion> const quaternion_;
 
   template<typename From, typename Through, typename To>
   friend Permutation<From, To> operator*(
