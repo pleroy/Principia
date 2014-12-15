@@ -114,9 +114,9 @@ class NBodySystemTest : public testing_utilities::HeapCheckedTest {
   template<typename Scalar, typename Frame>
   std::string ToMathematicaString(
       std::vector<Vector<Scalar, Frame>> const& vectors) {
-    static std::string const mathematica_line =
+    static char const mathematica_line[] =
         "\n(*****************************************************)\n";
-    std::string result = mathematica_line;
+    std::string result(mathematica_line);
     result += "ToExpression[StringReplace[\"\n{";
     std::string separator = "";
     for (auto const& vector : vectors) {
@@ -352,11 +352,10 @@ TEST_F(NBodySystemTest, Sputnik1ToSputnik2) {
       evolved_system->trajectories());  // trajectories
 
   // Upper bounds, tight to the nearest order of magnitude.
-  static std::map<SolarSystem::Index, Angle> const expected_angle_error = {{}};
-  static std::map<SolarSystem::Index,
-                  double> const expected_parent_distance_error = {{}};
-  static std::map<SolarSystem::Index,
-                  double> const expected_parent_offset_error = {
+  std::map<SolarSystem::Index, Angle> const expected_angle_error = {{}};
+  std::map<SolarSystem::Index, 
+           double> const expected_parent_distance_error = {{}};
+  std::map<SolarSystem::Index, double> const expected_parent_offset_error = {
       {SolarSystem::kAriel, 1E-3},
       {SolarSystem::kDione, 1E-3},
       {SolarSystem::kIo, 1E-3},
@@ -383,7 +382,7 @@ TEST_F(NBodySystemTest, Sputnik1ToSputnik2) {
       {SolarSystem::kSaturn, 1E-8},
       {SolarSystem::kUranus, 1E-8},
       {SolarSystem::kMars, 1E-9}};
-  static std::map<SolarSystem::Index, double> const expected_position_error = {
+  std::map<SolarSystem::Index, double> const expected_position_error = {
       {SolarSystem::kEris, 1E-5},  // NOTE(egg): we may want Dysnomia.
       {SolarSystem::kCharon, 1E-6},
       {SolarSystem::kMercury, 1E-6},  // NOTE(egg): General relativity.
@@ -411,7 +410,7 @@ TEST_F(NBodySystemTest, Sputnik1ToSputnik2) {
       {SolarSystem::kUmbriel, 1E-8},
       {SolarSystem::kUranus, 1E-8},
       {SolarSystem::kMars, 1E-9}};
-  static std::map<SolarSystem::Index, double> const expected_velocity_error = {
+  std::map<SolarSystem::Index, double> const expected_velocity_error = {
       {SolarSystem::kAriel, 1E-3},
       {SolarSystem::kCharon, 1E-3},
       {SolarSystem::kDione, 1E-3},

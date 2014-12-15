@@ -57,9 +57,9 @@ quantities::Quotient<U, T> Slope(std::vector<T> const& x,
 template<typename T, typename U>
 std::string BidimensionalDatasetMathematicaInput(std::vector<T> const& x,
                                                  std::vector<U> const& y) {
-  static std::string const mathematica_line =
+  static char const mathematica_line[] =
       "(*****************************************************)";
-  std::string result = mathematica_line + "\n";
+  std::string result = std::string(mathematica_line) + "\n";
   result += "ToExpression[StringReplace[\"\n{";
   for (std::size_t i = 0; i < x.size(); ++i) {
     result += "{";

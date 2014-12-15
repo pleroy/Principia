@@ -20,7 +20,7 @@ class SPRKIntegrator : public SymplecticIntegrator<Position, Momentum> {
   SPRKIntegrator();
   ~SPRKIntegrator() override = default;
 
-  std::vector<std::vector<double>> const& Order5Optimal() const;
+  std::vector<std::vector<double>> const Order5Optimal() const;
 
   void Initialize(Coefficients const& coefficients) override;
 
