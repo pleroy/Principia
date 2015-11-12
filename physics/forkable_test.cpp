@@ -25,6 +25,10 @@ class FakeTrajectoryTimeline
                               std::list<Instant>::const_iterator> {
  public:
   using ConstIterator = std::list<Instant>::const_iterator;
+
+ private:
+  // Use list<> because we want the iterators to remain valid across operations.
+  std::list<Instant> timeline_;
 };
 
 class FakeTrajectoryIterator
@@ -67,9 +71,11 @@ class FakeTrajectory : public Forkable<FakeTrajectory,
   not_null<FakeTrajectory*> that() override;
   not_null<FakeTrajectory const*> that() const override;
 
+  internal::FakeTrajectoryTimeline& timeline() override;
+  internal::FakeTrajectoryTimeline const& timeline() const override;
+
  private:
-  // Use list<> because we want the iterators to remain valid across operations.
-  std::list<Instant> timeline_;
+  internal::FakeTrajectoryTimeline timeline_;
 
   template<typename, typename, typename>
   friend class internal::ForkableIterator;
@@ -99,6 +105,14 @@ not_null<FakeTrajectory*> FakeTrajectory::that() {
 
 not_null<FakeTrajectory const*> FakeTrajectory::that() const {
   return this;
+}
+
+internal::FakeTrajectoryTimeline& FakeTrajectory::timeline() {
+  return timeline_;
+}
+
+internal::FakeTrajectoryTimeline const& FakeTrajectory::timeline() const {
+  return timeline_;
 }
 
 //FakeTrajectory::TimelineConstIterator FakeTrajectory::timeline_begin() const {
