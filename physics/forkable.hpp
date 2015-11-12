@@ -27,7 +27,7 @@ namespace physics {
 // The template parameters with 1337 names are those that participate in this
 // mutual CRTP.
 
-template<typename Tr4jectory, typename It3rator>
+template<typename Tr4jectory, typename It3rator, typename T1meline>
 class Forkable;
 
 namespace internal {
@@ -43,16 +43,24 @@ namespace internal {
 // NOTE(phl): This was originally written as a trait under the assumption that
 // we would want to expose STL iterators to clients.  This doesn't seem like a
 // good idea anymore, so maybe this should turn into another CRTP class.
-template<typename Tr4jectory>
-struct ForkableTraits;
+
+  // An iterator into the timeline of the trajectory.  Must be STL-like.
+  // Beware, if these iterators are invalidated all the guarantees of Forkable
+  // are void.
+template<typename T1meline, typename ConstIterator>
+class ForkableTimeline {
+ public:
+  ConstIterator begin() const;
+  ConstIterator end() const;
+  ConstIterator find(Instant const& time) const;
+  ConstIterator lower_bound(Instant const& time) const;
+  bool empty() const;
+};
 
 // A template for iterating over the timeline of a Forkable object, taking forks
 // into account.
-template<typename Tr4jectory, typename It3rator>
+template<typename Tr4jectory, typename It3rator, typename T1meline>
 class ForkableIterator {
-  using TimelineConstIterator =
-      typename ForkableTraits<Tr4jectory>::TimelineConstIterator;
-
  public:
   ForkableIterator() = default;
 
@@ -69,7 +77,7 @@ class ForkableIterator {
   virtual not_null<It3rator const*> that() const = 0;
 
   // Returns the point in the timeline that is denoted by this iterator.
-  TimelineConstIterator current() const;
+  typename T1meline::ConstIterator current() const;
 
  private:
   // Returns the (most forked) trajectory to which this iterator applies.
@@ -88,10 +96,10 @@ class ForkableIterator {
 
   // |ancestry_| is never empty.  |current_| is an iterator in the timeline
   // for |ancestry_.front()|.  |current_| may be at end.
-  TimelineConstIterator current_;
+  typename T1meline::ConstIterator current_;
   std::deque<not_null<Tr4jectory const*>> ancestry_;  // Pointers not owned.
 
-  template<typename, typename>
+  template<typename, typename, typename>
   friend class physics::Forkable;
 };
 
@@ -99,15 +107,9 @@ class ForkableIterator {
 
 // This template represents a trajectory which is forkable and iterable (using
 // a ForkableIterator).
-template<typename Tr4jectory, typename It3rator>
+template<typename Tr4jectory, typename It3rator, typename T1meline>
 class Forkable {
  public:
-  // An iterator into the timeline of the trajectory.  Must be STL-like.
-  // Beware, if these iterators are invalidated all the guarantees of Forkable
-  // are void.
-  using TimelineConstIterator =
-      typename internal::ForkableTraits<Tr4jectory>::TimelineConstIterator;
-
   Forkable() = default;
   virtual ~Forkable() = default;
 
@@ -147,18 +149,9 @@ class Forkable {
 
  protected:
   // The API that must be implemented by subclasses.
-
   // Must return |this| of the proper type.
   virtual not_null<Tr4jectory*> that() = 0;
   virtual not_null<Tr4jectory const*> that() const = 0;
-
-  // STL-like operations.
-  virtual TimelineConstIterator timeline_begin() const = 0;
-  virtual TimelineConstIterator timeline_end() const = 0;
-  virtual TimelineConstIterator timeline_find(Instant const& time) const = 0;
-  virtual TimelineConstIterator timeline_lower_bound(
-                                    Instant const& time) const = 0;
-  virtual bool timeline_empty() const = 0;
 
  protected:
   // The API that subclasses may use to implement their public operations.
@@ -194,7 +187,8 @@ class Forkable {
   // end if it is an iterator in this object (and |ancestor| is this object).
   It3rator Wrap(
       not_null<const Tr4jectory*> const ancestor,
-      TimelineConstIterator const position_in_ancestor_timeline) const;
+      typename T1meline::ConstIterator const position_in_ancestor_timeline)
+      const;
 
   // There may be several forks starting from the same time, hence the multimap.
   // A level of indirection is needed to avoid referencing an incomplete type in
@@ -210,12 +204,12 @@ class Forkable {
 
   // This iterator is at |end()| if the fork time is not in the parent timeline,
   // i.e. is the parent timeline's own fork time.
-  std::experimental::optional<TimelineConstIterator>
+  std::experimental::optional<typename T1meline::ConstIterator>
       position_in_parent_timeline_;
 
   Children children_;
 
-  template<typename, typename>
+  template<typename, typename, typename>
   friend class internal::ForkableIterator;
 };
 

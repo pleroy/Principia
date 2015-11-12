@@ -31,16 +31,22 @@ class DiscreteTrajectory;
 namespace internal {
 
 template<typename Frame>
-struct ForkableTraits<DiscreteTrajectory<Frame>> {
-  using TimelineConstIterator =
+class DiscreteTrajectoryTimeline
+    : public ForkableTimeline<DiscreteTrajectoryTimeline<Frame>,
+                              typename std::map<Instant,
+                                                DegreesOfFreedom<Frame>>::
+                                  const_iterator> {
+ public:
+  using ConstIterator =
       typename std::map<Instant, DegreesOfFreedom<Frame>>::const_iterator;
-  static Instant const& time(TimelineConstIterator const it);
+  static Instant const& time(ConstIterator const it);
 };
 
 template<typename Frame>
 class DiscreteTrajectoryIterator
     : public ForkableIterator<DiscreteTrajectory<Frame>,
-                              DiscreteTrajectoryIterator<Frame>> {
+                              DiscreteTrajectoryIterator<Frame>,
+                              DiscreteTrajectoryTimeline<Frame>> {
  public:
   Instant const& time() const;
   DegreesOfFreedom<Frame> const& degrees_of_freedom() const;
@@ -55,13 +61,8 @@ class DiscreteTrajectoryIterator
 template<typename Frame>
 class DiscreteTrajectory
     : public Forkable<DiscreteTrajectory<Frame>,
-                      internal::DiscreteTrajectoryIterator<Frame>> {
-  using Timeline = std::map<Instant, DegreesOfFreedom<Frame>>;
-  using TimelineConstIterator =
-      typename Forkable<
-          DiscreteTrajectory<Frame>,
-          internal::DiscreteTrajectoryIterator<Frame>>::TimelineConstIterator;
-
+                      internal::DiscreteTrajectoryIterator<Frame>,
+                      internal::DiscreteTrajectoryTimeline<Frame>> {
  public:
   using Iterator = internal::DiscreteTrajectoryIterator<Frame>;
 
@@ -119,13 +120,6 @@ class DiscreteTrajectory
   not_null<DiscreteTrajectory*> that() override;
   not_null<DiscreteTrajectory const*> that() const override;
 
-  TimelineConstIterator timeline_begin() const override;
-  TimelineConstIterator timeline_end() const override;
-  TimelineConstIterator timeline_find(Instant const& time) const override;
-  TimelineConstIterator timeline_lower_bound(
-                            Instant const& time) const override;
-  bool timeline_empty() const override;
-
  private:
   // This trajectory need not be a root.
   void WriteSubTreeToMessage(
@@ -133,14 +127,14 @@ class DiscreteTrajectory
 
   void FillSubTreeFromMessage(serialization::Trajectory const& message);
 
-  Timeline timeline_;
+  internal::DiscreteTrajectoryTimeline<Frame> timeline_;
 
   std::function<void(not_null<DiscreteTrajectory<Frame>const *> const)>
       on_destroy_;
 
-  template<typename, typename>
+  template<typename, typename, typename>
   friend class internal::ForkableIterator;
-  template<typename, typename>
+  template<typename, typename, typename>
   friend class Forkable;
 
   // For using the private constructor in maps.

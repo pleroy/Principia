@@ -20,16 +20,21 @@ class FakeTrajectory;
 
 namespace internal {
 
-template<>
-struct ForkableTraits<FakeTrajectory> {
-  using TimelineConstIterator = std::list<Instant>::const_iterator;
-  static Instant const& time(TimelineConstIterator const it);
+class FakeTrajectoryTimeline
+    : public ForkableTimeline<FakeTrajectoryTimeline,
+                              std::list<Instant>::const_iterator> {
+ public:
+  using ConstIterator = std::list<Instant>::const_iterator;
 };
 
 class FakeTrajectoryIterator
-    : public ForkableIterator<FakeTrajectory, FakeTrajectoryIterator> {
+    : public ForkableIterator<FakeTrajectory,
+                              FakeTrajectoryIterator,
+                              FakeTrajectoryTimeline> {
  public:
-  using ForkableIterator<FakeTrajectory, FakeTrajectoryIterator>::current;
+  using ForkableIterator<FakeTrajectory,
+                         FakeTrajectoryIterator,
+                         FakeTrajectoryTimeline>::current;
 
  protected:
   not_null<FakeTrajectoryIterator*> that() override;
@@ -39,7 +44,8 @@ class FakeTrajectoryIterator
 }  // namespace internal
 
 class FakeTrajectory : public Forkable<FakeTrajectory,
-                                       internal::FakeTrajectoryIterator> {
+                                       internal::FakeTrajectoryIterator,
+                                       internal::FakeTrajectoryTimeline> {
  public:
   using Iterator = internal::FakeTrajectoryIterator;
 
@@ -47,37 +53,31 @@ class FakeTrajectory : public Forkable<FakeTrajectory,
 
   void push_back(Instant const& time);
 
-  using Forkable<FakeTrajectory, Iterator>::NewFork;
-  using Forkable<FakeTrajectory, Iterator>::DeleteAllForksAfter;
-  using Forkable<FakeTrajectory, Iterator>::DeleteAllForksBefore;
+  using Forkable<FakeTrajectory,
+                 Iterator,
+                 internal::FakeTrajectoryTimeline>::NewFork;
+  using Forkable<FakeTrajectory,
+                 Iterator,
+                 internal::FakeTrajectoryTimeline>::DeleteAllForksAfter;
+  using Forkable<FakeTrajectory,
+                 Iterator,
+                 internal::FakeTrajectoryTimeline>::DeleteAllForksBefore;
 
  protected:
   not_null<FakeTrajectory*> that() override;
   not_null<FakeTrajectory const*> that() const override;
 
-  TimelineConstIterator timeline_begin() const override;
-  TimelineConstIterator timeline_end() const override;
-  TimelineConstIterator timeline_find(Instant const& time) const override;
-  TimelineConstIterator timeline_lower_bound(
-                            Instant const& time) const override;
-  bool timeline_empty() const override;
-
  private:
   // Use list<> because we want the iterators to remain valid across operations.
   std::list<Instant> timeline_;
 
-  template<typename, typename>
+  template<typename, typename, typename>
   friend class internal::ForkableIterator;
-  template<typename, typename>
+  template<typename, typename, typename>
   friend class Forkable;
 };
 
 namespace internal {
-
-Instant const& ForkableTraits<FakeTrajectory>::time(
-    TimelineConstIterator const it) {
-  return *it;
-}
 
 not_null<FakeTrajectoryIterator*> FakeTrajectoryIterator::that() {
   return this;
@@ -101,40 +101,40 @@ not_null<FakeTrajectory const*> FakeTrajectory::that() const {
   return this;
 }
 
-FakeTrajectory::TimelineConstIterator FakeTrajectory::timeline_begin() const {
-  return timeline_.begin();
-}
-
-FakeTrajectory::TimelineConstIterator FakeTrajectory::timeline_end() const {
-  return timeline_.end();
-}
-
-FakeTrajectory::TimelineConstIterator FakeTrajectory::timeline_find(
-    Instant const & time) const {
-  // Stupid O(N) search.
-  for (auto it = timeline_.begin(); it != timeline_.end(); ++it) {
-    if (*it == time) {
-      return it;
-    }
-  }
-  return timeline_.end();
-}
-
-FakeTrajectory::TimelineConstIterator FakeTrajectory::timeline_lower_bound(
-                                          Instant const& time) const {
-  // Stupid O(N) search.
-  for (auto it = timeline_.begin(); it != timeline_.end(); ++it) {
-    if (*it >= time) {
-      return it;
-    }
-  }
-  return timeline_.end();
-}
-
-bool FakeTrajectory::timeline_empty() const {
-  return timeline_.empty();
-}
-
+//FakeTrajectory::TimelineConstIterator FakeTrajectory::timeline_begin() const {
+//  return timeline_.begin();
+//}
+//
+//FakeTrajectory::TimelineConstIterator FakeTrajectory::timeline_end() const {
+//  return timeline_.end();
+//}
+//
+//FakeTrajectory::TimelineConstIterator FakeTrajectory::timeline_find(
+//    Instant const & time) const {
+//  // Stupid O(N) search.
+//  for (auto it = timeline_.begin(); it != timeline_.end(); ++it) {
+//    if (*it == time) {
+//      return it;
+//    }
+//  }
+//  return timeline_.end();
+//}
+//
+//FakeTrajectory::TimelineConstIterator FakeTrajectory::timeline_lower_bound(
+//                                          Instant const& time) const {
+//  // Stupid O(N) search.
+//  for (auto it = timeline_.begin(); it != timeline_.end(); ++it) {
+//    if (*it >= time) {
+//      return it;
+//    }
+//  }
+//  return timeline_.end();
+//}
+//
+//bool FakeTrajectory::timeline_empty() const {
+//  return timeline_.empty();
+//}
+//
 class ForkableTest : public testing::Test {
  protected:
   ForkableTest() :
