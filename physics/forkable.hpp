@@ -153,6 +153,9 @@ class Forkable {
   virtual not_null<Tr4jectory*> that() = 0;
   virtual not_null<Tr4jectory const*> that() const = 0;
 
+  virtual T1meline& timeline() = 0;
+  virtual T1meline const& timeline() const = 0;
+
  protected:
   // The API that subclasses may use to implement their public operations.
 
