@@ -245,10 +245,21 @@ std::unique_ptr<FlightPlan> FlightPlan::ReadFromMessage(
         std::make_unique<Ephemeris<Barycentric>::AdaptiveStepParameters>(
             Ephemeris<Barycentric>::AdaptiveStepParameters::ReadFromMessage(
                 message.adaptive_step_parameters()));
-    initial_degrees_of_freedom =
-        std::make_unique<DegreesOfFreedom<Barycentric>>(
-            DegreesOfFreedom<Barycentric>::ReadFromMessage(
-                message.initial_degrees_of_freedom()));
+    if (message.has_initial_degrees_of_freedom()) {
+      initial_degrees_of_freedom =
+          std::make_unique<DegreesOfFreedom<Barycentric>>(
+              DegreesOfFreedom<Barycentric>::ReadFromMessage(
+                  message.initial_degrees_of_freedom()));
+    } else {
+      auto it = root->LowerBound(initial_time);
+      if (it.time() != initial_time) {
+        --it;
+        initial_time = it.time();
+      }
+      initial_degrees_of_freedom =
+          std::make_unique<DegreesOfFreedom<Barycentric>>(
+              it.degrees_of_freedom());
+    }
   }
 
   auto flight_plan = std::make_unique<FlightPlan>(
