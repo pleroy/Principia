@@ -83,8 +83,7 @@ Solve(Instant const& t_final,
       double const minus_ɑj = -ɑ_[0];
       double const βj_numerator = β_numerator_[0];
       for (int d = 0; d < dimension; ++d) {
-        Σj_minus_ɑj_qj[d].Increment(
-            DoubleDisplacement::Multiply(minus_ɑj, qj[d]));
+        Σj_minus_ɑj_qj[d] = DoubleDisplacement::Multiply(minus_ɑj, qj[d]);
         Σj_βj_numerator_aj[d] = βj_numerator * aj[d];
       }
       ++front_it;
@@ -249,15 +248,15 @@ void SymmetricLinearMultistepIntegrator<Position, order_>::
 FillStepFromSystemState(ODE const& equation,
                         typename ODE::SystemState const& state,
                         Step& step) {
-  std::vector<typename ODE::Displacement> displacements;
+  std::vector<typename ODE::Position> positions;
   step.time = state.time;
   for (auto const& position : state.positions) {
     step.displacements.push_back(position.ToDifference());
-    displacements.push_back(step.displacements.back().value);
+    positions.push_back(position.value);
   }
   step.accelerations.resize(step.displacements.size());
   equation.compute_acceleration(step.time.value,
-                                displacements,
+                                positions,
                                 step.accelerations);
 }
 

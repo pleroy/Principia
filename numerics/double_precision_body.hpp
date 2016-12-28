@@ -49,9 +49,11 @@ DoublePrecision<T> DoublePrecision<T>::Multiply(
     double const multiplier,
     DoublePrecision const & multiplicand) {
 #ifdef _DEBUG
-  int exponent;
-  double const mantissa = std::frexp(multiplier, &exponent);
-  CHECK_EQ(0.5, std::fabs(mantissa));
+  if (multiplier != 0.0) {
+    int exponent;
+    double const mantissa = std::frexp(multiplier, &exponent);
+    CHECK_EQ(0.5, std::fabs(mantissa)) << multiplier;
+  }
 #endif
   DoublePrecision result;
   result.value = multiplicand.value * multiplier;
