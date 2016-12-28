@@ -30,6 +30,36 @@ FORCE_INLINE void DoublePrecision<T>::Increment(
 }
 
 template<typename T>
+void DoublePrecision<T>::Increment(
+    DoublePrecision<Difference<T>> const& increment) {
+  Increment(increment.value);
+  Increment(increment.error);
+}
+
+template<typename T>
+DoublePrecision<Difference<T>> DoublePrecision<T>::ToDifference() const {
+  DoublePrecision<Difference<T>> result;
+  result.value = value - T();
+  result.error = error;
+  return result;
+}
+
+template<typename T>
+DoublePrecision<T> DoublePrecision<T>::Multiply(
+    double const multiplier,
+    DoublePrecision const & multiplicand) {
+#ifdef _DEBUG
+  int exponent;
+  double const mantissa = std::frexp(multiplier, &exponent);
+  CHECK_EQ(0.5, std::fabs(mantissa));
+#endif
+  DoublePrecision result;
+  result.value = multiplicand.value * multiplier;
+  result.error = multiplicand.error * multiplier;
+  return result;
+}
+
+template<typename T>
 void DoublePrecision<T>::WriteToMessage(
     not_null<serialization::DoublePrecision*> const message) const {
   using ValueSerializer = PointOrMultivectorSerializer<

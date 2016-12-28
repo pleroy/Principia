@@ -20,6 +20,16 @@ struct DoublePrecision final {
   constexpr DoublePrecision(T const& value);  // NOLINT(runtime/explicit)
 
   void Increment(Difference<T> const& increment);
+  void Increment(DoublePrecision<Difference<T>> const& increment);
+
+  // This class doesn't make it easy to convert e.g., a |Position| to a
+  // |Displacement|.
+  DoublePrecision<Difference<T>> ToDifference() const;
+
+  // |multiplier| must be a signed power of two.
+  // TODO(phl): Only for vector spaces.
+  static DoublePrecision Multiply(double const multiplier,
+                                  DoublePrecision const& multiplicand);
 
   void WriteToMessage(not_null<serialization::DoublePrecision*> message) const;
   static DoublePrecision ReadFromMessage(
