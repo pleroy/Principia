@@ -15,6 +15,7 @@
 #include "google/protobuf/repeated_field.h"
 #include "integrators/integrators.hpp"
 #include "integrators/ordinary_differential_equations.hpp"
+#include "numerics/double_precision.hpp"
 #include "physics/continuous_trajectory.hpp"
 #include "physics/discrete_trajectory.hpp"
 #include "physics/massive_body.hpp"
@@ -36,6 +37,7 @@ using integrators::FixedStepSizeIntegrator;
 using integrators::Integrator;
 using integrators::IntegrationProblem;
 using integrators::SpecialSecondOrderDifferentialEquation;
+using numerics::DoublePrecision;
 using quantities::Acceleration;
 using quantities::Length;
 using quantities::Speed;
@@ -241,6 +243,10 @@ class Ephemeris {
                          Frame>::NewtonianMotionEquation> const& integrator);
 
  private:
+  // The accelerations from the various bodies are accumulated in double
+  // precision.
+  using DoubleAcceleration = DoublePrecision<Acceleration>;
+
   // The state of the integration and of the continuous trajectory at a
   // particular time that we might want to use for compact serialization.
   struct Checkpoint final {
@@ -256,6 +262,9 @@ class Ephemeris {
       std::vector<not_null<DiscreteTrajectory<Frame>*>> const& trajectories);
 
   Checkpoint GetCheckpoint();
+
+  static Vector<Acceleration, Frame> ToSinglePrecision(
+      Vector<DoubleAcceleration, Frame> const& double_acceleration);
 
   // Computes the accelerations between one body, |body1| (with index |b1| in
   // the |positions| and |accelerations| arrays) and the bodies |bodies2| (with
@@ -274,7 +283,7 @@ class Ephemeris {
       std::size_t const b2_begin,
       std::size_t const b2_end,
       std::vector<Position<Frame>> const& positions,
-      std::vector<Vector<Acceleration, Frame>>& accelerations);
+      std::vector<Vector<DoubleAcceleration, Frame>>& accelerations);
 
   // Computes the accelerations due to one body, |body1| (with index |b1| in the
   // |bodies_| and |trajectories_| arrays) on massless bodies at the given
@@ -286,7 +295,7 @@ class Ephemeris {
       MassiveBody const& body1,
       std::size_t const b1,
       std::vector<Position<Frame>> const& positions,
-      std::vector<Vector<Acceleration, Frame>>& accelerations) const;
+      std::vector<Vector<DoubleAcceleration, Frame>>& accelerations) const;
 
   // Computes the accelerations between all the massive bodies in |bodies_|.
   void ComputeMassiveBodiesGravitationalAccelerations(
@@ -299,7 +308,7 @@ class Ephemeris {
   void ComputeMasslessBodiesGravitationalAccelerations(
       Instant const& t,
       std::vector<Position<Frame>> const& positions,
-      std::vector<Vector<Acceleration, Frame>>& accelerations) const;
+      std::vector<Vector<DoubleAcceleration, Frame>>& accelerations) const;
 
   // Same as above, but the massless bodies have intrinsic accelerations.
   // |intrinsic_accelerations| may be empty.

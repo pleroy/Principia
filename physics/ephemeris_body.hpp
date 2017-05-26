@@ -56,7 +56,7 @@ using ::std::placeholders::_1;
 using ::std::placeholders::_2;
 using ::std::placeholders::_3;
 
-Time const max_time_between_checkpoints = 180 * Day;
+constexpr Time max_time_between_checkpoints = 180 * Day;
 
 // If j is a unit vector along the axis of rotation, and r a vector from the
 // center of |body| to some point in space, the acceleration computed here is:
@@ -533,10 +533,9 @@ Vector<Acceleration, Frame> Ephemeris<Frame>::
 ComputeGravitationalAccelerationOnMasslessBody(
     Position<Frame> const& position,
     Instant const& t) const {
-  std::vector<Vector<Acceleration, Frame>> accelerations(1);
+  std::vector<Vector<DoubleAcceleration, Frame>> accelerations(1);
   ComputeMasslessBodiesGravitationalAccelerations(t, {position}, accelerations);
-
-  return accelerations[0];
+  return ToSinglePrecision(accelerations[0]);
 }
 
 template<typename Frame>
@@ -562,7 +561,7 @@ ComputeGravitationalAccelerationOnMassiveBody(
   // indices to the other bodies in the same order as in |bodies| and |bodies_|.
   std::vector<not_null<MassiveBody const*>> reodered_bodies;
   std::vector<Position<Frame>> positions;
-  std::vector<Vector<Acceleration, Frame>> accelerations(bodies_.size());
+  std::vector<Vector<DoubleAcceleration, Frame>> accelerations(bodies_.size());
 
   // Make room for |body|.
   reodered_bodies.push_back(body);
@@ -614,7 +613,7 @@ ComputeGravitationalAccelerationOnMassiveBody(
         positions, accelerations);
   }
 
-  return accelerations[0];
+  return ToSinglePrecision(accelerations[0]);
 }
 
 template<typename Frame>
@@ -845,6 +844,15 @@ typename Ephemeris<Frame>::Checkpoint Ephemeris<Frame>::GetCheckpoint() {
 }
 
 template<typename Frame>
+Vector<Acceleration, Frame> Ephemeris<Frame>::ToSinglePrecision(
+    Vector<DoubleAcceleration, Frame> const& double_acceleration) {
+  auto const& coordinates = double_acceleration.coordinates();
+  return Vector<Acceleration, Frame>({coordinates.x.value,
+                                      coordinates.y.value,
+                                      coordinates.z.value});
+}
+
+template<typename Frame>
 template<bool body1_is_oblate,
          bool body2_is_oblate,
          typename MassiveBodyConstPtr>
@@ -856,12 +864,12 @@ void Ephemeris<Frame>::
         std::size_t const b2_begin,
         std::size_t const b2_end,
         std::vector<Position<Frame>> const& positions,
-        std::vector<Vector<Acceleration, Frame>>& accelerations) {
+        std::vector<Vector<DoubleAcceleration, Frame>>& accelerations) {
   Position<Frame> const& position_of_b1 = positions[b1];
-  Vector<Acceleration, Frame>& acceleration_on_b1 = accelerations[b1];
+  Vector<DoubleAcceleration, Frame>& acceleration_on_b1 = accelerations[b1];
   GravitationalParameter const& μ1 = body1.gravitational_parameter();
   for (std::size_t b2 = b2_begin; b2 < b2_end; ++b2) {
-    Vector<Acceleration, Frame>& acceleration_on_b2 = accelerations[b2];
+    Vector<DoubleAcceleration, Frame>& acceleration_on_b2 = accelerations[b2];
     MassiveBody const& body2 = *bodies2[b2];
     GravitationalParameter const& μ2 = body2.gravitational_parameter();
 
@@ -875,13 +883,14 @@ void Ephemeris<Frame>::
         Sqrt(Δq_squared) / (Δq_squared * Δq_squared);
 
     auto const μ1_over_Δq_cubed = μ1 * one_over_Δq_cubed;
-    acceleration_on_b2 += Δq * μ1_over_Δq_cubed;
+    acceleration_on_b2.Increment(Δq * μ1_over_Δq_cubed);
 
     // Lex. III. Actioni contrariam semper & æqualem esse reactionem:
     // sive corporum duorum actiones in se mutuo semper esse æquales &
     // in partes contrarias dirigi.
     auto const μ2_over_Δq_cubed = μ2 * one_over_Δq_cubed;
-    acceleration_on_b1 -= Δq * μ2_over_Δq_cubed;
+    //TODO(phl):Decrement
+    acceleration_on_b1.Increment(-Δq * μ2_over_Δq_cubed);
 
     if (body1_is_oblate || body2_is_oblate) {
       Exponentiation<Length, -2> const one_over_Δq_squared = 1 / Δq_squared;
@@ -894,8 +903,8 @@ void Ephemeris<Frame>::
                     -Δq,
                     one_over_Δq_squared,
                     one_over_Δq_cubed);
-        acceleration_on_b1 -= μ2 * order_2_zonal_effect1;
-        acceleration_on_b2 += μ1 * order_2_zonal_effect1;
+        acceleration_on_b1.Increment(-μ2 * order_2_zonal_effect1);
+        acceleration_on_b2.Increment(μ1 * order_2_zonal_effect1);
       }
       if (body2_is_oblate) {
         Vector<Quotient<Acceleration,
@@ -906,8 +915,8 @@ void Ephemeris<Frame>::
                     Δq,
                     one_over_Δq_squared,
                     one_over_Δq_cubed);
-        acceleration_on_b1 += μ2 * order_2_zonal_effect2;
-        acceleration_on_b2 -= μ1 * order_2_zonal_effect2;
+        acceleration_on_b1.Increment(μ2 * order_2_zonal_effect2);
+        acceleration_on_b2.Increment(-μ1 * order_2_zonal_effect2);
       }
     }
   }
@@ -921,7 +930,7 @@ ComputeGravitationalAccelerationByMassiveBodyOnMasslessBodies(
     MassiveBody const& body1,
     std::size_t const b1,
     std::vector<Position<Frame>> const& positions,
-    std::vector<Vector<Acceleration, Frame>>& accelerations) const {
+    std::vector<Vector<DoubleAcceleration, Frame>>& accelerations) const {
   GravitationalParameter const& μ1 = body1.gravitational_parameter();
   Position<Frame> const position1 = trajectories_[b1]->EvaluatePosition(t);
 
@@ -936,7 +945,7 @@ ComputeGravitationalAccelerationByMassiveBodyOnMasslessBodies(
         Sqrt(Δq_squared) / (Δq_squared * Δq_squared);
 
     auto const μ1_over_Δq_cubed = μ1 * one_over_Δq_cubed;
-    accelerations[b2] += Δq * μ1_over_Δq_cubed;
+    accelerations[b2].Increment(Δq * μ1_over_Δq_cubed);
 
     if (body1_is_oblate) {
       Exponentiation<Length, -2> const one_over_Δq_squared = 1 / Δq_squared;
@@ -948,7 +957,7 @@ ComputeGravitationalAccelerationByMassiveBodyOnMasslessBodies(
                   -Δq,
                   one_over_Δq_squared,
                   one_over_Δq_cubed);
-      accelerations[b2] += μ1 * order_2_zonal_effect1;
+      accelerations[b2].Increment(μ1 * order_2_zonal_effect1);
     }
   }
 }
@@ -958,7 +967,9 @@ void Ephemeris<Frame>::ComputeMassiveBodiesGravitationalAccelerations(
     Instant const& t,
     std::vector<Position<Frame>> const& positions,
     std::vector<Vector<Acceleration, Frame>>& accelerations) const {
-  accelerations.assign(accelerations.size(), Vector<Acceleration, Frame>());
+  CHECK_EQ(positions.size(), accelerations.size());
+  std::vector<Vector<DoubleAcceleration, Frame>>
+      double_accelerations(accelerations.size());
 
   for (std::size_t b1 = 0; b1 < number_of_oblate_bodies_; ++b1) {
     MassiveBody const& body1 = *bodies_[b1];
@@ -970,7 +981,7 @@ void Ephemeris<Frame>::ComputeMassiveBodiesGravitationalAccelerations(
         /*b2_begin=*/b1 + 1,
         /*b2_end=*/number_of_oblate_bodies_,
         positions,
-        accelerations);
+        double_accelerations);
     ComputeGravitationalAccelerationByMassiveBodyOnMassiveBodies<
         /*body1_is_oblate=*/true,
         /*body2_is_oblate=*/false>(
@@ -979,7 +990,7 @@ void Ephemeris<Frame>::ComputeMassiveBodiesGravitationalAccelerations(
         /*b2_begin=*/number_of_oblate_bodies_,
         /*b2_end=*/number_of_oblate_bodies_ + number_of_spherical_bodies_,
         positions,
-        accelerations);
+        double_accelerations);
   }
   for (std::size_t b1 = number_of_oblate_bodies_;
        b1 < number_of_oblate_bodies_ +
@@ -994,7 +1005,12 @@ void Ephemeris<Frame>::ComputeMassiveBodiesGravitationalAccelerations(
         /*b2_begin=*/b1 + 1,
         /*b2_end=*/number_of_oblate_bodies_ + number_of_spherical_bodies_,
         positions,
-        accelerations);
+        double_accelerations);
+  }
+
+  // Reduce to single precision.
+  for (std::size_t i = 0; i < accelerations.size(); ++i) {
+    accelerations[i] = double_accelerations[i].value;
   }
 }
 
@@ -1002,10 +1018,7 @@ template<typename Frame>
 void Ephemeris<Frame>::ComputeMasslessBodiesGravitationalAccelerations(
       Instant const& t,
       std::vector<Position<Frame>> const& positions,
-      std::vector<Vector<Acceleration, Frame>>& accelerations) const {
-  CHECK_EQ(positions.size(), accelerations.size());
-  accelerations.assign(accelerations.size(), Vector<Acceleration, Frame>());
-
+      std::vector<Vector<DoubleAcceleration, Frame>>& accelerations) const {
   for (std::size_t b1 = 0; b1 < number_of_oblate_bodies_; ++b1) {
     MassiveBody const& body1 = *bodies_[b1];
     ComputeGravitationalAccelerationByMassiveBodyOnMasslessBodies<
@@ -1035,18 +1048,27 @@ void Ephemeris<Frame>::ComputeMasslessBodiesTotalAccelerations(
     Instant const& t,
     std::vector<Position<Frame>> const& positions,
     std::vector<Vector<Acceleration, Frame>>& accelerations) const {
+  CHECK_EQ(positions.size(), accelerations.size());
+  std::vector<Vector<DoubleAcceleration, Frame>>
+      double_accelerations(accelerations.size());
   // First, the acceleration due to the gravitational field of the
   // massive bodies.
-  ComputeMasslessBodiesGravitationalAccelerations(t, positions, accelerations);
+  ComputeMasslessBodiesGravitationalAccelerations(
+      t, positions, double_accelerations);
 
   // Then, the intrinsic accelerations, if any.
   if (!intrinsic_accelerations.empty()) {
-    for (int i = 0; i < intrinsic_accelerations.size(); ++i) {
+    for (std::size_t i = 0; i < intrinsic_accelerations.size(); ++i) {
       auto const intrinsic_acceleration = intrinsic_accelerations[i];
       if (intrinsic_acceleration != nullptr) {
-        accelerations[i] += intrinsic_acceleration(t);
+        accelerations[i].Increment(intrinsic_acceleration(t));
       }
     }
+  }
+
+  // Reduce to single precision.
+  for (std::size_t i = 0; i < accelerations.size(); ++i) {
+    accelerations[i] = double_accelerations[i].value;
   }
 }
 
