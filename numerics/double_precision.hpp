@@ -27,7 +27,8 @@ struct DoublePrecision final {
   explicit constexpr DoublePrecision(T const& value);
 
   // Compensated summation.  This is less precise, but more efficient, than
-  // conversion followed by |operator+=|.
+  // conversion followed by |operator-=| or |operator+=|.
+  DoublePrecision<T>& Decrement(Difference<T> const& right);
   DoublePrecision<T>& Increment(Difference<T> const& right);
 
   DoublePrecision<T>& operator+=(DoublePrecision<Difference<T>> const& right);

@@ -49,11 +49,22 @@ constexpr DoublePrecision<T>::DoublePrecision(T const& value)
       error() {}
 
 template <typename T>
+DoublePrecision<T>& DoublePrecision<T>::Decrement(Difference<T> const& right) {
+  // See Higham, Accuracy and Stability of Numerical Algorithms, Algorithm 4.2.
+  // This is equivalent to |QuickTwoSum(value, error - right)|.
+  T const temp = value;
+  Difference<T> const y = error - right;
+  value = temp + y;
+  error = (temp - value) + y;
+  return *this;
+}
+
+template <typename T>
 DoublePrecision<T>& DoublePrecision<T>::Increment(Difference<T> const& right) {
   // See Higham, Accuracy and Stability of Numerical Algorithms, Algorithm 4.2.
-  // This is equivalent to |QuickTwoSum(value, right + error)|.
+  // This is equivalent to |QuickTwoSum(value, error + right)|.
   T const temp = value;
-  Difference<T> const y = right + error;
+  Difference<T> const y = error + right;
   value = temp + y;
   error = (temp - value) + y;
   return *this;
