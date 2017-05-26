@@ -92,7 +92,7 @@ class KSPSystemTest : public ::testing::Test, protected KSPSystem {
         pol_(solar_system_.massive_body(*ephemeris_, "Pol")),
         bop_(solar_system_.massive_body(*ephemeris_, "Bop")),
         tylo_(solar_system_.massive_body(*ephemeris_, "Tylo")),
-        vall_(solar_system_.massive_body(*ephemeris_, "Vall")),
+        vall_(solar_system_.massive_body(*ephemeris_, "Aaa")),
         laythe_(solar_system_.massive_body(*ephemeris_, "Laythe")),
         dres_(solar_system_.massive_body(*ephemeris_, "Dres")),
         duna_(solar_system_.massive_body(*ephemeris_, "Duna")),

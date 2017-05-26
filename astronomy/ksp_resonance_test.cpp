@@ -88,7 +88,7 @@ class KSPResonanceTest : public ::testing::Test {
             /*step=*/Δt));
     jool_ = solar_system_.massive_body(*ephemeris, "Jool");
     laythe_ = solar_system_.massive_body(*ephemeris, "Laythe");
-    vall_ = solar_system_.massive_body(*ephemeris, "Vall");
+    vall_ = solar_system_.massive_body(*ephemeris, "Aaa");
     tylo_ = solar_system_.massive_body(*ephemeris, "Tylo");
     bop_ = solar_system_.massive_body(*ephemeris, "Bop");
     pol_ = solar_system_.massive_body(*ephemeris, "Pol");
@@ -240,7 +240,7 @@ class KSPResonanceTest : public ::testing::Test {
   Instant long_term_;
 };
 
-#if !defined(_DEBUG)
+//#if !defined(_DEBUG)
 
 TEST_F(KSPResonanceTest, Stock) {
   auto const ephemeris = MakeEphemeris();
@@ -369,7 +369,7 @@ TEST_F(KSPResonanceTest, Corrected) {
                "corrected");
 }
 
-#endif
+//#endif
 
 }  // namespace astronomy
 }  // namespace principia
