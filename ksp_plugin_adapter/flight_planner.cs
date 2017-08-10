@@ -277,10 +277,9 @@ class FlightPlanner : WindowRenderer {
               TimeWarp.fetch.WarpTo(manoeuvre.burn.initial_time - 60);
             }
           }
+          XYZ guidance = plugin_.FlightPlanGetGuidance(vessel_guid, i);
           if (show_guidance_ &&
-              !double.IsNaN(manoeuvre.inertial_direction.x +
-                            manoeuvre.inertial_direction.y +
-                            manoeuvre.inertial_direction.z)) {
+              !double.IsNaN(guidance.x + guidance.y + guidance.z)) {
             if (guidance_node_ == null ||
                 !vessel_.patchedConicSolver.maneuverNodes.Contains(
                     guidance_node_)) {
@@ -315,7 +314,7 @@ class FlightPlanner : WindowRenderer {
                 ((Vector3d)manoeuvre.burn.delta_v).magnitude *
                 (Vector3d)(UnityEngine.Quaternion.Inverse(
                                stock_frenet_frame_to_world) *
-                           (Vector3d)manoeuvre.inertial_direction);
+                           (Vector3d)guidance);
             guidance_node_.UT = manoeuvre.burn.initial_time;
             vessel_.patchedConicSolver.UpdateFlightPlan();
             should_clear_guidance = false;
@@ -349,7 +348,7 @@ class FlightPlanner : WindowRenderer {
   internal static string FormatPositiveTimeSpan (TimeSpan span) {
     return (GameSettings.KERBIN_TIME
                 ? (span.Days * 4 + span.Hours / 6).ToString("0000;0000") +
-                      " d₆ " + (span.Hours % 6).ToString("0;0" + " h ")
+                      " d6 " + (span.Hours % 6).ToString("0;0" + " h ")
                 : span.Days.ToString("000;000") + " d " +
                       span.Hours.ToString("00;00") + " h ") +
            span.Minutes.ToString("00;00") + " min " +

@@ -15,15 +15,14 @@ namespace interface {
 using geometry::AngularVelocity;
 using geometry::Displacement;
 using geometry::OrthogonalMap;
+using geometry::RigidTransformation;
 using geometry::Vector;
 using geometry::Velocity;
 using ksp_plugin::AliceSun;
 using ksp_plugin::ApparentBubble;
-using ksp_plugin::Bubble;
 using physics::DegreesOfFreedom;
 using physics::RelativeDegreesOfFreedom;
 using physics::RigidMotion;
-using physics::RigidTransformation;
 using quantities::Force;
 using quantities::si::Kilo;
 using quantities::si::Newton;

@@ -174,10 +174,19 @@ void principia__AdvanceTime(Plugin* const plugin,
   return m.Return();
 }
 
-void principia__AdvanceParts(Plugin* const plugin, double const t) {
-  journal::Method<journal::AdvanceParts> m({plugin, t});
+void principia__CatchUpLaggingVessels(Plugin* const plugin) {
+  journal::Method<journal::CatchUpLaggingVessels> m({plugin});
   CHECK_NOTNULL(plugin);
-  plugin->AdvanceParts(FromGameTime(*plugin, t));
+  plugin->CatchUpLaggingVessels();
+  return m.Return();
+}
+
+void principia__CatchUpVessel(Plugin* const plugin,
+                              char const* const vessel_guid) {
+  journal::Method<journal::CatchUpVessel> m({plugin, vessel_guid});
+  CHECK_NOTNULL(plugin);
+  CHECK_NOTNULL(vessel_guid);
+  plugin->CatchUpVessel(vessel_guid);
   return m.Return();
 }
 
@@ -221,12 +230,15 @@ WXYZ principia__CelestialSphereRotation(Plugin const* const plugin) {
 
 QP principia__CelestialWorldDegreesOfFreedom(Plugin const* const plugin,
                                              int const index,
-                                             PartId const part_at_origin) {
+                                             PartId const part_at_origin,
+                                             double const time) {
   journal::Method<journal::CelestialWorldDegreesOfFreedom> m(
-      {plugin, index, part_at_origin});
+      {plugin, index, part_at_origin, time});
   CHECK_NOTNULL(plugin);
-  return m.Return(
-      ToQP(plugin->CelestialWorldDegreesOfFreedom(index, part_at_origin)));
+  return m.Return(ToQP(plugin->CelestialWorldDegreesOfFreedom(
+                           index,
+                           part_at_origin,
+                           FromGameTime(*plugin, time))));
 }
 
 double principia__CurrentTime(Plugin const* const plugin) {
@@ -336,10 +348,12 @@ void principia__ForgetAllHistoriesBefore(Plugin* const plugin,
   return m.Return();
 }
 
-void principia__FreeVesselsAndPartsAndCollectPileUps(Plugin* const plugin) {
-  journal::Method<journal::FreeVesselsAndPartsAndCollectPileUps> m({plugin});
+void principia__FreeVesselsAndPartsAndCollectPileUps(Plugin* const plugin,
+                                                     double const delta_t) {
+  journal::Method<journal::FreeVesselsAndPartsAndCollectPileUps> m(
+      {plugin, delta_t});
   CHECK_NOTNULL(plugin);
-  plugin->FreeVesselsAndPartsAndCollectPileUps();
+  plugin->FreeVesselsAndPartsAndCollectPileUps(delta_t * Second);
   return m.Return();
 }
 
@@ -581,7 +595,8 @@ void principia__InsertOrKeepLoadedPart(
     char const* const vessel_guid,
     int const main_body_index,
     QP const main_body_world_degrees_of_freedom,
-    QP const part_world_degrees_of_freedom) {
+    QP const part_world_degrees_of_freedom,
+    double const delta_t) {
   journal::Method<journal::InsertOrKeepLoadedPart> m(
       {plugin,
        part_id,
@@ -590,7 +605,8 @@ void principia__InsertOrKeepLoadedPart(
        vessel_guid,
        main_body_index,
        main_body_world_degrees_of_freedom,
-       part_world_degrees_of_freedom});
+       part_world_degrees_of_freedom,
+       delta_t});
   CHECK_NOTNULL(plugin);
   plugin->InsertOrKeepLoadedPart(
       part_id,
@@ -599,7 +615,8 @@ void principia__InsertOrKeepLoadedPart(
       vessel_guid,
       main_body_index,
       FromQP<DegreesOfFreedom<World>>(main_body_world_degrees_of_freedom),
-      FromQP<DegreesOfFreedom<World>>(part_world_degrees_of_freedom));
+      FromQP<DegreesOfFreedom<World>>(part_world_degrees_of_freedom),
+      delta_t * Second);
   return m.Return();
 }
 
@@ -815,6 +832,14 @@ void principia__SetVerboseLogging(int const level) {
   journal::Method<journal::SetVerboseLogging> m({level});
   FLAGS_v = level;
   return m.Return();
+}
+
+XYZ principia__UnmanageableVesselVelocity(Plugin const* const plugin,
+                                         QP const degrees_of_freedom,
+                                         int const parent_index) {
+  return ToXYZ(CHECK_NOTNULL(plugin)->UnmanageableVesselVelocity(
+      FromQP<RelativeDegreesOfFreedom<AliceSun>>(degrees_of_freedom),
+      parent_index));
 }
 
 // Calls |plugin->UpdateCelestialHierarchy| with the arguments given.

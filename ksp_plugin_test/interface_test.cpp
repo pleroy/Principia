@@ -26,6 +26,7 @@
 #include "testing_utilities/actions.hpp"
 #include "testing_utilities/almost_equals.hpp"
 #include "testing_utilities/matchers.hpp"
+#include "testing_utilities/serialization.hpp"
 
 namespace principia {
 namespace interface {
@@ -39,6 +40,7 @@ using geometry::AngularVelocity;
 using geometry::Bivector;
 using geometry::Displacement;
 using geometry::OrthogonalMap;
+using geometry::RigidTransformation;
 using geometry::Rotation;
 using geometry::Vector;
 using geometry::Velocity;
@@ -67,7 +69,6 @@ using physics::MassiveBody;
 using physics::MockDynamicFrame;
 using physics::RelativeDegreesOfFreedom;
 using physics::RigidMotion;
-using physics::RigidTransformation;
 using quantities::GravitationalParameter;
 using quantities::Length;
 using quantities::Pow;
@@ -86,6 +87,8 @@ using quantities::si::Tonne;
 using testing_utilities::AlmostEquals;
 using testing_utilities::EqualsProto;
 using testing_utilities::FillUniquePtr;
+using testing_utilities::ReadFromBinaryFile;
+using testing_utilities::ReadFromHexadecimalFile;
 using ::testing::AllOf;
 using ::testing::ByMove;
 using ::testing::DoAll;
@@ -141,43 +144,10 @@ class InterfaceTest : public testing::Test {
 
   InterfaceTest()
       : plugin_(make_not_null_unique<StrictMock<MockPlugin>>()),
-        hexadecimal_simple_plugin_(
-            ReadFromHexadecimalFile("simple_plugin.proto.hex")),
-        serialized_simple_plugin_(
-            ReadFromBinaryFile("simple_plugin.proto.bin")) {}
-
-  static std::string ReadFromBinaryFile(std::string const& filename) {
-    std::fstream file =
-        std::fstream(SOLUTION_DIR / "ksp_plugin_test" / filename,
-                     std::ios::in | std::ios::binary);
-    CHECK(file.good());
-    std::string binary;
-    while (!file.eof()) {
-      char c;
-      file.get(c);
-      binary.append(1, c);
-    }
-    file.close();
-    return binary;
-  }
-
-  static std::string ReadFromHexadecimalFile(std::string const& filename) {
-    std::fstream file =
-        std::fstream(SOLUTION_DIR / "ksp_plugin_test" / filename);
-    CHECK(file.good());
-    std::string hex;
-    while (!file.eof()) {
-      std::string line;
-      std::getline(file, line);
-      for (auto const c : line) {
-        if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F')) {
-          hex.append(1, c);
-        }
-      }
-    }
-    file.close();
-    return hex;
-  }
+        hexadecimal_simple_plugin_(ReadFromHexadecimalFile(
+            SOLUTION_DIR / "ksp_plugin_test" / "simple_plugin.proto.hex")),
+        serialized_simple_plugin_(ReadFromBinaryFile(
+            SOLUTION_DIR / "ksp_plugin_test" / "simple_plugin.proto.bin")) {}
 
   not_null<std::unique_ptr<StrictMock<MockPlugin>>> plugin_;
   std::string const hexadecimal_simple_plugin_;
@@ -605,6 +575,25 @@ TEST_F(InterfaceTest, DeserializePlugin) {
           &deserializer,
           &plugin);
   principia__DeserializePlugin(hexadecimal_simple_plugin_.c_str(),
+                               0,
+                               &deserializer,
+                               &plugin);
+  EXPECT_THAT(plugin, NotNull());
+  principia__DeletePlugin(&plugin);
+}
+
+// Use for debugging saves given by users.
+TEST_F(InterfaceTest, DISABLED_DeserializePluginDebug) {
+  PushDeserializer* deserializer = nullptr;
+  Plugin const* plugin = nullptr;
+  std::string const hexadecimal_plugin = ReadFromHexadecimalFile(
+      R"(P:\Public Mockingbird\Principia\Crashes\1422\persistent.proto.hex)");
+  principia__DeserializePlugin(
+          hexadecimal_plugin.c_str(),
+          hexadecimal_plugin.size(),
+          &deserializer,
+          &plugin);
+  principia__DeserializePlugin(hexadecimal_plugin.c_str(),
                                0,
                                &deserializer,
                                &plugin);

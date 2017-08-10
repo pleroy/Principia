@@ -20,18 +20,13 @@ using geometry::Bivector;
 using geometry::Instant;
 using geometry::OrthogonalMap;
 using geometry::Position;
+using geometry::RigidTransformation;
 using geometry::Vector;
 using geometry::Velocity;
 using quantities::Acceleration;
 using quantities::Length;
 using quantities::Variation;
 using quantities::si::Radian;
-
-// An arbitrary rigid transformation.  Simultaneous positions between two frames
-// are always related by such a transformation.
-template<typename FromFrame, typename ToFrame>
-using RigidTransformation =
-    AffineMap<FromFrame, ToFrame, Length, OrthogonalMap>;
 
 // The instantaneous motion of |ToFrame| with respect to |FromFrame|.
 // This is the derivative of a |RigidTransformation<FromFrame, ToFrame>|.
@@ -57,7 +52,7 @@ class RigidMotion final {
   RigidMotion<ToFrame, FromFrame> Inverse() const;
 
  private:
-  RigidTransformation<FromFrame, ToFrame> const rigid_transformation_;
+  RigidTransformation<FromFrame, ToFrame> rigid_transformation_;
   // d/dt rigid_transformation⁻¹(basis of ToFrame). The positively oriented
   // orthogonal bases of |FromFrame| are acted upon faithfully and transitively
   // by SO(FromFrame), so this lies in the tangent space, i.e., the Lie algebra

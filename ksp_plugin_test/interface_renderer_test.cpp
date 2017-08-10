@@ -10,6 +10,7 @@
 #include "ksp_plugin_test/mock_plugin.hpp"
 #include "ksp_plugin_test/mock_renderer.hpp"
 #include "ksp_plugin_test/mock_vessel.hpp"
+#include "physics/discrete_trajectory.hpp"
 #include "physics/mock_dynamic_frame.hpp"
 #include "quantities/si.hpp"
 #include "testing_utilities/actions.hpp"
@@ -26,6 +27,7 @@ using ksp_plugin::MockPlugin;
 using ksp_plugin::MockRenderer;
 using ksp_plugin::MockVessel;
 using ksp_plugin::Navigation;
+using physics::DiscreteTrajectory;
 using physics::MockDynamicFrame;
 using quantities::si::Metre;
 using testing_utilities::FillUniquePtr;
@@ -108,9 +110,10 @@ TEST_F(InterfaceRendererTest, RenderedPrediction) {
   EXPECT_EQ(mock_navigation_frame, navigation_frame);
 
   MockRenderer renderer;
+  auto const identity = Rotation<Barycentric, AliceSun>::Identity();
   EXPECT_CALL(*plugin_, renderer()).WillRepeatedly(ReturnRef(renderer));
   EXPECT_CALL(*plugin_, PlanetariumRotation())
-      .WillRepeatedly(ReturnRef(Rotation<Barycentric, AliceSun>::Identity()));
+      .WillRepeatedly(ReturnRef(identity));
   EXPECT_CALL(*plugin_, CurrentTime()).WillOnce(Return(t0_));
   EXPECT_CALL(renderer, SetPlottingFrameConstRef(Ref(*navigation_frame)));
   principia__SetPlottingFrame(plugin_.get(), &navigation_frame);
@@ -156,7 +159,7 @@ TEST_F(InterfaceRendererTest, RenderedPrediction) {
   // Traverse it and check that we get the right data.
   for (int i = 0; i < trajectory_size; ++i) {
     EXPECT_FALSE(principia__IteratorAtEnd(iterator));
-    XYZ const xyz = principia__IteratorGetXYZ(iterator);
+    XYZ const xyz = principia__IteratorGetDiscreteTrajectoryXYZ(iterator);
     EXPECT_EQ(1 + 10 * i, xyz.x);
     EXPECT_EQ(2 + 20 * i, xyz.y);
     EXPECT_EQ(3 + 30 * i, xyz.z);
@@ -189,10 +192,11 @@ TEST_F(InterfaceRendererTest, Iterator) {
   EXPECT_EQ(mock_navigation_frame, navigation_frame);
 
   MockRenderer renderer;
+  auto const identity = Rotation<Barycentric, AliceSun>::Identity();
   EXPECT_CALL(*plugin_, renderer()).WillRepeatedly(ReturnRef(renderer));
   EXPECT_CALL(*const_plugin_, renderer()).WillRepeatedly(ReturnRef(renderer));
   EXPECT_CALL(*plugin_, PlanetariumRotation())
-      .WillRepeatedly(ReturnRef(Rotation<Barycentric, AliceSun>::Identity()));
+      .WillRepeatedly(ReturnRef(identity));
   EXPECT_CALL(*plugin_, CurrentTime()).WillOnce(Return(t0_));
   EXPECT_CALL(renderer, SetPlottingFrameConstRef(Ref(*navigation_frame)));
   principia__SetPlottingFrame(plugin_.get(), &navigation_frame);
@@ -239,7 +243,7 @@ TEST_F(InterfaceRendererTest, Iterator) {
   // Traverse it and check that we get the right data.
   for (int i = 0; i < trajectory_size; ++i) {
     EXPECT_FALSE(principia__IteratorAtEnd(iterator));
-    XYZ const xyz = principia__IteratorGetXYZ(iterator);
+    XYZ const xyz = principia__IteratorGetDiscreteTrajectoryXYZ(iterator);
     EXPECT_EQ(1 + 10 * i, xyz.x);
     EXPECT_EQ(2 + 20 * i, xyz.y);
     EXPECT_EQ(3 + 30 * i, xyz.z);

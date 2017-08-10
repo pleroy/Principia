@@ -13,10 +13,12 @@
 #include "base/monostable.hpp"
 #include "geometry/affine_map.hpp"
 #include "geometry/named_quantities.hpp"
+#include "geometry/perspective.hpp"
 #include "geometry/point.hpp"
 #include "ksp_plugin/celestial.hpp"
 #include "ksp_plugin/frames.hpp"
 #include "ksp_plugin/manœuvre.hpp"
+#include "ksp_plugin/planetarium.hpp"
 #include "ksp_plugin/renderer.hpp"
 #include "ksp_plugin/vessel.hpp"
 #include "integrators/ordinary_differential_equations.hpp"
@@ -47,6 +49,7 @@ using geometry::Displacement;
 using geometry::Instant;
 using geometry::OrthogonalMap;
 using geometry::Point;
+using geometry::Perspective;
 using geometry::Position;
 using geometry::Rotation;
 using geometry::Vector;
@@ -181,7 +184,8 @@ class Plugin {
       GUID const& vessel_guid,
       Index main_body_index,
       DegreesOfFreedom<World> const& main_body_degrees_of_freedom,
-      DegreesOfFreedom<World> const& part_degrees_of_freedom);
+      DegreesOfFreedom<World> const& part_degrees_of_freedom,
+      Time const& Δt);
 
   // Calls |increment_intrinsic_force| on the relevant part, which must be in a
   // loaded vessel.
@@ -202,7 +206,7 @@ class Plugin {
   // since the last call to |FreeVesselsAndCollectPileUps|, as well as the parts
   // in loaded vessels for which |InsertOrKeepLoadedPart| has not been called,
   // and updates the list of |pile_ups_| according to the reported collisions.
-  virtual void FreeVesselsAndPartsAndCollectPileUps();
+  virtual void FreeVesselsAndPartsAndCollectPileUps(Time const& Δt);
 
   // Calls |SetPartApparentDegreesOfFreedom| on the pile-up containing the
   // relevant part.  This part must be in a loaded vessel.
@@ -210,10 +214,10 @@ class Plugin {
       PartId part_id,
       DegreesOfFreedom<World> const& degrees_of_freedom);
 
-  // Advances time on the pile ups to |t|, filling the tails of all parts up to
-  // instant |t|.  The vessels are unaffected, and |current_time_| remains
-  // unchanged.
-  virtual void AdvanceParts(Instant const& t);
+  // Advances time to |current_time_| for all pile ups that are not already
+  // there, filling the tails of all their parts up to that instant; then
+  // advances time on all vessels that are not yet at |current_time_|.
+  virtual void CatchUpLaggingVessels();
 
   // Returns the degrees of freedom of the given part in |World|, assuming that
   // the origin of |World| is fixed at the centre of mass of the
@@ -226,12 +230,11 @@ class Plugin {
   // |Index|, identifying the origin of |World| with that of |Bubble|.
   virtual DegreesOfFreedom<World> CelestialWorldDegreesOfFreedom(
       Index const index,
-      PartId part_at_origin) const;
+      PartId part_at_origin,
+      Instant const& time) const;
 
   // Simulates the system until instant |t|.  Sets |current_time_| to |t|.
   // Must be called after initialization.
-  // Calls |AdvanceParts| if it has not been called; otherwise the vessels are
-  // advanced using the tails previously computed during that call.
   // Clears the intrinsic force on all loaded parts.
   // |t| must be greater than |current_time_|.  |planetarium_rotation| is the
   // value of KSP's |Planetarium.InverseRotAngle| at instant |t|, which provides
@@ -240,6 +243,11 @@ class Plugin {
   // even though it's a double-precision value).  Note that KSP's
   // |Planetarium.InverseRotAngle| is in degrees.
   virtual void AdvanceTime(Instant const& t, Angle const& planetarium_rotation);
+
+  // Advances time to |current_time_| on the pile up containing the given
+  // vessel if the pile up is not there already, and advances time to
+  // |current_time_| on that vessel.
+  virtual void CatchUpVessel(GUID const& vessel_guid);
 
   // Forgets the histories of the |celestials_| and of the vessels before |t|.
   virtual void ForgetAllHistoriesBefore(Instant const& t) const;
@@ -306,6 +314,10 @@ class Plugin {
   virtual bool HasVessel(GUID const& vessel_guid) const;
   virtual not_null<Vessel*> GetVessel(GUID const& vessel_guid) const;
 
+  virtual not_null<std::unique_ptr<Planetarium>> NewPlanetarium(
+      Planetarium::Parameters const& parameters,
+      Perspective<Navigation, Camera> const& perspective) const;
+
   virtual not_null<std::unique_ptr<NavigationFrame>>
   NewBarycentricRotatingNavigationFrame(Index primary_index,
                                         Index secondary_index) const;
@@ -333,6 +345,17 @@ class Plugin {
   virtual Vector<double, World> VesselNormal(GUID const& vessel_guid) const;
   virtual Vector<double, World> VesselBinormal(GUID const& vessel_guid) const;
 
+  // TODO(egg): UnmanageableVesselTangent, Normal, Binormal.
+
+  // Takes degrees of freedom relative to the celestial with the given index,
+  // and returns the velocity in the plotting frame expressed in the coordinates
+  // of |World|.  This is used to display the velocity of a vessel not known to
+  // the plugin.
+  virtual Velocity<World> UnmanageableVesselVelocity(
+      RelativeDegreesOfFreedom<AliceSun> const& degrees_of_freedom,
+      Index parent_index) const;
+  // Same as |UnmanageableVesselVelocity|, but uses the known degrees of freedom
+  // of a vessel in |vessels_|.
   virtual Velocity<World> VesselVelocity(GUID const& vessel_guid) const;
 
   virtual Instant GameEpoch() const;
@@ -382,6 +405,10 @@ class Plugin {
   // NOTE(egg): this is an ugly hack to try to get a long enough trajectory
   // while retaining a timeout.
   void UpdatePredictionForRendering(std::int64_t size) const;
+
+  Velocity<World> VesselVelocity(
+      Instant const& time,
+      DegreesOfFreedom<Barycentric> const& degrees_of_freedom) const;
 
   // Fill |celestials| using the |index| and |parent_index| fields found in
   // |celestial_messages|.

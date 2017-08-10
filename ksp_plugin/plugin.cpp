@@ -43,6 +43,8 @@
 #include "physics/frame_field.hpp"
 #include "physics/massive_body.hpp"
 #include "physics/solar_system.hpp"
+#include "quantities/quantities.hpp"
+#include "quantities/si.hpp"
 
 namespace principia {
 namespace ksp_plugin {
@@ -69,6 +71,7 @@ using geometry::EulerAngles;
 using geometry::Identity;
 using geometry::Normalize;
 using geometry::Permutation;
+using geometry::RigidTransformation;
 using geometry::Sign;
 using physics::BarycentricRotatingDynamicFrame;
 using physics::BodyCentredBodyDirectionDynamicFrame;
@@ -83,21 +86,15 @@ using physics::Frenet;
 using physics::KeplerianElements;
 using physics::MassiveBody;
 using physics::RigidMotion;
-using physics::RigidTransformation;
 using physics::SolarSystem;
 using quantities::Force;
+using quantities::Infinity;
 using quantities::Length;
 using quantities::si::Kilogram;
 using quantities::si::Milli;
 using quantities::si::Minute;
 using quantities::si::Radian;
 using ::operator<<;
-
-namespace {
-
-Length const fitting_tolerance = 1 * Milli(Metre);
-
-}  // namespace
 
 Plugin::Plugin(std::string const& game_epoch,
                std::string const& solar_system_epoch,
@@ -398,7 +395,8 @@ void Plugin::InsertOrKeepLoadedPart(
     GUID const& vessel_guid,
     Index const main_body_index,
     DegreesOfFreedom<World> const& main_body_degrees_of_freedom,
-    DegreesOfFreedom<World> const& part_degrees_of_freedom) {
+    DegreesOfFreedom<World> const& part_degrees_of_freedom,
+    Time const& Δt) {
   not_null<Vessel*> const vessel =
       find_vessel_by_guid_or_die(vessel_guid).get();
   CHECK(is_loaded(vessel));
@@ -414,6 +412,7 @@ void Plugin::InsertOrKeepLoadedPart(
       vessel->AddPart(current_vessel->ExtractPart(part_id));
     }
   } else {
+    Instant const previous_time = current_time_ - Δt;
     enum class LocalTag { tag };
     using MainBodyCentred =
         geometry::Frame<LocalTag, LocalTag::tag, /*frame_is_inertial=*/false>;
@@ -424,12 +423,12 @@ void Plugin::InsertOrKeepLoadedPart(
         RigidTransformation<World, MainBodyCentred>{
             main_body_degrees_of_freedom.position(),
             MainBodyCentred::origin,
-            main_body_frame.ToThisFrameAtTime(current_time_).orthogonal_map() *
+            main_body_frame.ToThisFrameAtTime(previous_time).orthogonal_map() *
                 renderer_->WorldToBarycentric(PlanetariumRotation())},
         AngularVelocity<World>(),
         main_body_degrees_of_freedom.velocity()};
     auto const world_to_barycentric =
-        main_body_frame.FromThisFrameAtTime(current_time_) *
+        main_body_frame.FromThisFrameAtTime(previous_time) *
         world_to_main_body_centred;
 
     AddPart(vessel,
@@ -469,13 +468,15 @@ void Plugin::ReportCollision(PartId const part1, PartId const part2) const {
   Subset<Part>::Unite(Subset<Part>::Find(p1), Subset<Part>::Find(p2));
 }
 
-void Plugin::FreeVesselsAndPartsAndCollectPileUps() {
+void Plugin::FreeVesselsAndPartsAndCollectPileUps(Time const& Δt) {
   CHECK(!initializing_);
 
   for (auto it = vessels_.cbegin(); it != vessels_.cend();) {
     not_null<Vessel*> vessel = it->second.get();
+    Instant const vessel_time =
+        is_loaded(vessel) ? current_time_ - Δt : current_time_;
     if (kept_vessels_.erase(vessel)) {
-      vessel->PreparePsychohistory(current_time_);
+      vessel->PreparePsychohistory(vessel_time);
       ++it;
     } else {
       CHECK(!is_loaded(vessel));
@@ -494,7 +495,7 @@ void Plugin::FreeVesselsAndPartsAndCollectPileUps() {
   // Bind the vessels.
   for (auto const& pair : vessels_) {
     Vessel& vessel = *pair.second;
-    vessel.ForSomePart([&vessel, this](Part& first_part) {
+    vessel.ForSomePart([this, &vessel](Part& first_part) {
       vessel.ForAllParts([&first_part](Part& part) {
         Subset<Part>::Unite(Subset<Part>::Find(first_part),
                             Subset<Part>::Find(part));
@@ -506,10 +507,12 @@ void Plugin::FreeVesselsAndPartsAndCollectPileUps() {
   // the same subset.
   for (auto const& pair : vessels_) {
     Vessel& vessel = *pair.second;
-    vessel.ForSomePart([this](Part& first_part) {
+    Instant const vessel_time =
+        is_loaded(&vessel) ? current_time_ - Δt : current_time_;
+    vessel.ForSomePart([&vessel_time, this](Part& first_part) {
       Subset<Part>::Find(first_part).mutable_properties().Collect(
           &pile_ups_,
-          current_time_,
+          vessel_time,
           DefaultProlongationParameters(),
           DefaultHistoryParameters(),
           ephemeris_.get());
@@ -536,17 +539,23 @@ void Plugin::SetPartApparentDegreesOfFreedom(
       part, world_to_apparent_bubble(degrees_of_freedom));
 }
 
-void Plugin::AdvanceParts(Instant const& t) {
+void Plugin::CatchUpLaggingVessels() {
   CHECK(!initializing_);
-  CHECK_GT(t, current_time_);
 
-  ephemeris_->Prolong(t);
   for (PileUp& pile_up : pile_ups_) {
-    pile_up.DeformPileUpIfNeeded();
-    pile_up.AdvanceTime(t);
-    // TODO(egg): now that |NudgeParts| doesn't need the bubble barycentre
-    // anymore, it could be part of |PileUp::AdvanceTime|.
-    pile_up.NudgeParts();
+    if (pile_up.time() < current_time_) {
+      pile_up.DeformPileUpIfNeeded();
+      pile_up.AdvanceTime(current_time_);
+      // TODO(egg): now that |NudgeParts| doesn't need the bubble barycentre
+      // anymore, it could be part of |PileUp::AdvanceTime|.
+      pile_up.NudgeParts();
+    }
+  }
+  for (auto const& pair : vessels_) {
+    Vessel& vessel = *pair.second;
+    if (vessel.psychohistory().last().time() < current_time_) {
+      vessel.AdvanceTime();
+    }
   }
 }
 
@@ -570,10 +579,11 @@ DegreesOfFreedom<World> Plugin::GetPartActualDegreesOfFreedom(
 
 DegreesOfFreedom<World> Plugin::CelestialWorldDegreesOfFreedom(
     Index const index,
-    PartId const part_at_origin) const {
-  auto const world_origin = FindOrDie(part_id_to_vessel_, part_at_origin)->
-                                part(part_at_origin)->
-                                degrees_of_freedom();
+    PartId const part_at_origin,
+    Instant const& time) const {
+  auto const part =
+      FindOrDie(part_id_to_vessel_, part_at_origin)->part(part_at_origin);
+  auto const world_origin = part->degrees_of_freedom();
   RigidMotion<Barycentric, World> barycentric_to_world{
       RigidTransformation<Barycentric, World>{
           world_origin.position(),
@@ -583,7 +593,7 @@ DegreesOfFreedom<World> Plugin::CelestialWorldDegreesOfFreedom(
       world_origin.velocity()};
   return barycentric_to_world(
       FindOrDie(celestials_, index)->
-          trajectory().EvaluateDegreesOfFreedom(current_time_));
+          trajectory().EvaluateDegreesOfFreedom(time));
 }
 
 void Plugin::AdvanceTime(Instant const& t, Angle const& planetarium_rotation) {
@@ -592,24 +602,11 @@ void Plugin::AdvanceTime(Instant const& t, Angle const& planetarium_rotation) {
   CHECK(!initializing_);
   CHECK_GT(t, current_time_);
 
-  if (!vessels_.empty()) {
-    bool tails_are_empty;
-    vessels_.begin()->second->ForSomePart([&tails_are_empty](Part& part) {
-      tails_are_empty = part.tail().Empty();
-    });
-    if (tails_are_empty) {
-      AdvanceParts(t);
-    }
-  }
-
-  for (auto const& pair : vessels_) {
-    Vessel& vessel = *pair.second;
-    vessel.AdvanceTime();
-  }
   for (not_null<Vessel*> const vessel : loaded_vessels_) {
     vessel->ClearAllIntrinsicForces();
   }
 
+  ephemeris_->Prolong(current_time_);
   VLOG(1) << "Time has been advanced" << '\n'
           << "from : " << current_time_ << '\n'
           << "to   : " << t;
@@ -617,6 +614,24 @@ void Plugin::AdvanceTime(Instant const& t, Angle const& planetarium_rotation) {
   planetarium_rotation_ = planetarium_rotation;
   UpdatePlanetariumRotation();
   loaded_vessels_.clear();
+}
+
+void Plugin::CatchUpVessel(GUID const& vessel_guid) {
+  CHECK(!initializing_);
+  Vessel& vessel = *find_vessel_by_guid_or_die(vessel_guid);
+  vessel.ForSomePart([this](Part& part) {
+    auto const pile_up = part.containing_pile_up()->iterator();
+    // This may be false, if we have already caught up the pile up as part of
+    // |CatchUpVessel| for another vessel in the pile up.
+    if (pile_up->time() < current_time_) {
+      // TODO(egg): this should probably check that deformation is not needed
+      // instead.
+      pile_up->DeformPileUpIfNeeded();
+      pile_up->AdvanceTime(current_time_);
+      pile_up->NudgeParts();
+    }
+  });
+  vessel.AdvanceTime();
 }
 
 void Plugin::ForgetAllHistoriesBefore(Instant const& t) const {
@@ -743,8 +758,9 @@ void Plugin::ComputeAndRenderNodes(
     Position<World> const& sun_world_position,
     std::unique_ptr<DiscreteTrajectory<World>>& ascending,
     std::unique_ptr<DiscreteTrajectory<World>>& descending) const {
-  CHECK(renderer_->HasTargetVessel());
-  UpdatePredictionForRendering(begin.trajectory()->Size());
+  if (renderer_->HasTargetVessel()) {
+    UpdatePredictionForRendering(begin.trajectory()->Size());
+  }
 
   auto const trajectory_in_plotting =
       renderer_->RenderBarycentricTrajectoryInPlotting(begin, end);
@@ -791,6 +807,16 @@ bool Plugin::HasVessel(GUID const& vessel_guid) const {
 not_null<Vessel*> Plugin::GetVessel(GUID const& vessel_guid) const {
   CHECK(!initializing_);
   return find_vessel_by_guid_or_die(vessel_guid).get();
+}
+
+not_null<std::unique_ptr<Planetarium>> Plugin::NewPlanetarium(
+    Planetarium::Parameters const& parameters,
+    Perspective<Navigation, Camera> const& perspective)
+    const {
+  return make_not_null_unique<Planetarium>(parameters,
+                                           perspective,
+                                           ephemeris_.get(),
+                                           renderer_->GetPlottingFrame());
 }
 
 not_null<std::unique_ptr<NavigationFrame>>
@@ -898,8 +924,7 @@ std::unique_ptr<FrameField<World, Navball>> Plugin::NavballFrameField(
       Position<Navigation> const q_in_plotting =
           renderer.WorldToPlotting(current_time,
                                    sun_world_position_,
-                                   planetarium_rotation).
-              rigid_transformation()(q);
+                                   planetarium_rotation)(q);
 
       OrthogonalMap<RightHandedNavball, Barycentric> const
           right_handed_navball_to_barycentric =
@@ -908,10 +933,10 @@ std::unique_ptr<FrameField<World, Navball>> Plugin::NavballFrameField(
                         navigation_right_handed_field_->
                             FromThisFrame(q_in_plotting).Forget()
                   : barycentric_right_handed_field_->FromThisFrame(
-                        renderer.WorldToBarycentric(current_time,
-                                                    sun_world_position_,
-                                                    planetarium_rotation).
-                            rigid_transformation()(q)).Forget();
+                        renderer.WorldToBarycentric(
+                            current_time,
+                            sun_world_position_,
+                            planetarium_rotation)(q)).Forget();
 
       // KSP's navball has x west, y up, z south.
       // We want x north, y east, z down.
@@ -976,16 +1001,22 @@ Vector<double, World> Plugin::VesselBinormal(GUID const& vessel_guid) const {
       PlanetariumRotation())(Vector<double, Frenet<Navigation>>({0, 0, 1}));
 }
 
+Velocity<World> Plugin::UnmanageableVesselVelocity(
+    RelativeDegreesOfFreedom<AliceSun> const& degrees_of_freedom,
+    Index const parent_index) const {
+  auto const parent_degrees_of_freedom =
+      FindOrDie(celestials_,
+                parent_index)->current_degrees_of_freedom(current_time_);
+  return VesselVelocity(
+      current_time_,
+      parent_degrees_of_freedom +
+          PlanetariumRotation().Inverse()(degrees_of_freedom));
+}
+
 Velocity<World> Plugin::VesselVelocity(GUID const& vessel_guid) const {
   Vessel const& vessel = *find_vessel_by_guid_or_die(vessel_guid);
   auto const& last = vessel.psychohistory().last();
-  Instant const& time = last.time();
-  DegreesOfFreedom<Barycentric> const& barycentric_degrees_of_freedom =
-      last.degrees_of_freedom();
-  DegreesOfFreedom<Navigation> const plotting_frame_degrees_of_freedom =
-      renderer_->BarycentricToPlotting(time)(barycentric_degrees_of_freedom);
-  return renderer_->PlottingToWorld(time, PlanetariumRotation())(
-             plotting_frame_degrees_of_freedom.velocity());
+  return VesselVelocity(last.time(), last.degrees_of_freedom());
 }
 
 Instant Plugin::GameEpoch() const {
@@ -1236,9 +1267,19 @@ void Plugin::UpdatePlanetariumRotation() {
 void Plugin::UpdatePredictionForRendering(std::int64_t const size) const {
   auto& vessel = renderer_->GetTargetVessel();
   auto parameters = vessel.prediction_adaptive_step_parameters();
-  parameters.set_max_steps(size);
+  // Adding one to ensure that we set a strictly positive max_steps.
+  parameters.set_max_steps(size + 1);
   vessel.set_prediction_adaptive_step_parameters(parameters);
   vessel.UpdatePrediction(current_time_ + prediction_length_);
+}
+
+Velocity<World> Plugin::VesselVelocity(
+    Instant const& time,
+    DegreesOfFreedom<Barycentric> const& degrees_of_freedom) const {
+  DegreesOfFreedom<Navigation> const plotting_frame_degrees_of_freedom =
+      renderer_->BarycentricToPlotting(time)(degrees_of_freedom);
+  return renderer_->PlottingToWorld(time, PlanetariumRotation())(
+      plotting_frame_degrees_of_freedom.velocity());
 }
 
 template<typename T>

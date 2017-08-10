@@ -78,6 +78,7 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\warnings_as_errors.props" />
+    <Import Project="..\third_party_optional.props" />
     <Import Project="..\suppress_useless_warnings.props" />
     <Import Project="..\profiling.props" />
     <Import Project="..\include_solution.props" />
@@ -94,6 +95,7 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\warnings_as_errors.props" />
+    <Import Project="..\third_party_optional.props" />
     <Import Project="..\suppress_useless_warnings.props" />
     <Import Project="..\profiling.props" />
     <Import Project="..\include_solution.props" />
@@ -110,6 +112,7 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\warnings_as_errors.props" />
+    <Import Project="..\third_party_optional.props" />
     <Import Project="..\suppress_useless_warnings.props" />
     <Import Project="..\profiling.props" />
     <Import Project="..\include_solution.props" />
@@ -127,6 +130,7 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\warnings_as_errors.props" />
+    <Import Project="..\third_party_optional.props" />
     <Import Project="..\suppress_useless_warnings.props" />
     <Import Project="..\profiling.props" />
     <Import Project="..\include_solution.props" />
@@ -143,6 +147,7 @@
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release_LLVM|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\third_party_optional.props" />
     <Import Project="..\suppress_useless_warnings.props" />
     <Import Project="..\llvm_compatibility.props" />
     <Import Project="..\include_solution.props" />
@@ -158,6 +163,7 @@
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release_LLVM|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="..\third_party_optional.props" />
     <Import Project="..\suppress_useless_warnings.props" />
     <Import Project="..\llvm_compatibility.props" />
     <Import Project="..\include_solution.props" />
@@ -292,6 +298,8 @@
     <ClInclude Include="named_quantities.hpp" />
     <ClInclude Include="pair.hpp" />
     <ClInclude Include="pair_body.hpp" />
+    <ClInclude Include="perspective.hpp" />
+    <ClInclude Include="perspective_body.hpp" />
     <ClInclude Include="point.hpp" />
     <ClInclude Include="point_body.hpp" />
     <ClInclude Include="grassmann_body.hpp" />
@@ -309,10 +317,14 @@
     <ClInclude Include="r3_element.hpp" />
     <ClInclude Include="rotation_body.hpp" />
     <ClInclude Include="rotation.hpp" />
+    <ClInclude Include="rp2_point.hpp" />
+    <ClInclude Include="rp2_point_body.hpp" />
     <ClInclude Include="serialization.hpp" />
     <ClInclude Include="serialization_body.hpp" />
     <ClInclude Include="sign_body.hpp" />
     <ClInclude Include="sign.hpp" />
+    <ClInclude Include="sphere.hpp" />
+    <ClInclude Include="sphere_body.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="barycentre_calculator_test.cpp" />
@@ -320,6 +332,7 @@
     <ClCompile Include="grassmann_test.cpp" />
     <ClCompile Include="identity_test.cpp" />
     <ClCompile Include="pair_test.cpp" />
+    <ClCompile Include="perspective_test.cpp" />
     <ClCompile Include="point_test.cpp" />
     <ClCompile Include="affine_map_test.cpp" />
     <ClCompile Include="orthogonal_map_test.cpp" />
@@ -328,6 +341,7 @@
     <ClCompile Include="r3x3_matrix_test.cpp" />
     <ClCompile Include="r3_element_test.cpp" />
     <ClCompile Include="rotation_test.cpp" />
+    <ClCompile Include="rp2_point_test.cpp" />
     <ClCompile Include="sign_test.cpp" />
   </ItemGroup>
   <ItemGroup>

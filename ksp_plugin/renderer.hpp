@@ -26,6 +26,7 @@ using geometry::AffineMap;
 using geometry::Instant;
 using geometry::OrthogonalMap;
 using geometry::Position;
+using geometry::RigidTransformation;
 using geometry::Rotation;
 using physics::DiscreteTrajectory;
 using physics::Ephemeris;
@@ -52,7 +53,7 @@ class Renderer {
   virtual void SetTargetVessel(
       not_null<Vessel*> vessel,
       not_null<Celestial const*> celestial,
-      not_null<Ephemeris<Barycentric> const*> const ephemeris);
+      not_null<Ephemeris<Barycentric> const*> ephemeris);
 
   // Reverts to frame last set by |SetPlottingFrame|.  The second version only
   // has an effect if the given |vessel| is the current target vessel.
@@ -100,7 +101,7 @@ class Renderer {
   virtual RigidMotion<Barycentric, Navigation> BarycentricToPlotting(
       Instant const& time) const;
 
-  virtual RigidMotion<Barycentric, World> BarycentricToWorld(
+  virtual RigidTransformation<Barycentric, World> BarycentricToWorld(
       Instant const& time,
       Position<World> const& sun_world_position,
       Rotation<Barycentric, AliceSun> const& planetarium_rotation) const;
@@ -124,10 +125,17 @@ class Renderer {
       Vessel const& vessel,
       Rotation<Barycentric, AliceSun> const& planetarium_rotation) const;
 
+  // Converts from the Frenet frame of the vessel's free-falling trajectory in
+  // the given |navigation_frame| to the |World| coordinates.
+  virtual OrthogonalMap<Frenet<Navigation>, World> FrenetToWorld(
+      Vessel const& vessel,
+      NavigationFrame const& navigation_frame,
+      Rotation<Barycentric, AliceSun> const& planetarium_rotation) const;
+
   virtual OrthogonalMap<Navigation, Barycentric> PlottingToBarycentric(
       Instant const& time) const;
 
-  virtual RigidMotion<Navigation, World> PlottingToWorld(
+  virtual RigidTransformation<Navigation, World> PlottingToWorld(
       Instant const& time,
       Position<World> const& sun_world_position,
       Rotation<Barycentric, AliceSun> const& planetarium_rotation) const;
@@ -136,7 +144,7 @@ class Renderer {
       Instant const& time,
       Rotation<Barycentric, AliceSun> const& planetarium_rotation) const;
 
-  virtual RigidMotion<World, Barycentric> WorldToBarycentric(
+  virtual RigidTransformation<World, Barycentric> WorldToBarycentric(
       Instant const& time,
       Position<World> const& sun_world_position,
       Rotation<Barycentric, AliceSun> const& planetarium_rotation) const;
@@ -144,7 +152,7 @@ class Renderer {
   virtual OrthogonalMap<World, Barycentric> WorldToBarycentric(
       Rotation<Barycentric, AliceSun> const& planetarium_rotation) const;
 
-  virtual RigidMotion<World, Navigation> WorldToPlotting(
+  virtual RigidTransformation<World, Navigation> WorldToPlotting(
       Instant const& time,
       Position<World> const& sun_world_position,
       Rotation<Barycentric, AliceSun> const& planetarium_rotation) const;
@@ -154,7 +162,7 @@ class Renderer {
   static not_null<std::unique_ptr<Renderer>> ReadFromMessage(
       serialization::Renderer const& message,
       not_null<Celestial const*> sun,
-      not_null<Ephemeris<Barycentric> const*> const ephemeris);
+      not_null<Ephemeris<Barycentric> const*> ephemeris);
 
  private:
   not_null<Celestial const*> const sun_;

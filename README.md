@@ -1,6 +1,6 @@
 # Principia
 
-**Catalan, the May version of Principia with numerous bug fixes, is available.  Download it [here](https://goo.gl/OiSbzK).**
+**Cayley, the July version of Principia is available.  It fixes some major bugs related to the positioning of vessels, and includes a macOS version, courtesy of [@lamont-granquist](https://github.com/lamont-granquist).  Download it [here](https://goo.gl/w3VKtA).**
 
 Principia is a mod for Kerbal Space Program (KSP) which implements N-body and extended body gravitation.  Instead of being within the sphere of influence of a single celestial body at any point in time, your vessels are influenced by all the celestials.  This makes it possible to implement missions that are more complex and more realistic than in the stock game, especially if used in conjunction with a mod like RealSolarSystem which has real-life celestials.
 
@@ -14,4 +14,6 @@ The [FAQ](https://github.com/mockingbirdnest/Principia/wiki/Installing,-reportin
 
 The [change log](https://github.com/mockingbirdnest/Principia/wiki/Change-Log) gives a fairly detailed description of the new features in each release.
 
-Download the binary (Ubuntu and Windows) [here](https://goo.gl/OiSbzK) or, if you don't trust our binary, build the mod from the [Catalan](https://github.com/mockingbirdnest/Principia/releases/tag/2017052520-Catalan) release.
+Principia is released on every [new moon](https://en.wikipedia.org/wiki/New_moon) with whatever features and bug fixes are ready at the time.  This ensures relatively timely improvements and bug fixes.
+
+Download the binary (Ubuntu, macOS, and Windows) [here](https://goo.gl/w3VKtA) or, if you don't trust our binary, build the mod from the [Cayley](https://github.com/mockingbirdnest/Principia/releases/tag/2017072310-Cayley) release.

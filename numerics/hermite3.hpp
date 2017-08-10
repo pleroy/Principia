@@ -1,15 +1,17 @@
 ﻿
 #pragma once
 
-#include <set>
 #include <utility>
+#include <vector>
 
+#include "base/array.hpp"
 #include "quantities/named_quantities.hpp"
 
 namespace principia {
 namespace numerics {
 namespace internal_hermite3 {
 
+using base::BoundedArray;
 using quantities::Derivative;
 
 // A 3rd degree Hermite polynomial defined by its values and derivatives at the
@@ -28,7 +30,8 @@ class Hermite3 final {
   Value Evaluate(Argument const& argument) const;
   Derivative1 EvaluateDerivative(Argument const& argument) const;
 
-  std::set<Argument> FindExtrema() const;
+  // The result is sorted.
+  BoundedArray<Argument, 2> FindExtrema() const;
 
  private:
   using Derivative2 = Derivative<Derivative1, Argument>;

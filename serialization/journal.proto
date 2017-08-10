@@ -46,6 +46,7 @@ message Burn {
   required NavigationFrameParameters frame = 3;
   required double initial_time = 4;
   required XYZ delta_v = 5;
+  required bool is_inertially_fixed = 6;
 }
 
 message KeplerianElements {
@@ -89,8 +90,13 @@ message WXYZ {
   required double z = 4;
 }
 
+message XY {
+  required double x = 1;
+  required double y = 2;
+}
+
 message Method {
-  extensions 5000 to 5999;  // Last used: 5127.
+  extensions 5000 to 5999;  // Last used: 5138.
 }
 
 message AdvanceTime {
@@ -105,13 +111,23 @@ message AdvanceTime {
   optional In in = 1;
 }
 
-message AdvanceParts {
+message CatchUpLaggingVessels {
   extend Method {
-    optional AdvanceParts extension = 5120;
+    optional CatchUpLaggingVessels extension = 5120;
   }
   message In {
     required fixed64 plugin = 1 [(pointer_to) = "Plugin", (is_subject) = true];
-    required double t = 2;
+  }
+  optional In in = 1;
+}
+
+message CatchUpVessel {
+  extend Method {
+    optional CatchUpVessel extension = 5129;
+  }
+  message In {
+    required fixed64 plugin = 1 [(pointer_to) = "Plugin", (is_subject) = true];
+    required string vessel_guid = 2;
   }
   optional In in = 1;
 }
@@ -204,6 +220,7 @@ message CelestialWorldDegreesOfFreedom {
                                  (is_subject) = true];
     required int32 index = 2;
     required fixed32 part_at_origin = 3;
+    required double time = 4;
   }
   message Return {
     required QP result = 1;
@@ -401,6 +418,23 @@ message FlightPlanGetDesiredFinalTime {
   }
   message Return {
     required double result = 1;
+  }
+  optional In in = 1;
+  optional Return return = 3;
+}
+
+message FlightPlanGetGuidance {
+  extend Method {
+    optional FlightPlanGetGuidance extension = 5138;
+  }
+  message In {
+    required fixed64 plugin = 1 [(pointer_to) = "Plugin const",
+                                 (is_subject) = true];
+    required string vessel_guid = 2;
+    required int32 index = 3;
+  }
+  message Return {
+    required XYZ result = 1;
   }
   optional In in = 1;
   optional Return return = 3;
@@ -646,6 +680,7 @@ message FreeVesselsAndPartsAndCollectPileUps {
   }
   message In {
     required fixed64 plugin = 1 [(pointer_to) = "Plugin", (is_subject) = true];
+    required double delta_t = 2;
   }
   optional In in = 1;
 }
@@ -855,6 +890,7 @@ message InsertOrKeepLoadedPart {
     required int32 main_body_index = 5;
     required QP main_body_world_degrees_of_freedom = 6;
     required QP part_world_degrees_of_freedom = 7;
+    required double delta_t = 9;
   }
   optional In in = 1;
 }
@@ -903,9 +939,9 @@ message IteratorDelete {
   optional Out out = 2;
 }
 
-message IteratorGetQP {
+message IteratorGetDiscreteTrajectoryQP {
   extend Method {
-    optional IteratorGetQP extension = 5093;
+    optional IteratorGetDiscreteTrajectoryQP extension = 5093;
   }
   message In {
     required fixed64 iterator = 1 [(pointer_to) = "Iterator const",
@@ -918,9 +954,9 @@ message IteratorGetQP {
   optional Return return = 3;
 }
 
-message IteratorGetTime {
+message IteratorGetDiscreteTrajectoryTime {
   extend Method {
-    optional IteratorGetTime extension = 5094;
+    optional IteratorGetDiscreteTrajectoryTime extension = 5094;
   }
   message In {
     required fixed64 iterator = 1 [(pointer_to) = "Iterator const",
@@ -933,9 +969,9 @@ message IteratorGetTime {
   optional Return return = 3;
 }
 
-message IteratorGetXYZ {
+message IteratorGetDiscreteTrajectoryXYZ {
   extend Method {
-    optional IteratorGetXYZ extension = 5085;
+    optional IteratorGetDiscreteTrajectoryXYZ extension = 5085;
   }
   message In {
     required fixed64 iterator = 1 [(pointer_to) = "Iterator const",
@@ -948,9 +984,51 @@ message IteratorGetXYZ {
   optional Return return = 3;
 }
 
+message IteratorGetRP2LinesIterator {
+  extend Method {
+    optional IteratorGetRP2LinesIterator extension = 5132;
+  }
+  message In {
+    required fixed64 iterator = 1 [(pointer_to) = "Iterator const",
+                                   (is_subject) = true];
+  }
+  message Return {
+    required fixed64 result = 1 [(pointer_to) = "Iterator",
+                                 (is_produced) = true];
+  }
+  optional In in = 1;
+  optional Return return = 3;
+}
+
+message IteratorGetRP2LineXY {
+  extend Method {
+    optional IteratorGetRP2LineXY extension = 5133;
+  }
+  message In {
+    required fixed64 iterator = 1 [(pointer_to) = "Iterator const",
+                                   (is_subject) = true];
+  }
+  message Return {
+    required XY result = 1;
+  }
+  optional In in = 1;
+  optional Return return = 3;
+}
+
 message IteratorIncrement {
   extend Method {
     optional IteratorIncrement extension = 5086;
+  }
+  message In {
+    required fixed64 iterator = 1 [(pointer_to) = "Iterator",
+                                   (is_subject) = true];
+  }
+  optional In in = 1;
+}
+
+message IteratorReset {
+  extend Method {
+    optional IteratorReset extension = 5135;
   }
   message In {
     required fixed64 iterator = 1 [(pointer_to) = "Iterator",
@@ -1060,6 +1138,102 @@ message NewPlugin {
   message Return {
     required fixed64 result = 1 [(pointer_to) = "Plugin",
                                  (is_produced) = true];
+  }
+  optional In in = 1;
+  optional Return return = 3;
+}
+
+message PlanetariumCreate {
+  extend Method {
+    optional PlanetariumCreate extension = 5130;
+  }
+  message In {
+    required fixed64 plugin = 1 [(pointer_to) = "Plugin const",
+                                 (is_subject) = true];
+    required XYZ sun_world_position = 2;
+    required XYZ xyz_opengl_camera_x_in_world = 3;
+    required XYZ xyz_opengl_camera_y_in_world = 4;
+    required XYZ xyz_opengl_camera_z_in_world = 5;
+    required XYZ xyz_camera_position_in_world = 6;
+    required double focal = 7;
+    required double field_of_view = 8;
+  }
+  message Return {
+    required fixed64 result = 1 [(pointer_to) = "Planetarium",
+                                 (is_produced) = true];
+  }
+  optional In in = 1;
+  optional Return return = 3;
+}
+
+message PlanetariumDelete {
+  extend Method {
+    optional PlanetariumDelete extension = 5131;
+  }
+  message In {
+    required fixed64 planetarium = 1 [(pointer_to) = "Planetarium const",
+                                      (is_consumed) = true];
+  }
+  message Out {
+    required fixed64 planetarium = 1 [(pointer_to) = "Planetarium const"];
+  }
+  optional In in = 1;
+  optional Out out = 2;
+}
+
+message PlanetariumPlotFlightPlanSegment {
+  extend Method {
+    optional PlanetariumPlotFlightPlanSegment extension = 5137;
+  }
+  message In {
+    required fixed64 planetarium = 1 [(pointer_to) = "Planetarium const",
+                                      (is_subject) = true];
+    required fixed64 plugin = 2 [(pointer_to) = "Plugin const"];
+    required int32 method = 3;
+    required string vessel_guid = 4;
+    required int32 index = 5;
+  }
+  message Return {
+    required fixed64 rp2_lines = 1 [(pointer_to) = "Iterator",
+                                    (is_produced) = true];
+  }
+  optional In in = 1;
+  optional Return return = 3;
+}
+
+message PlanetariumPlotPrediction {
+  extend Method {
+    optional PlanetariumPlotPrediction extension = 5136;
+  }
+  message In {
+    required fixed64 planetarium = 1 [(pointer_to) = "Planetarium const",
+                                      (is_subject) = true];
+    required fixed64 plugin = 2 [(pointer_to) = "Plugin const"];
+    required int32 method = 3;
+    required string vessel_guid = 4;
+  }
+  message Return {
+    required fixed64 rp2_lines = 1 [(pointer_to) = "Iterator",
+                                    (is_produced) = true];
+  }
+  optional In in = 1;
+  optional Return return = 3;
+}
+
+message PlanetariumPlotPsychohistory {
+  extend Method {
+    optional PlanetariumPlotPsychohistory extension = 5134;
+  }
+  message In {
+    required fixed64 planetarium = 1 [(pointer_to) = "Planetarium const",
+                                      (is_subject) = true];
+    required fixed64 plugin = 2 [(pointer_to) = "Plugin const"];
+    required int32 method = 3;
+    required string vessel_guid = 4;
+  }
+  message Return {
+    required fixed64 rp2_lines = 1 [(pointer_to) = "Iterator",
+                                    (is_produced) = true];
   }
   optional In in = 1;
   optional Return return = 3;
@@ -1326,6 +1500,23 @@ message SetVerboseLogging {
     required int32 level = 1;
   }
   optional In in = 1;
+}
+
+message UnmanageableVesselVelocity {
+  extend Method {
+    optional UnmanageableVesselVelocity extension = 5128;
+  }
+  message In {
+    required fixed64 plugin = 1 [(pointer_to) = "Plugin const",
+                                 (is_subject) = true];
+    required QP degrees_of_freedom = 2;
+    required int32 celestial_index = 3;
+  }
+  message Return {
+    required XYZ result = 1;
+  }
+  optional In in = 1;
+  optional Return return = 3;
 }
 
 message UpdateCelestialHierarchy {

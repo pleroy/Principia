@@ -15,6 +15,7 @@
 #include "base/macros.hpp"
 #include "base/not_null.hpp"
 #include "geometry/identity.hpp"
+#include "geometry/named_quantities.hpp"
 #include "geometry/permutation.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -34,6 +35,7 @@
 #include "testing_utilities/make_not_null.hpp"
 #include "testing_utilities/matchers.hpp"
 #include "testing_utilities/numerics.hpp"
+#include "testing_utilities/serialization.hpp"
 #include "testing_utilities/solar_system_factory.hpp"
 #include "testing_utilities/vanishes_before.hpp"
 
@@ -50,6 +52,7 @@ using geometry::AngularVelocity;
 using geometry::Bivector;
 using geometry::Identity;
 using geometry::Permutation;
+using geometry::RigidTransformation;
 using geometry::Trivector;
 using integrators::IntegrationProblem;
 using integrators::McLachlanAtela1992Order5Optimal;
@@ -63,7 +66,6 @@ using physics::MassiveBody;
 using physics::MockDynamicFrame;
 using physics::MockEphemeris;
 using physics::RigidMotion;
-using physics::RigidTransformation;
 using physics::SolarSystem;
 using quantities::Abs;
 using quantities::Acceleration;
@@ -94,6 +96,8 @@ using testing_utilities::make_not_null;
 using testing_utilities::RelativeError;
 using testing_utilities::SolarSystemFactory;
 using testing_utilities::VanishesBefore;
+using testing_utilities::WriteToBinaryFile;
+using testing_utilities::WriteToHexadecimalFile;
 using ::testing::AllOf;
 using ::testing::AnyNumber;
 using ::testing::ByMove;
@@ -290,32 +294,12 @@ class PluginTest : public testing::Test {
     serialization::Plugin message;
     plugin.WriteToMessage(&message);
     std::string const serialized = message.SerializeAsString();
-
-    std::fstream file = std::fstream(
+    WriteToBinaryFile(
         SOLUTION_DIR / "ksp_plugin_test" / "simple_plugin.proto.bin",
-        std::ios::binary | std::ios::out);
-    CHECK(file.good());
-    file.write(serialized.c_str(), serialized.size());
-    file.close();
-
-    file = std::fstream(
+        serialized);
+    WriteToHexadecimalFile(
         SOLUTION_DIR / "ksp_plugin_test" / "simple_plugin.proto.hex",
-        std::ios::out);
-    CHECK(file.good());
-    int index = 0;
-    for (unsigned char c : serialized) {
-      file << std::hex << std::uppercase << std::setw(2) << std::setfill('0')
-           << static_cast<int>(c);
-      ++index;
-      if (index == 40) {
-        file << '\n';
-        index = 0;
-      }
-    }
-    if (index != 0) {
-      file << '\n';
-    }
-    file.close();
+        serialized);
   }
 
   static RigidMotion<ICRFJ2000Equator, Barycentric> const id_icrf_barycentric_;
@@ -426,11 +410,12 @@ TEST_F(PluginTest, Serialization) {
       RelativeDegreesOfFreedom<AliceSun>(satellite_initial_displacement_,
                                          satellite_initial_velocity_));
   plugin->PrepareToReportCollisions();
-  plugin->FreeVesselsAndPartsAndCollectPileUps();
+  plugin->FreeVesselsAndPartsAndCollectPileUps(20 * Milli(Second));
 
   Time const shift = 1 * Second;
   Instant const time = ParseTT(initial_time_) + shift;
   plugin->AdvanceTime(time, Angle());
+  plugin->CatchUpLaggingVessels();
 
 #if 0
   // Uncomment this block to print out a serialized "simple" plugin for
@@ -446,12 +431,14 @@ TEST_F(PluginTest, Serialization) {
                              /*loaded=*/false,
                              inserted);
   plugin->AdvanceTime(HistoryTime(time, 3), Angle());
+  plugin->CatchUpLaggingVessels();
   plugin->InsertOrKeepVessel(satellite,
                              "v" + satellite,
                              SolarSystemFactory::Earth,
                              /*loaded=*/false,
                              inserted);
   plugin->AdvanceTime(HistoryTime(time, 6), Angle());
+  plugin->CatchUpLaggingVessels();
   plugin->UpdatePrediction(satellite);
   plugin->ForgetAllHistoriesBefore(HistoryTime(time, 2));
 
@@ -837,7 +824,7 @@ TEST_F(PluginTest, ForgetAllHistoriesBeforeWithFlightPlan) {
       RelativeDegreesOfFreedom<AliceSun>(satellite_initial_displacement_,
                                          satellite_initial_velocity_));
   plugin_->PrepareToReportCollisions();
-  plugin_->FreeVesselsAndPartsAndCollectPileUps();
+  plugin_->FreeVesselsAndPartsAndCollectPileUps(20 * Milli(Second));
   auto const satellite = plugin_->GetVessel(guid);
 
   Instant const initial_time = ParseTT(initial_time_);
@@ -849,6 +836,7 @@ TEST_F(PluginTest, ForgetAllHistoriesBeforeWithFlightPlan) {
                               /*loaded=*/false,
                               inserted);
   plugin_->AdvanceTime(HistoryTime(time, 3), Angle());
+  plugin_->CatchUpLaggingVessels();
 
   auto const burn = [this, mock_dynamic_frame, time]() -> Burn {
     return {/*thrust=*/1 * Newton,
@@ -857,7 +845,8 @@ TEST_F(PluginTest, ForgetAllHistoriesBeforeWithFlightPlan) {
                 mock_dynamic_frame),
             /*initial_time=*/HistoryTime(time, 4),
             Velocity<Frenet<Navigation>>(
-                {1 * Metre / Second, 0 * Metre / Second, 0 * Metre / Second})};
+                {1 * Metre / Second, 0 * Metre / Second, 0 * Metre / Second}),
+            /*is_inertially_fixed=*/true};
   };
   plugin_->CreateFlightPlan(guid,
                             /*final_time=*/HistoryTime(time, 8),
@@ -870,6 +859,7 @@ TEST_F(PluginTest, ForgetAllHistoriesBeforeWithFlightPlan) {
                               /*loaded=*/false,
                               inserted);
   plugin_->AdvanceTime(HistoryTime(time, 6), Angle());
+  plugin_->CatchUpLaggingVessels();
   plugin_->ForgetAllHistoriesBefore(HistoryTime(time, 3));
   EXPECT_LE(HistoryTime(time, 3), satellite->flight_plan().initial_time());
   EXPECT_LE(HistoryTime(time, 3), satellite->psychohistory().Begin().time());
@@ -927,19 +917,21 @@ TEST_F(PluginTest, ForgetAllHistoriesBeforeAfterPredictionFork) {
       RelativeDegreesOfFreedom<AliceSun>(satellite_initial_displacement_,
                                          satellite_initial_velocity_));
   plugin_->PrepareToReportCollisions();
-  plugin_->FreeVesselsAndPartsAndCollectPileUps();
+  plugin_->FreeVesselsAndPartsAndCollectPileUps(20 * Milli(Second));
 
   Instant const initial_time = ParseTT(initial_time_);
   Instant const& time = initial_time + 1 * Second;
   EXPECT_CALL(plugin_->mock_ephemeris(), ForgetBefore(HistoryTime(time, 5)))
       .Times(1);
   plugin_->AdvanceTime(time, Angle());
+  plugin_->CatchUpLaggingVessels();
   plugin_->InsertOrKeepVessel(guid,
                               "v" + guid,
                               SolarSystemFactory::Earth,
                               /*loaded=*/false,
                               inserted);
   plugin_->AdvanceTime(HistoryTime(time, 3), Angle());
+  plugin_->CatchUpLaggingVessels();
   plugin_->UpdatePrediction(guid);
   plugin_->InsertOrKeepVessel(guid,
                               "v" + guid,
@@ -947,6 +939,7 @@ TEST_F(PluginTest, ForgetAllHistoriesBeforeAfterPredictionFork) {
                               /*loaded=*/false,
                               inserted);
   plugin_->AdvanceTime(HistoryTime(time, 6), Angle());
+  plugin_->CatchUpLaggingVessels();
   plugin_->ForgetAllHistoriesBefore(HistoryTime(time, 5));
   auto const& prediction = plugin_->GetVessel(guid)->prediction();
   auto const rendered_prediction =
@@ -979,7 +972,7 @@ TEST_F(PluginDeathTest, VesselFromParentError) {
                                 /*loaded=*/false,
                                 inserted);
     plugin_->PrepareToReportCollisions();
-    plugin_->FreeVesselsAndPartsAndCollectPileUps();
+    plugin_->FreeVesselsAndPartsAndCollectPileUps(20 * Milli(Second));
     plugin_->VesselFromParent(SolarSystemFactory::Sun, guid);
   }, R"regex(!parts_\.empty\(\))regex");
 }
@@ -1023,7 +1016,7 @@ TEST_F(PluginTest, VesselInsertionAtInitialization) {
       RelativeDegreesOfFreedom<AliceSun>(satellite_initial_displacement_,
                                          satellite_initial_velocity_));
   plugin_->PrepareToReportCollisions();
-  plugin_->FreeVesselsAndPartsAndCollectPileUps();
+  plugin_->FreeVesselsAndPartsAndCollectPileUps(20 * Milli(Second));
   EXPECT_THAT(
       plugin_->VesselFromParent(SolarSystemFactory::Earth, guid),
       Componentwise(AlmostEquals(satellite_initial_displacement_, 13556),
@@ -1139,7 +1132,7 @@ TEST_F(PluginTest, Frenet) {
       RelativeDegreesOfFreedom<AliceSun>(satellite_initial_displacement_,
                                          satellite_initial_velocity_));
   plugin.PrepareToReportCollisions();
-  plugin.FreeVesselsAndPartsAndCollectPileUps();
+  plugin.FreeVesselsAndPartsAndCollectPileUps(20 * Milli(Second));
   Vector<double, World> t = alice_sun_to_world(
                                 Normalize(satellite_initial_velocity_));
   Vector<double, World> n = alice_sun_to_world(

@@ -332,6 +332,8 @@ copy /Y "$(OutDir)$(TargetName).pdb" "$(SolutionDir)$(Configuration)\GameData\Pr
     <ClInclude Include="celestial.hpp" />
     <ClInclude Include="identification.hpp" />
     <ClInclude Include="integrators.hpp" />
+    <ClInclude Include="iterators.hpp" />
+    <ClInclude Include="iterators_body.hpp" />
     <ClInclude Include="part_subsets.hpp" />
     <ClInclude Include="pile_up.hpp" />
     <ClInclude Include="flight_plan.hpp" />
@@ -348,6 +350,7 @@ copy /Y "$(OutDir)$(TargetName).pdb" "$(SolutionDir)$(Configuration)\GameData\Pr
     <ClInclude Include="manœuvre.hpp" />
     <ClInclude Include="manœuvre_body.hpp" />
     <ClInclude Include="part.hpp" />
+    <ClInclude Include="planetarium.hpp" />
     <ClInclude Include="plugin.hpp" />
     <ClInclude Include="interface.hpp" />
     <ClInclude Include="renderer.hpp" />
@@ -366,11 +369,13 @@ copy /Y "$(OutDir)$(TargetName).pdb" "$(SolutionDir)$(Configuration)\GameData\Pr
     <ClCompile Include="interface.cpp" />
     <ClCompile Include="interface_flight_plan.cpp" />
     <ClCompile Include="interface_iterator.cpp" />
+    <ClCompile Include="interface_planetarium.cpp" />
     <ClCompile Include="interface_renderer.cpp" />
     <ClCompile Include="interface_vessel.cpp" />
     <ClCompile Include="part.cpp" />
     <ClCompile Include="part_subsets.cpp" />
     <ClCompile Include="pile_up.cpp" />
+    <ClCompile Include="planetarium.cpp" />
     <ClCompile Include="plugin.cpp" />
     <ClCompile Include="renderer.cpp" />
     <ClCompile Include="vessel.cpp" />

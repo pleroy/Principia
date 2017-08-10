@@ -5,6 +5,7 @@
 #include <map>
 
 #include "geometry/identity.hpp"
+#include "geometry/named_quantities.hpp"
 #include "ksp_plugin/integrators.hpp"
 #include "ksp_plugin/part.hpp"
 #include "physics/rigid_motion.hpp"
@@ -20,10 +21,10 @@ using geometry::BarycentreCalculator;
 using geometry::Identity;
 using geometry::OrthogonalMap;
 using geometry::Position;
+using geometry::RigidTransformation;
 using geometry::Velocity;
 using physics::DegreesOfFreedom;
 using physics::RigidMotion;
-using physics::RigidTransformation;
 
 PileUp::PileUp(
     std::list<not_null<Part*>>&& parts,
@@ -149,6 +150,7 @@ void PileUp::AdvanceTime(Instant const& t) {
           Ephemeris<Barycentric>::NoIntrinsicAccelerations,
           fixed_step_parameters_);
     }
+    CHECK_LT(psychohistory_->last().time(), t);
     ephemeris_->FlowWithFixedStep(t, *fixed_instance_);
     if (psychohistory_->last().time() < t) {
       // Do not clear the |fixed_instance_| here, we will use it for the next
@@ -215,6 +217,10 @@ void PileUp::NudgeParts() const {
     part->set_degrees_of_freedom(pile_up_to_barycentric(
         FindOrDie(actual_part_degrees_of_freedom_, part)));
   }
+}
+
+Instant const& PileUp::time() {
+  return psychohistory_->last().time();
 }
 
 void PileUp::WriteToMessage(not_null<serialization::PileUp*> message) const {
