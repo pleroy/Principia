@@ -246,6 +246,10 @@ TEST_F(KSPResonanceTest, MSVC_ONLY_TEST(Stock)) {
   auto const ephemeris = MakeEphemeris();
   ephemeris->Prolong(short_term_);
   EXPECT_OK(ephemeris->last_severe_integration_status());
+  LogEphemeris(*ephemeris,
+               ephemeris->t_min(),
+               ephemeris->t_max(),
+               "short" + vall_->name());
 
   auto const periods_at_epoch =
       ComputePeriods(*ephemeris, ephemeris->t_min());
