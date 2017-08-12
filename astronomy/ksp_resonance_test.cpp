@@ -88,7 +88,7 @@ class KSPResonanceTest : public ::testing::Test {
             /*step=*/Δt));
     jool_ = solar_system_.massive_body(*ephemeris, "Jool");
     laythe_ = solar_system_.massive_body(*ephemeris, "Laythe");
-    vall_ = solar_system_.massive_body(*ephemeris, "Aaa");
+    vall_ = solar_system_.massive_body(*ephemeris, "Vall");
     tylo_ = solar_system_.massive_body(*ephemeris, "Tylo");
     bop_ = solar_system_.massive_body(*ephemeris, "Bop");
     pol_ = solar_system_.massive_body(*ephemeris, "Pol");
@@ -254,7 +254,7 @@ TEST_F(KSPResonanceTest, MSVC_ONLY_TEST(Stock)) {
   auto const periods_at_epoch =
       ComputePeriods(*ephemeris, ephemeris->t_min());
   EXPECT_THAT(RelativeError(periods_at_epoch.at(laythe_),
-                            expected_periods_.at(laythe_)), Lt(1.5e-3));
+                            expected_periods_.at(laythe_)), Lt(1.4e-3));
   EXPECT_THAT(RelativeError(periods_at_epoch.at(vall_),
                             expected_periods_.at(vall_)), Lt(2.6e-3));
   EXPECT_THAT(RelativeError(periods_at_epoch.at(tylo_),
@@ -285,15 +285,15 @@ TEST_F(KSPResonanceTest, MSVC_ONLY_TEST(Stock)) {
                      ephemeris->t_max() - 2 * longest_joolian_period_);
   EXPECT_THAT(RelativeError(periods_at_mid_term.at(laythe_),
                             expected_periods_.at(laythe_)),
-              Lt(0.069));
+              Lt(0.080));
   EXPECT_THAT(periods_at_mid_term.at(vall_), Eq(Infinity<Time>()));
   EXPECT_THAT(
       RelativeError(periods_at_mid_term.at(tylo_), expected_periods_.at(tylo_)),
-      Lt(0.24));
+      Lt(0.047));
   EXPECT_THAT(RelativeError(periods_at_mid_term.at(bop_),
-                            expected_periods_.at(bop_)), Lt(303.8e-3));
+                            expected_periods_.at(bop_)), Lt(185.2e-3));
   EXPECT_THAT(RelativeError(periods_at_mid_term.at(pol_),
-                            expected_periods_.at(pol_)), Lt(14.6e-3));
+                            expected_periods_.at(pol_)), Lt(3.4e-3));
 
   LogEphemeris(*ephemeris,
                ephemeris->t_max() - 5 * longest_joolian_period_,
