@@ -61,7 +61,7 @@ gravity_model {
     angular_frequency       : "2.96479652925011e-05 rad/s"
   }
   body {
-    name : "Aaa"
+    name : "Vall"
     gravitational_parameter : "207481499473.751 m^3/s^2"
     reference_instant       : "JD2451545.000000000"
     mean_radius             : "300000 m"

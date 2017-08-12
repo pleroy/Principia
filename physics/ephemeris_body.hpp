@@ -17,6 +17,7 @@
 #include "geometry/r3_element.hpp"
 #include "integrators/integrators.hpp"
 #include "integrators/ordinary_differential_equations.hpp"
+#include "mathematica/mathematica.hpp"
 #include "numerics/hermite3.hpp"
 #include "physics/continuous_trajectory.hpp"
 #include "quantities/elementary_functions.hpp"
@@ -215,7 +216,9 @@ Ephemeris<Frame>::Ephemeris(
     Length const& fitting_tolerance,
     FixedStepParameters const& parameters)
     : parameters_(parameters),
-      fitting_tolerance_(fitting_tolerance) {
+      fitting_tolerance_(fitting_tolerance),
+      file_(TEMP_DIR /
+            ("accelerations" + bodies.front()->name() + ".generated.wl")) {
   CHECK(!bodies.empty());
   CHECK_EQ(bodies.size(), initial_state.size());
 
@@ -1012,9 +1015,15 @@ void Ephemeris<Frame>::ComputeMassiveBodiesGravitationalAccelerations(
   }
 
   // Reduce to single precision.
+  std::vector<Vector<double, Frame>> acc;
   for (std::size_t i = 0; i < accelerations.size(); ++i) {
     accelerations[i] = precise_accelerations[i].value;
+    acc.push_back(accelerations[i] / (Metre / Second / Second));
   }
+  file_ << mathematica::Assign("acc" + bodies_[0]->name() + "[" +
+                                   std::to_string((t - Instant()) / Second) +
+                                   "]",
+                               acc);
 }
 
 template<typename Frame>

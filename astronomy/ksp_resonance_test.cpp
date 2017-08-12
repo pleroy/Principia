@@ -88,7 +88,7 @@ class KSPResonanceTest : public ::testing::Test {
             /*step=*/Δt));
     jool_ = solar_system_.massive_body(*ephemeris, "Jool");
     laythe_ = solar_system_.massive_body(*ephemeris, "Laythe");
-    vall_ = solar_system_.massive_body(*ephemeris, "Aaa");
+    vall_ = solar_system_.massive_body(*ephemeris, "Vall");
     tylo_ = solar_system_.massive_body(*ephemeris, "Tylo");
     bop_ = solar_system_.massive_body(*ephemeris, "Bop");
     pol_ = solar_system_.massive_body(*ephemeris, "Pol");
@@ -240,7 +240,7 @@ class KSPResonanceTest : public ::testing::Test {
   Instant long_term_;
 };
 
-//#if !defined(_DEBUG)
+#if !defined(_DEBUG)
 
 TEST_F(KSPResonanceTest, MSVC_ONLY_TEST(Stock)) {
   auto const ephemeris = MakeEphemeris();
@@ -373,7 +373,17 @@ TEST_F(KSPResonanceTest, MSVC_ONLY_TEST(Corrected)) {
                "corrected");
 }
 
-//#endif
+#endif
+
+TEST_F(KSPResonanceTest, Order) {
+  auto const ephemeris = MakeEphemeris();
+  ephemeris->Prolong(short_term_);
+  EXPECT_OK(ephemeris->last_severe_integration_status());
+  LogEphemeris(*ephemeris,
+               ephemeris->t_min(),
+               ephemeris->t_min() + 100 * Δt,
+               "short" + vall_->name());
+}
 
 }  // namespace astronomy
 }  // namespace principia
