@@ -52,6 +52,10 @@ constexpr DoublePrecision<T>::DoublePrecision(T const& value)
 
 template <typename T>
 DoublePrecision<T>& DoublePrecision<T>::Decrement(Difference<T> const& right) {
+  using quantities::DebugString;
+  DCHECK(ComponentwiseGreaterThanOrEqualOrZero(value, error - right))
+      << "|" << DebugString(value) << "| < |" << DebugString(error - right)
+      << "|";
   // See Higham, Accuracy and Stability of Numerical Algorithms, Algorithm 4.2.
   // This is equivalent to |QuickTwoSum(value, error - right)|.
   T const temp = value;
@@ -63,6 +67,10 @@ DoublePrecision<T>& DoublePrecision<T>::Decrement(Difference<T> const& right) {
 
 template <typename T>
 DoublePrecision<T>& DoublePrecision<T>::Increment(Difference<T> const& right) {
+  using quantities::DebugString;
+  DCHECK(ComponentwiseGreaterThanOrEqualOrZero(value, error + right))
+      << "|" << DebugString(value) << "| < |" << DebugString(error + right)
+      << "|";
   // See Higham, Accuracy and Stability of Numerical Algorithms, Algorithm 4.2.
   // This is equivalent to |QuickTwoSum(value, error + right)|.
   T const temp = value;

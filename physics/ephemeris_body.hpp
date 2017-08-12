@@ -891,13 +891,13 @@ void Ephemeris<Frame>::
         Sqrt(Δq_squared) / (Δq_squared * Δq_squared);
 
     auto const μ1_over_Δq_cubed = μ1 * one_over_Δq_cubed;
-    precise_acceleration_on_b2.Increment(Δq * μ1_over_Δq_cubed);
+    precise_acceleration_on_b2 += PreciseAcceleration(Δq * μ1_over_Δq_cubed);
 
     // Lex. III. Actioni contrariam semper & æqualem esse reactionem:
     // sive corporum duorum actiones in se mutuo semper esse æquales &
     // in partes contrarias dirigi.
     auto const μ2_over_Δq_cubed = μ2 * one_over_Δq_cubed;
-    precise_acceleration_on_b1.Decrement(Δq * μ2_over_Δq_cubed);
+    precise_acceleration_on_b1 -= PreciseAcceleration(Δq * μ2_over_Δq_cubed);
 
     if (body1_is_oblate || body2_is_oblate) {
       Exponentiation<Length, -2> const one_over_Δq_squared = 1 / Δq_squared;
@@ -910,8 +910,10 @@ void Ephemeris<Frame>::
                     -Δq,
                     one_over_Δq_squared,
                     one_over_Δq_cubed);
-        precise_acceleration_on_b1.Decrement(μ2 * order_2_zonal_effect1);
-        precise_acceleration_on_b2.Increment(μ1 * order_2_zonal_effect1);
+        precise_acceleration_on_b1 -=
+            PreciseAcceleration(μ2 * order_2_zonal_effect1);
+        precise_acceleration_on_b2 +=
+            PreciseAcceleration(μ1 * order_2_zonal_effect1);
       }
       if (body2_is_oblate) {
         Vector<Quotient<Acceleration,
@@ -922,8 +924,10 @@ void Ephemeris<Frame>::
                     Δq,
                     one_over_Δq_squared,
                     one_over_Δq_cubed);
-        precise_acceleration_on_b1.Increment(μ2 * order_2_zonal_effect2);
-        precise_acceleration_on_b2.Decrement(μ1 * order_2_zonal_effect2);
+        precise_acceleration_on_b1 +=
+            PreciseAcceleration(μ2 * order_2_zonal_effect2);
+        precise_acceleration_on_b2 -=
+            PreciseAcceleration(μ1 * order_2_zonal_effect2);
       }
     }
   }
