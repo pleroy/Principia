@@ -17,7 +17,6 @@
 #include "geometry/r3_element.hpp"
 #include "integrators/integrators.hpp"
 #include "integrators/ordinary_differential_equations.hpp"
-#include "mathematica/mathematica.hpp"
 #include "numerics/hermite3.hpp"
 #include "physics/continuous_trajectory.hpp"
 #include "quantities/elementary_functions.hpp"
@@ -216,9 +215,7 @@ Ephemeris<Frame>::Ephemeris(
     Length const& fitting_tolerance,
     FixedStepParameters const& parameters)
     : parameters_(parameters),
-      fitting_tolerance_(fitting_tolerance),
-      file_(TEMP_DIR /
-            ("accelerations" + bodies.front()->name() + ".generated.wl")) {
+      fitting_tolerance_(fitting_tolerance) {
   CHECK(!bodies.empty());
   CHECK_EQ(bodies.size(), initial_state.size());
 
@@ -978,7 +975,6 @@ void Ephemeris<Frame>::ComputeMassiveBodiesGravitationalAccelerations(
     Instant const& t,
     std::vector<Position<Frame>> const& positions,
     std::vector<Vector<Acceleration, Frame>>& accelerations) const {
-  CHECK_EQ(positions.size(), accelerations.size());
   std::vector<PreciseAcceleration> precise_accelerations(accelerations.size());
 
   for (std::size_t b1 = 0; b1 < number_of_oblate_bodies_; ++b1) {
@@ -1019,15 +1015,9 @@ void Ephemeris<Frame>::ComputeMassiveBodiesGravitationalAccelerations(
   }
 
   // Reduce to single precision.
-  std::vector<Vector<double, Frame>> acc;
   for (std::size_t i = 0; i < accelerations.size(); ++i) {
     accelerations[i] = precise_accelerations[i].value;
-    acc.push_back(accelerations[i] / (Metre / Second / Second));
   }
-  file_ << mathematica::Assign("acc" + bodies_[0]->name() + "[" +
-                                   std::to_string((t - Instant()) / Second) +
-                                   "]",
-                               acc);
 }
 
 template<typename Frame>
@@ -1064,7 +1054,6 @@ void Ephemeris<Frame>::ComputeMasslessBodiesTotalAccelerations(
     Instant const& t,
     std::vector<Position<Frame>> const& positions,
     std::vector<Vector<Acceleration, Frame>>& accelerations) const {
-  CHECK_EQ(positions.size(), accelerations.size());
   std::vector<PreciseAcceleration> precise_accelerations(accelerations.size());
   // First, the acceleration due to the gravitational field of the
   // massive bodies.

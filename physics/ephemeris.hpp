@@ -8,7 +8,6 @@
 #include <memory>
 #include <vector>
 
-#include "base/file.hpp"
 #include "base/not_null.hpp"
 #include "base/status.hpp"
 #include "geometry/grassmann.hpp"
@@ -353,8 +352,6 @@ class Ephemeris {
   int number_of_spherical_bodies_ = 0;
 
   Status last_severe_integration_status_;
-
-  mutable base::OFStream file_;
 
 #if defined(WE_LOVE_228)
   // https://m.popkey.co/6bee24/6GJWk.gif.
