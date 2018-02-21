@@ -6,6 +6,7 @@
 #include <type_traits>
 
 #include "base/not_constructible.hpp"
+#include "quantities/generators.hpp"
 #include "quantities/traits.hpp"
 
 namespace principia {
@@ -42,6 +43,21 @@ template<typename T>
 __m128d ToM128D(Wide<T> x);
 template<typename T, typename = std::enable_if_t<std::is_arithmetic<T>::value>>
 __m128d ToM128D(T x);
+
+// These operators are declared here to define Product and Quotient, but they
+// are not expected to be called.
+
+template<typename LScalar, typename RScalar>
+typename internal_generators::ProductGenerator<LScalar, RScalar>::Type
+operator*(Wide<LScalar> const&, RScalar const&);
+
+template<typename LScalar, typename RScalar>
+typename internal_generators::ProductGenerator<LScalar, RScalar>::Type
+operator*(LScalar const&, Wide<RScalar> const&);
+
+template<typename LScalar, typename RScalar>
+typename internal_generators::ProductGenerator<LScalar, RScalar>::Type
+operator/(LScalar const&, Wide<RScalar> const&);
 
 }  // namespace internal_wide
 

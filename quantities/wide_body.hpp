@@ -25,6 +25,33 @@ inline __m128d ToM128D(T const x) {
   return _mm_set1_pd(static_cast<double>(x));
 }
 
+template<typename LScalar, typename RScalar>
+typename internal_generators::ProductGenerator<LScalar, RScalar>::Type
+operator*(Wide<LScalar> const& left, RScalar const& right) {
+  static_assert(!std::is_same<LScalar, LScalar>::value,
+                "Should not call operator*");
+  return
+      typename internal_generators::ProductGenerator<LScalar, RScalar>::Type();
+}
+
+template<typename LScalar, typename RScalar>
+typename internal_generators::ProductGenerator<LScalar, RScalar>::Type
+operator*(LScalar const& left, Wide<RScalar> const& right) {
+  static_assert(!std::is_same<LScalar, LScalar>::value,
+                "Should not call operator*");
+  return
+      typename internal_generators::ProductGenerator<LScalar, RScalar>::Type();
+}
+
+template<typename LScalar, typename RScalar>
+typename internal_generators::ProductGenerator<LScalar, RScalar>::Type
+operator/(LScalar const& left, Wide<RScalar> const& right) {
+  static_assert(!std::is_same<LScalar, LScalar>::value,
+                "Should not call operator/");
+  return
+      typename internal_generators::ProductGenerator<LScalar, RScalar>::Type();
+}
+
 }  // namespace internal_wide
 }  // namespace quantities
 }  // namespace principia
