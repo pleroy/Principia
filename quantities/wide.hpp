@@ -22,42 +22,43 @@ namespace internal_wide {
 using base::not_constructible;
 using internal_quantities::Quantity;
 
-// A wrapper for a quantity copied to all entries of a SIMD vector.
-template<typename T>
-class Wide final {
-  static_assert(is_quantity<T>::value, "Not a quantity type");
- public:
-  explicit Wide(T x);
-
- private:
-  __m128d wide_;
-
-  template<typename U>
-  friend __m128d ToM128D(Wide<U> x);
+// A wrapper for a quantity (or double) copied to all entries of a SIMD vector.
+template<typename Q>
+struct Quantity128 final {
+  explicit Quantity128(Q x);
+  __m128d const wide;
 };
+
+template<typename Source, typename Target>
+using Wide = std::conditional_t<is_quantity<Target>::value,
+                                Source,
+                                Quantity128<Source>>;
 
 // Fills both halves of the result.
 template<typename D>
 __m128d ToM128D(Quantity<D> x);
-template<typename T>
-__m128d ToM128D(Wide<T> x);
+template<typename Q>
+__m128d ToM128D(Quantity128<Q> x);
 template<typename T, typename = std::enable_if_t<std::is_arithmetic<T>::value>>
 __m128d ToM128D(T x);
 
 // These operators are declared here to define Product and Quotient, but they
 // are not expected to be called.
 
-template<typename LScalar, typename RScalar>
+template<typename LScalar, typename RScalar,
+         typename = std::enable_if_t<is_quantity<RScalar>::value>>
 typename internal_generators::ProductGenerator<LScalar, RScalar>::Type
-operator*(Wide<LScalar> const&, RScalar const&);
+operator*(Quantity128<LScalar> const&, RScalar const&);
 
-template<typename LScalar, typename RScalar>
+template<typename LScalar, typename RScalar,
+         typename = std::enable_if_t<is_quantity<LScalar>::value>>
 typename internal_generators::ProductGenerator<LScalar, RScalar>::Type
-operator*(LScalar const&, Wide<RScalar> const&);
+operator*(LScalar const&, Quantity128<RScalar> const&);
 
-template<typename LScalar, typename RScalar>
-typename internal_generators::ProductGenerator<LScalar, RScalar>::Type
-operator/(LScalar const&, Wide<RScalar> const&);
+template<typename LScalar, typename RScalar,
+         typename = std::enable_if_t<is_quantity<LScalar>::value>>
+typename internal_generators::QuotientGenerator<LScalar, RScalar>::Type
+operator/(LScalar const&, Quantity128<RScalar> const&);
 
 }  // namespace internal_wide
 
