@@ -15,12 +15,15 @@ using testing_utilities::SSELowHalfIs;
 using ::testing::Eq;
 
 TEST(WideTest, Conversions) {
-  Wide<Length> const w1(2 * Metre);
+  Wide<Length, void> const w1(2 * Metre);
+  EXPECT_THAT(w1.wide, SSEHighHalfIs(2));
+  EXPECT_THAT(w1.wide, SSELowHalfIs(2));
   __m128d m1 = ToM128D(w1);
   EXPECT_THAT(m1, SSEHighHalfIs(2));
   EXPECT_THAT(m1, SSELowHalfIs(2));
 
-  Wide<double> const w2(3.14);
+  Wide<double, Length> const w2(3.14);
+  EXPECT_EQ(3.14, w2);
   __m128d m2 = ToM128D(w2);
   EXPECT_THAT(m2, SSEHighHalfIs(3.14));
   EXPECT_THAT(m2, SSELowHalfIs(3.14));

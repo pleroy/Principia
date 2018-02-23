@@ -25,31 +25,61 @@ __m128d ToM128D(T const x) {
   return _mm_set1_pd(static_cast<double>(x));
 }
 
-template<typename LScalar, typename RScalar, typename>
-typename internal_generators::ProductGenerator<LScalar, RScalar>::Type
-operator*(Quantity128<LScalar> const& left, RScalar const& right) {
+template<typename LScalar, typename RDimensions>
+typename internal_generators::ProductGenerator<LScalar,
+                                               Quantity<RDimensions>>::Type
+operator*(Quantity128<LScalar> const&, Quantity<RDimensions> const&) {
+  static_assert(!std::is_same<LScalar, LScalar>::value,
+                "Should not call operator*");
+  return typename internal_generators::
+      ProductGenerator<LScalar, Quantity<RDimensions>>::Type();
+}
+
+template<typename LDimensions, typename RScalar>
+typename internal_generators::ProductGenerator<Quantity<LDimensions>,
+                                               RScalar>::Type
+operator*(Quantity<LDimensions> const&, Quantity128<RScalar> const&) {
+  static_assert(!std::is_same<RScalar, RScalar>::value,
+                "Should not call operator*");
+  return typename internal_generators::ProductGenerator<Quantity<LDimensions>,
+                                                        RScalar>::Type();
+}
+
+template<typename LDimensions, typename RScalar>
+typename internal_generators::QuotientGenerator<Quantity<LDimensions>,
+                                                RScalar>::Type
+operator/(Quantity<LDimensions> const&, Quantity128<RScalar> const&) {
+  static_assert(!std::is_same<RScalar, RScalar>::value,
+                "Should not call operator/");
+  return typename internal_generators::QuotientGenerator<Quantity<LDimensions>,
+                                                         RScalar>::Type();
+}
+
+template<typename LScalar>
+typename internal_generators::ProductGenerator<LScalar, double>::Type
+operator*(Quantity128<LScalar> const&, double) {
   static_assert(!std::is_same<LScalar, LScalar>::value,
                 "Should not call operator*");
   return
-      typename internal_generators::ProductGenerator<LScalar, RScalar>::Type();
+      typename internal_generators::ProductGenerator<LScalar, double>::Type();
 }
 
-template<typename LScalar, typename RScalar, typename>
-typename internal_generators::ProductGenerator<LScalar, RScalar>::Type
-operator*(LScalar const& left, Quantity128<RScalar> const& right) {
-  static_assert(!std::is_same<LScalar, LScalar>::value,
+template<typename RScalar>
+typename internal_generators::ProductGenerator<double, RScalar>::Type
+operator*(double, Quantity128<RScalar> const&) {
+  static_assert(!std::is_same<RScalar, RScalar>::value,
                 "Should not call operator*");
   return
-      typename internal_generators::ProductGenerator<LScalar, RScalar>::Type();
+      typename internal_generators::ProductGenerator<double, RScalar>::Type();
 }
 
-template<typename LScalar, typename RScalar, typename>
-typename internal_generators::QuotientGenerator<LScalar, RScalar>::Type
-operator/(LScalar const& left, Quantity128<RScalar> const& right) {
+template<typename LDimensions, typename RScalar>
+typename internal_generators::QuotientGenerator<double, RScalar>::Type
+operator/(double, Quantity128<RScalar> const&) {
   static_assert(!std::is_same<LScalar, LScalar>::value,
                 "Should not call operator/");
   return
-      typename internal_generators::QuotientGenerator<LScalar, RScalar>::Type();
+      typename internal_generators::QuotientGenerator<double, RScalar>::Type();
 }
 
 }  // namespace internal_wide

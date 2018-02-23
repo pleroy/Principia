@@ -206,7 +206,7 @@ InternalEstrinEvaluator<Value, Argument, degree, low, 1>::EvaluateDerivative(
     WideArgument const& wide_argument,
     ArgumentSquares const& argument_squares) {
   return low * std::get<low>(coefficients) +
-         wide_argument * (low + 1) * std::get<low + 1>(coefficients);
+         wide_argument * ((low + 1) * std::get<low + 1>(coefficients));
 }
 
 template<typename Value, typename Argument, int degree, int low>

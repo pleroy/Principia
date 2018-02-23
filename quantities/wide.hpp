@@ -45,20 +45,32 @@ __m128d ToM128D(T x);
 // These operators are declared here to define Product and Quotient, but they
 // are not expected to be called.
 
-template<typename LScalar, typename RScalar,
-         typename = std::enable_if_t<is_quantity<RScalar>::value>>
-typename internal_generators::ProductGenerator<LScalar, RScalar>::Type
-operator*(Quantity128<LScalar> const&, RScalar const&);
+template<typename LScalar, typename RDimensions>
+typename internal_generators::ProductGenerator<LScalar,
+                                               Quantity<RDimensions>>::Type
+operator*(Quantity128<LScalar> const&, Quantity<RDimensions> const&);
 
-template<typename LScalar, typename RScalar,
-         typename = std::enable_if_t<is_quantity<LScalar>::value>>
-typename internal_generators::ProductGenerator<LScalar, RScalar>::Type
-operator*(LScalar const&, Quantity128<RScalar> const&);
+template<typename LDimensions, typename RScalar>
+typename internal_generators::ProductGenerator<Quantity<LDimensions>,
+                                               RScalar>::Type
+operator*(Quantity<LDimensions> const&, Quantity128<RScalar> const&);
 
-template<typename LScalar, typename RScalar,
-         typename = std::enable_if_t<is_quantity<LScalar>::value>>
-typename internal_generators::QuotientGenerator<LScalar, RScalar>::Type
-operator/(LScalar const&, Quantity128<RScalar> const&);
+template<typename LDimensions, typename RScalar>
+typename internal_generators::QuotientGenerator<Quantity<LDimensions>,
+                                                RScalar>::Type
+operator/(Quantity<LDimensions> const&, Quantity128<RScalar> const&);
+
+template<typename LScalar>
+typename internal_generators::ProductGenerator<LScalar, double>::Type
+operator*(Quantity128<LScalar> const&, double);
+
+template<typename RScalar>
+typename internal_generators::ProductGenerator<double, RScalar>::Type
+operator*(double, Quantity128<RScalar> const&);
+
+template<typename LDimensions, typename RScalar>
+typename internal_generators::QuotientGenerator<double, RScalar>::Type
+operator/(double, Quantity128<RScalar> const&);
 
 }  // namespace internal_wide
 
