@@ -101,12 +101,15 @@ class Population {
 
   void BegetChildren();
 
+  void set_angle_stddev(double angle_stddev);
+
   Genome best_genome() const;
 
  private:
   Genome const* Pick() const;
 
   std::function<double(Genome const&)> const compute_fitness_;
+  double angle_stddev_;
   mutable std::mt19937_64 engine_;
   std::vector<Genome> current_;
   std::vector<Genome> next_;
@@ -146,10 +149,19 @@ void Genome::Mutate(std::mt19937_64& engine, double const stddev)  {
     std::normal_distribution<> angle_distribution(0.0, stddev);
     *element.argument_of_periapsis += angle_distribution(engine) * Degree;
     *element.mean_anomaly += angle_distribution(engine) * Degree;
+
+    // When nudging the eccentricity, make sure that it remains within
+    // reasonable bounds.
     std::normal_distribution<> eccentricity_distribution(0.0, 1.0e-4);
-    do
-      *element.eccentricity += eccentricity_distribution(engine);
-    while (*element.eccentricity < 0.0 || *element.eccentricity > 0.02);
+    double new_eccentricity;
+    for (int i = 0; i < 10; ++i) {
+      new_eccentricity =
+          *element.eccentricity + eccentricity_distribution(engine);
+      if (new_eccentricity > 0.0 && new_eccentricity < 0.02) {
+        *element.eccentricity = new_eccentricity;
+        break;
+      }
+    }
   }
 }
 
@@ -306,9 +318,13 @@ void Population::BegetChildren() {
       while (parent1 == parent2);
     }
     next_[i] = Genome::TwoPointCrossover(*parent1, *parent2, engine_);
-    next_[i].Mutate(engine_, /*stddev=*/1.5);
+    next_[i].Mutate(engine_, angle_stddev_);
   }
   next_.swap(current_);
+}
+
+void Population::set_angle_stddev(double const angle_stddev) {
+  angle_stddev_ = angle_stddev;
 }
 
 Genome Population::best_genome() const {
@@ -670,8 +686,10 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
   Population population(luca, 50, std::move(compute_fitness));
   population.ComputeAllFitnesses();
   for (int i = 0; i < 100; ++i) {
+    population.set_angle_stddev(/*angle_stddev=*/70.0 / (i + 50.0));
     population.BegetChildren();
     population.ComputeAllFitnesses();
+    LOG_IF(ERROR, i % 50 == 0) << "Age: " << i;
   }
   for (int i = 0; i < planet_names.size(); ++i) {
     LOG(ERROR) << planet_names[i] << ": "
