@@ -41,6 +41,8 @@ using physics::KeplerOrbit;
 using physics::MassiveBody;
 using physics::RelativeDegreesOfFreedom;
 using physics::SolarSystem;
+using quantities::Exponentiation;
+using quantities::Pow;
 using quantities::Square;
 using quantities::Sqrt;
 using quantities::Time;
@@ -67,7 +69,7 @@ class Genome {
 
   std::vector<KeplerianElements<Trappist>> const& elements() const;
 
-  void Mutate(std::mt19937_64& engine);
+  void Mutate(std::mt19937_64& engine, double const stddev);
 
   static Genome OnePointCrossover(Genome const& g1,
                                   Genome const& g2,
@@ -117,7 +119,7 @@ std::vector<KeplerianElements<Trappist>> const& Genome::elements() const {
   return elements_;
 }
 
-void Genome::Mutate(std::mt19937_64& engine)  {
+void Genome::Mutate(std::mt19937_64& engine, double const stddev)  {
   for (auto& element : elements_) {
     element.asymptotic_true_anomaly = std::nullopt;
     element.turning_angle = std::nullopt;
@@ -141,9 +143,13 @@ void Genome::Mutate(std::mt19937_64& engine)  {
     // genomic space efficiently and it takes forever to find decent solutions;
     // if it's too large we explore the genomic space haphazardly and suffer
     // from deleterious mutations.
-    std::normal_distribution<> angle_distribution(0.0, 7.0);
+    std::normal_distribution<> angle_distribution(0.0, stddev);//7
     *element.argument_of_periapsis += angle_distribution(engine) * Degree;
     *element.mean_anomaly += angle_distribution(engine) * Degree;
+    std::normal_distribution<> eccentricity_distribution(0.0, 5.0e-4);
+    do
+      *element.eccentricity += eccentricity_distribution(engine);
+    while (*element.eccentricity < 0.0 || *element.eccentricity > 0.02);
   }
 }
 
@@ -238,7 +244,7 @@ Population::Population(Genome const& luca,
       next_(size, luca),
       compute_fitness_(std::move(compute_fitness)) {
   for (auto& genome : current_) {
-    genome.Mutate(engine_);
+    genome.Mutate(engine_, /*stddev=*/720.0);
   }
 }
 
@@ -288,7 +294,7 @@ void Population::BegetChildren() {
       }
     }
     next_[i] = Genome::TwoPointCrossover(*parent1, *parent2, engine_);
-    next_[i].Mutate(engine_);
+    next_[i].Mutate(engine_, /*stddev=*/7.0);
   }
   next_.swap(current_);
 }
@@ -494,7 +500,7 @@ class TrappistDynamicsTest : public ::testing::Test {
   static Time Error(TransitsByPlanet const& observations,
                     TransitsByPlanet const& computations,
                     bool const verbose) {
-    Square<Time> sum_error²;
+    Exponentiation<Time, 2> sum_error²;
     Time max_error;
     int number_of_transits = 0;
     for (auto const& pair : observations) {
@@ -517,6 +523,7 @@ class TrappistDynamicsTest : public ::testing::Test {
                        observed_transit - *std::prev(next_computed_transit));
         }
         CHECK_LE(0.0 * Second, error);
+        LOG_IF(ERROR, verbose)<<name<<": "<<error;
         if (error > max_error) {
           max_error = error;
           LOG_IF(ERROR, verbose)
@@ -525,11 +532,13 @@ class TrappistDynamicsTest : public ::testing::Test {
               << ShortDays(observed_transit) << " "
               << ShortDays(*next_computed_transit) << " " << error;
         }
-        sum_error² += error * error;
+        sum_error² += Pow<2>(error);
       }
       number_of_transits += observed_transits.size();
     }
-    return max_error;
+    auto const result = Sqrt(sum_error² / number_of_transits);
+    LOG_IF(ERROR, verbose)<<"Overall: "<<result<<" "<<number_of_transits;
+    return result;
   }
 
   static std::string SanitizedName(MassiveBody const& body) {
@@ -648,7 +657,7 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
   Genome luca(elements);
   Population population(luca, 100, std::move(compute_fitness));
   population.ComputeAllFitnesses();
-  for (int i = 0; i < 5000; ++i) {
+  for (int i = 0; i < 50; ++i) {
     population.BegetChildren();
     population.ComputeAllFitnesses();
   }
