@@ -529,7 +529,7 @@ class TrappistDynamicsTest : public ::testing::Test {
       }
       number_of_transits += observed_transits.size();
     }
-    return Sqrt(sum_error²) / number_of_transits;
+    return max_error;
   }
 
   static std::string SanitizedName(MassiveBody const& body) {
@@ -600,8 +600,9 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
   SolarSystem<Trappist> const system(
       SOLUTION_DIR / "astronomy" / "trappist_gravity_model.proto.txt",
       SOLUTION_DIR / "astronomy" /
-          "trappist_initial_state_jd_2457010_000000000.proto.txt");
+          "trappist_initial_state_jd_2457000_000000000.proto.txt");
 
+  bool verbose = false;
   auto planet_names = system.names();
   planet_names.erase(
       std::find(planet_names.begin(), planet_names.end(), star_name));
@@ -611,49 +612,54 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
         system.keplerian_initial_state_message(planet_name).elements()));
   }
 
-  auto compute_fitness = [&planet_names, &system](Genome const& genome) {
-    auto modified_system = system;
-    auto const& elements = genome.elements();
-    for (int i = 0; i < planet_names.size(); ++i) {
-      modified_system.ReplaceElements(planet_names[i], elements[i]);
-    }
+  auto compute_fitness =
+      [&planet_names, &system, &verbose](Genome const& genome) {
+        auto modified_system = system;
+        auto const& elements = genome.elements();
+        for (int i = 0; i < planet_names.size(); ++i) {
+          modified_system.ReplaceElements(planet_names[i], elements[i]);
+        }
 
-    auto const ephemeris = modified_system.MakeEphemeris(
-            /*fitting_tolerance=*/5 * Milli(Metre),
-            Ephemeris<Trappist>::FixedStepParameters(
-                SymmetricLinearMultistepIntegrator<Quinlan1999Order8A,
-                                                   Position<Trappist>>(),
-                /*step=*/0.07 * Day));
-    ephemeris->Prolong(modified_system.epoch() + 1000 * Day);
+        auto const ephemeris = modified_system.MakeEphemeris(
+                /*fitting_tolerance=*/5 * Milli(Metre),
+                Ephemeris<Trappist>::FixedStepParameters(
+                    SymmetricLinearMultistepIntegrator<Quinlan1999Order8A,
+                                                       Position<Trappist>>(),
+                    /*step=*/0.07 * Day));
+        ephemeris->Prolong(modified_system.epoch() + 1000 * Day);
 
-    TransitsByPlanet computations;
-    auto const& star = modified_system.massive_body(*ephemeris, star_name);
-    auto const bodies = ephemeris->bodies();
-    for (auto const& planet : bodies) {
-      if (planet != star) {
-        computations[planet->name()] =
-            ComputeTransits(*ephemeris, star, planet);
-      }
-    }
+        TransitsByPlanet computations;
+        auto const& star = modified_system.massive_body(*ephemeris, star_name);
+        auto const bodies = ephemeris->bodies();
+        for (auto const& planet : bodies) {
+          if (planet != star) {
+            computations[planet->name()] =
+                ComputeTransits(*ephemeris, star, planet);
+          }
+        }
 
-    Time const error = Error(observations, computations, /*verbose=*/false);
-    // This is the place where we cook the sausage.  This function must be steep
-    // enough to efficiently separate the wheat from the chaff without leading
-    // to monoculture.
-    return std::exp(4000 * Second / error);
-  };
+        Time const error = Error(observations, computations, verbose);
+        // This is the place where we cook the sausage.  This function must be
+        // steep enough to efficiently separate the wheat from the chaff without
+        // leading to monoculture.
+        return std::exp(200'000 * Second / error);
+      };
 
   Genome luca(elements);
-  Population population(luca, 50, std::move(compute_fitness));
-  for (int i = 0; i < 200; ++i) {
-    population.ComputeAllFitnesses();
+  Population population(luca, 100, std::move(compute_fitness));
+  population.ComputeAllFitnesses();
+  for (int i = 0; i < 5000; ++i) {
     population.BegetChildren();
+    population.ComputeAllFitnesses();
   }
-
   for (int i = 0; i < planet_names.size(); ++i) {
     LOG(ERROR) << planet_names[i] << ": "
                << population.best_genome().elements()[i];
   }
+
+  // Log the final fitness.
+  verbose = true;
+  compute_fitness(population.best_genome());
 }
 
 }  // namespace astronomy
