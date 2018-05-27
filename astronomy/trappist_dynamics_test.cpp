@@ -69,6 +69,11 @@ class Genome {
 
   std::vector<KeplerianElements<Trappist>> const& elements() const;
 
+  // The standard deviation of the angle mutations has a strong effect on
+  // the convergence of the algorithm: if it's too small we do not explore the
+  // genomic space efficiently and it takes forever to find decent solutions;
+  // if it's too large we explore the genomic space haphazardly and suffer
+  // from deleterious mutations.
   void Mutate(std::mt19937_64& engine, double const stddev);
 
   static Genome OnePointCrossover(Genome const& g1,
@@ -138,15 +143,10 @@ void Genome::Mutate(std::mt19937_64& engine, double const stddev)  {
     element.longitude_of_periapsis = std::nullopt;
     element.true_anomaly = std::nullopt;
     element.hyperbolic_mean_anomaly = std::nullopt;
-    // The standard deviation of the distribution below has a strong effect on
-    // the convergence of the algorithm: if it's too small we do not explore the
-    // genomic space efficiently and it takes forever to find decent solutions;
-    // if it's too large we explore the genomic space haphazardly and suffer
-    // from deleterious mutations.
-    std::normal_distribution<> angle_distribution(0.0, stddev);//7
+    std::normal_distribution<> angle_distribution(0.0, stddev);
     *element.argument_of_periapsis += angle_distribution(engine) * Degree;
     *element.mean_anomaly += angle_distribution(engine) * Degree;
-    std::normal_distribution<> eccentricity_distribution(0.0, 5.0e-4);
+    std::normal_distribution<> eccentricity_distribution(0.0, 1.0e-4);
     do
       *element.eccentricity += eccentricity_distribution(engine);
     while (*element.eccentricity < 0.0 || *element.eccentricity > 0.02);
@@ -243,6 +243,7 @@ Population::Population(Genome const& luca,
     : current_(size, luca),
       next_(size, luca),
       compute_fitness_(std::move(compute_fitness)) {
+  // Initialize the angles randomly.
   for (auto& genome : current_) {
     genome.Mutate(engine_, /*stddev=*/720.0);
   }
@@ -285,16 +286,27 @@ void Population::BegetChildren() {
   for (int i = 0; i < next_.size(); ++i) {
     Genome const* const parent1 = Pick();
     Genome const* parent2;
-    // Let's have sex like snails: if we find a good partner, fine, otherwise
-    // let's go for self-fecundation.
+    // We want to avoid self-fecundation, as it leads to one lucky genome
+    // dominating the gene pool if it has a high fitness, and that's not good
+    // for exploring the genomic space.  So we try for a while to find a good
+    // partner, and if we don't we pick one at random.
+    bool found_partner = false;
     for (int j = 0; j < 100; ++j) {
       parent2 = Pick();
       if (parent1 != parent2) {
+        found_partner = true;
         break;
       }
     }
+    if (!found_partner) {
+      std::uniform_int_distribution<> partner_distribution(0,
+                                                           current_.size() - 1);
+      do
+        parent2 = &current_[partner_distribution(engine_)];
+      while (parent1 == parent2);
+    }
     next_[i] = Genome::TwoPointCrossover(*parent1, *parent2, engine_);
-    next_[i].Mutate(engine_, /*stddev=*/7.0);
+    next_[i].Mutate(engine_, /*stddev=*/1.5);
   }
   next_.swap(current_);
 }
@@ -630,7 +642,7 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
         }
 
         auto const ephemeris = modified_system.MakeEphemeris(
-                /*fitting_tolerance=*/5 * Milli(Metre),
+                /*fitting_tolerance=*/5 * Metre,
                 Ephemeris<Trappist>::FixedStepParameters(
                     SymmetricLinearMultistepIntegrator<Quinlan1999Order8A,
                                                        Position<Trappist>>(),
@@ -651,13 +663,13 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
         // This is the place where we cook the sausage.  This function must be
         // steep enough to efficiently separate the wheat from the chaff without
         // leading to monoculture.
-        return std::exp(200'000 * Second / error);
+        return std::exp(100'000 * Second / error);
       };
 
   Genome luca(elements);
-  Population population(luca, 100, std::move(compute_fitness));
+  Population population(luca, 50, std::move(compute_fitness));
   population.ComputeAllFitnesses();
-  for (int i = 0; i < 50; ++i) {
+  for (int i = 0; i < 100; ++i) {
     population.BegetChildren();
     population.ComputeAllFitnesses();
   }
