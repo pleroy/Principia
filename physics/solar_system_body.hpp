@@ -457,6 +457,11 @@ void SolarSystem<Frame>::RemoveOblateness(std::string const& name) {
   body->clear_reference_radius();
 }
 
+#define PRINCIPIA_SET_FIELD_FROM_OPTIONAL(field)                \
+  if (elements.##field) {                                       \
+    body_elements->set_##field(DebugString(*elements.##field)); \
+  }
+
 template<typename Frame>
 void SolarSystem<Frame>::ReplaceElements(
     std::string const& name,
@@ -464,19 +469,17 @@ void SolarSystem<Frame>::ReplaceElements(
   auto* const body_elements =
       FindOrDie(keplerian_initial_state_map_, name)->mutable_elements();
   body_elements->set_eccentricity(*elements.eccentricity);
-  if (elements.semimajor_axis) {
-    body_elements->set_semimajor_axis(DebugString(*elements.semimajor_axis));
-  }
-  if (elements.mean_motion) {
-    body_elements->set_mean_motion(DebugString(*elements.mean_motion));
-  }
+  PRINCIPIA_SET_FIELD_FROM_OPTIONAL(semimajor_axis);
+  PRINCIPIA_SET_FIELD_FROM_OPTIONAL(mean_motion);
+  PRINCIPIA_SET_FIELD_FROM_OPTIONAL(period);
   body_elements->set_inclination(DebugString(elements.inclination));
   body_elements->set_longitude_of_ascending_node(
       DebugString(elements.longitude_of_ascending_node));
-  body_elements->set_argument_of_periapsis(
-      DebugString(*elements.argument_of_periapsis));
-  body_elements->set_mean_anomaly(DebugString(*elements.mean_anomaly));
+  PRINCIPIA_SET_FIELD_FROM_OPTIONAL(argument_of_periapsis);
+  PRINCIPIA_SET_FIELD_FROM_OPTIONAL(mean_anomaly);
 }
+
+#undef PRINCIPIA_SET_FIELD_FROM_OPTIONAL
 
 template<typename Frame>
 void SolarSystem<Frame>::Check(serialization::GravityModel::Body const& body) {

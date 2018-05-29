@@ -149,6 +149,8 @@ void Genome::Mutate(std::mt19937_64& engine, double const stddev)  {
     std::normal_distribution<> angle_distribution(0.0, stddev);
     *element.argument_of_periapsis += angle_distribution(engine) * Degree;
     *element.mean_anomaly += angle_distribution(engine) * Degree;
+    std::normal_distribution<> period_distribution(0.0, 1.0);
+    *element.period += period_distribution(engine) * Second;
 
     // When nudging the eccentricity, make sure that it remains within
     // reasonable bounds.
@@ -685,7 +687,7 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
   Genome luca(elements);
   Population population(luca, 50, std::move(compute_fitness));
   population.ComputeAllFitnesses();
-  for (int i = 0; i < 100; ++i) {
+  for (int i = 0; i < 50000; ++i) {
     population.set_angle_stddev(/*angle_stddev=*/70.0 / (i + 50.0));
     population.BegetChildren();
     population.ComputeAllFitnesses();
