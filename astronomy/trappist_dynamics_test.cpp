@@ -687,8 +687,10 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
   Genome luca(elements);
   Population population(luca, 50, std::move(compute_fitness));
   population.ComputeAllFitnesses();
-  for (int i = 0; i < 50000; ++i) {
-    population.set_angle_stddev(/*angle_stddev=*/70.0 / (i + 50.0));
+  for (int i = 0; i < 20000; ++i) {
+    population.set_angle_stddev(
+        /*angle_stddev=*/(i % 30 == 29) ? 700.0 / (i + 50.0)
+                                        : 70.0 / (i + 50.0));
     population.BegetChildren();
     population.ComputeAllFitnesses();
     LOG_IF(ERROR, i % 50 == 0) << "Age: " << i;
