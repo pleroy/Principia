@@ -84,7 +84,9 @@ class Genome {
   // genomic space efficiently and it takes forever to find decent solutions;
   // if it's too large we explore the genomic space haphazardly and suffer
   // from deleterious mutations.
-  void Mutate(std::mt19937_64& engine, double const stddev);
+  void Mutate(std::mt19937_64& engine,
+              double angle_stddev,
+              double other_stddev);
 
   static Genome OnePointCrossover(Genome const& g1,
                                   Genome const& g2,
@@ -112,6 +114,7 @@ class Population {
   void BegetChildren();
 
   void set_angle_stddev(double angle_stddev);
+  void set_other_stddev(double other_stddev);
 
   Genome best_genome() const;
 
@@ -120,6 +123,7 @@ class Population {
 
   std::function<double(Genome const&)> const compute_fitness_;
   double angle_stddev_;
+  double other_stddev_;
   mutable std::mt19937_64 engine_;
   std::vector<Genome> current_;
   std::vector<Genome> next_;
@@ -137,7 +141,9 @@ std::vector<KeplerianElements<Trappist>> const& Genome::elements() const {
   return elements_;
 }
 
-void Genome::Mutate(std::mt19937_64& engine, double const stddev)  {
+void Genome::Mutate(std::mt19937_64& engine,
+                    double angle_stddev,
+                    double other_stddev) {
   for (auto& element : elements_) {
     element.asymptotic_true_anomaly = std::nullopt;
     element.turning_angle = std::nullopt;
@@ -156,15 +162,16 @@ void Genome::Mutate(std::mt19937_64& engine, double const stddev)  {
     element.longitude_of_periapsis = std::nullopt;
     element.true_anomaly = std::nullopt;
     element.hyperbolic_mean_anomaly = std::nullopt;
-    std::normal_distribution<> angle_distribution(0.0, stddev);
+    std::normal_distribution<> angle_distribution(0.0, angle_stddev);
     *element.argument_of_periapsis += angle_distribution(engine) * Degree;
     *element.mean_anomaly += angle_distribution(engine) * Degree;
-    std::normal_distribution<> period_distribution(0.0, 1.0);
+    std::normal_distribution<> period_distribution(0.0, other_stddev);
     *element.period += period_distribution(engine) * Second;
 
     // When nudging the eccentricity, make sure that it remains within
     // reasonable bounds.
-    std::normal_distribution<> eccentricity_distribution(0.0, 1.0e-4);
+    std::normal_distribution<> eccentricity_distribution(0.0,
+                                                         1.0e-4 * other_stddev);
     double new_eccentricity;
     for (int i = 0; i < 10; ++i) {
       new_eccentricity =
@@ -269,7 +276,7 @@ Population::Population(Genome const& luca,
       compute_fitness_(std::move(compute_fitness)) {
   // Initialize the angles randomly.
   for (auto& genome : current_) {
-    genome.Mutate(engine_, /*stddev=*/720.0);
+    genome.Mutate(engine_, /*angle_stddev=*/720.0, /*other_stddev=*/1.0);
   }
 }
 
@@ -330,13 +337,17 @@ void Population::BegetChildren() {
       while (parent1 == parent2);
     }
     next_[i] = Genome::TwoPointCrossover(*parent1, *parent2, engine_);
-    next_[i].Mutate(engine_, angle_stddev_);
+    next_[i].Mutate(engine_, angle_stddev_, other_stddev_);
   }
   next_.swap(current_);
 }
 
 void Population::set_angle_stddev(double const angle_stddev) {
   angle_stddev_ = angle_stddev;
+}
+
+void Population::set_other_stddev(double const other_stddev) {
+  other_stddev_ = other_stddev;
 }
 
 Genome Population::best_genome() const {
@@ -735,6 +746,8 @@ TEST_F(TrappistDynamicsTest, MathematicaTransits) {
 
   LOG(ERROR) << "max error: "
              << Error(observations, computations, /*verbose=*/true);
+  LOG(ERROR) << "χ²: "
+             << χ²(observations, computations, /*verbose=*/true);
 }
 
 TEST_F(TrappistDynamicsTest, Optimisation) {
@@ -783,19 +796,20 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
         // This is the place where we cook the sausage.  This function must be
         // steep enough to efficiently separate the wheat from the chaff without
         // leading to monoculture.
-        return std::exp(10'000'000 / error) - 1.0;
+        return std::exp(60'000 / Sqrt(error)) - 1.0;
       };
 
   Genome luca(elements);
   Population population(luca, 50, std::move(compute_fitness));
   population.ComputeAllFitnesses();
-  for (int i = 0; i < 500; ++i) {
-    population.set_angle_stddev(
-        /*angle_stddev=*/(i % 30 == 29) ? 700.0 / (i + 50.0)
-                                        : 70.0 / (i + 50.0));
+  for (int i = 0; i < 20000; ++i) {
+    LOG_IF(ERROR, i % 50 == 0) << "Age: " << i;
+    double const stddev =
+        (i % 30 == 29) ? 700.0 / (i + 50.0) : 70.0 / (i + 50.0);
+    population.set_angle_stddev(stddev);
+    population.set_other_stddev(1.0);
     population.BegetChildren();
     population.ComputeAllFitnesses();
-    LOG_IF(ERROR, i % 50 == 0) << "Age: " << i;
   }
   for (int i = 0; i < planet_names.size(); ++i) {
     LOG(ERROR) << planet_names[i] << ": "
