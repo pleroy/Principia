@@ -41,6 +41,8 @@ using physics::KeplerOrbit;
 using physics::MassiveBody;
 using physics::RelativeDegreesOfFreedom;
 using physics::SolarSystem;
+using quantities::Angle;
+using quantities::Derivative;
 using quantities::Difference;
 using quantities::Exponentiation;
 using quantities::Pow;
@@ -88,6 +90,8 @@ class Genome {
               double angle_stddev,
               double other_stddev);
 
+  void SubStepOptimization(std::function<double(Genome const&)> const& χ²);
+
   static Genome OnePointCrossover(Genome const& g1,
                                   Genome const& g2,
                                   std::mt19937_64& engine);
@@ -111,7 +115,7 @@ class Population {
 
   void ComputeAllFitnesses();
 
-  void BegetChildren();
+  void BegetChildren(std::function<double(Genome const&)> const& χ²);
 
   void set_angle_stddev(double angle_stddev);
   void set_other_stddev(double other_stddev);
@@ -181,6 +185,53 @@ void Genome::Mutate(std::mt19937_64& engine,
         break;
       }
     }
+  }
+}
+
+void Genome::SubStepOptimization(
+    std::function<double(Genome const&)> const& χ²) {
+  Bundle bundle(4);
+  double χ²₁;
+  bundle.Add([this, &χ², &χ²₁]() {
+    χ²₁ = χ²(*this);
+    return Status::OK;
+  });
+  std::vector<Angle> M₂s;
+  M₂s.resize(elements_.size());
+  std::vector<Angle> M₃s;
+  M₃s.resize(elements_.size());
+  std::vector<double> χ²₂s;
+  χ²₂s.resize(elements_.size());
+  std::vector<double> χ²₃s;
+  χ²₃s.resize(elements_.size());
+  for (int i = 0; i < elements_.size(); ++i) {
+    Genome perturbed_genome = *this;
+    auto& perturbed_element = perturbed_genome.elements_[i];
+    *perturbed_element.mean_anomaly += 0.1 * Degree;
+    M₂s[i] = *perturbed_element.mean_anomaly;
+    bundle.Add([perturbed_genome, i, &χ², &χ²₂s]() {
+      χ²₂s [i] = χ²(perturbed_genome);
+      return Status::OK;
+    });
+    *perturbed_element.mean_anomaly -= 0.2 * Degree;
+    M₃s[i] = *perturbed_element.mean_anomaly;
+      bundle.Add([perturbed_genome, i, &χ², &χ²₃s]() {
+      χ²₃s [i] = χ²(perturbed_genome);
+      return Status::OK;
+    });
+  }
+  bundle.Join();
+
+  for (int i = 0; i < elements_.size(); ++i) {
+    double const χ²₂ = χ²₂s [i];
+    double const χ²₃ = χ²₃s [i];
+    Angle const M₁ = *elements_[i].mean_anomaly;
+    Angle const M₂ = M₂s[i];
+    Angle const M₃ = M₃s[i];
+    Derivative<double, Angle> b₁ = (χ²₂ - χ²₁) / (M₂ - M₁);
+    Derivative<double, Angle, 2> b₂ =
+        ((χ²₃ - χ²₁) / (M₃ - M₁) - b₁) / (M₃ - M₂);
+    elements_[i].mean_anomaly = (M₁ + M₂) / 2 - b₁ / (2 * b₂);
   }
 }
 
@@ -313,7 +364,7 @@ void Population::ComputeAllFitnesses() {
              << " Best: " << best_fitness_;
 }
 
-void Population::BegetChildren() {
+void Population::BegetChildren(std::function<double(Genome const&)> const& χ²) {
   for (int i = 0; i < next_.size(); ++i) {
     Genome const* const parent1 = Pick();
     Genome const* parent2;
@@ -338,6 +389,7 @@ void Population::BegetChildren() {
     }
     next_[i] = Genome::TwoPointCrossover(*parent1, *parent2, engine_);
     next_[i].Mutate(engine_, angle_stddev_, other_stddev_);
+    next_[i].SubStepOptimization(χ²);
   }
   next_.swap(current_);
 }
@@ -766,7 +818,7 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
         system.keplerian_initial_state_message(planet_name).elements()));
   }
 
-  auto compute_fitness =
+  auto χ²_of_genome = 
       [&planet_names, &system, &verbose](Genome const& genome) {
         auto modified_system = system;
         auto const& elements = genome.elements();
@@ -775,11 +827,11 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
         }
 
         auto const ephemeris = modified_system.MakeEphemeris(
-                /*fitting_tolerance=*/5 * Metre,
-                Ephemeris<Trappist>::FixedStepParameters(
-                    SymmetricLinearMultistepIntegrator<Quinlan1999Order8A,
-                                                       Position<Trappist>>(),
-                    /*step=*/0.07 * Day));
+            /*fitting_tolerance=*/5 * Metre,
+            Ephemeris<Trappist>::FixedStepParameters(
+                SymmetricLinearMultistepIntegrator<Quinlan1999Order8A,
+                                                   Position<Trappist>>(),
+                /*step=*/0.07 * Day));
         ephemeris->Prolong(modified_system.epoch() + 1000 * Day);
 
         TransitsByPlanet computations;
@@ -791,8 +843,12 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
                 ComputeTransits(*ephemeris, star, planet);
           }
         }
+        return χ²(observations, computations, verbose);
+      };
 
-        double const error = χ²(observations, computations, verbose);
+  auto compute_fitness =
+      [&planet_names, &system, &verbose, &χ²_of_genome](Genome const& genome) {
+        double const error = χ²_of_genome(genome);
         // This is the place where we cook the sausage.  This function must be
         // steep enough to efficiently separate the wheat from the chaff without
         // leading to monoculture.
@@ -802,13 +858,13 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
   Genome luca(elements);
   Population population(luca, 50, std::move(compute_fitness));
   population.ComputeAllFitnesses();
-  for (int i = 0; i < 20000; ++i) {
+  for (int i = 0; i < 300; ++i) {
     LOG_IF(ERROR, i % 50 == 0) << "Age: " << i;
     double const stddev =
-        (i % 30 == 29) ? 700.0 / (i + 50.0) : 70.0 / (i + 50.0);
+        (i % 30 == 29) ? 100.0 / (i + 50.0) : 10.0 / (i + 50.0);
     population.set_angle_stddev(stddev);
     population.set_other_stddev(1.0);
-    population.BegetChildren();
+    population.BegetChildren(χ²_of_genome);
     population.ComputeAllFitnesses();
   }
   for (int i = 0; i < planet_names.size(); ++i) {
