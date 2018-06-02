@@ -214,6 +214,8 @@ Population GenerateTrialStatesDEMCMC(Population const& population,
 
 void RunDCMCMC(Population& population,
                int const number_of_generations,
+               int const number_of_generations_between_kicks,
+               int const number_of_burn_in_generations,
                double const ε,
                Calculator const& calculate_log_pdf) {
   CHECK_LE(1, number_of_generations);
@@ -238,10 +240,13 @@ void RunDCMCMC(Population& population,
 
     // Every 10th generation try full-size steps.
     double const
-        γ = generation % 10 == 0
-                ? 1.0
-                : 2.38 / Sqrt(2 * std::tuple_size<SystemParameters>::value *
-                              PlanetParameters::count);
+        γ = generation < number_of_burn_in_generations
+                ? 0.01
+                : generation % number_of_generations_between_kicks == 0
+                      ? 1.0
+                      : 2.38 /
+                            Sqrt(2 * std::tuple_size<SystemParameters>::value *
+                                 PlanetParameters::count);
 
     // Evaluate model for each set of trial parameters.
     auto const trial = GenerateTrialStatesDEMCMC(population, γ, ε, engine);
@@ -272,6 +277,11 @@ void RunDCMCMC(Population& population,
     // Record results.
     ancestry.push_back(population);
     ancestry_log_pdf.push_back(log_pdf);
+  }
+
+  for (int generation = 0; generation < number_of_generations; ++generation) {
+    LOG(ERROR) << generation << " Accepts: " << accepts_generation[generation]
+               << " Rejects: " << rejects_generation[generation];
   }
 }
 
@@ -731,8 +741,9 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
         system.keplerian_initial_state_message(planet_name).elements()));
   }
 
+  double τ = 0.0;
   auto log_pdf_of_system_parameters = 
-      [&original_elements, &planet_names, &system, &verbose](
+      [&original_elements, &planet_names, &system, &verbose, &τ](
           SystemParameters const& system_parameters) {
         auto modified_system = system;
         for (int i = 0; i < planet_names.size(); ++i) {
@@ -759,7 +770,7 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
                 ComputeTransits(*ephemeris, star, planet);
           }
         }
-        return -Transitsχ²(observations, computations, verbose);
+        return -Transitsχ²(observations, computations, verbose) / (2.0 * τ);
       };
 
   Population great_old_ones;
@@ -777,7 +788,14 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
       great_old_one[j] = MakePlanetParameters(perturbed_elements);
     }
   }
-  RunDCMCMC(great_old_ones, 100, /*ε=*/0.01, log_pdf_of_system_parameters);
+
+  τ = 1000.0;
+  RunDCMCMC(great_old_ones,
+            /*number_of_generations=*/100,
+            /*number_of_generations_between_kicks=*/10,
+            /*number_of_burn_in_generations=*/10,
+            /*ε=*/0.01,
+            log_pdf_of_system_parameters);
 }
 
 }  // namespace astronomy
