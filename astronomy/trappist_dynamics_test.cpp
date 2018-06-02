@@ -71,43 +71,104 @@ struct Measured {
 using MeasuredTransits = std::vector<Measured<Instant>>;
 using MeasuredTransitsByPlanet = std::map<std::string, MeasuredTransits>;
 
-double EvaluatePopulation(int const number_of_parameters,
-                          int const number_of_generations,
-                          std::function<double()> const& calculate_log_pdf) {}
+struct Parameters {
+  constexpr static int count = 4;
+  double eccentricity;
+  Time period;
+  Angle argument_of_periapsis;
+  Angle mean_anomaly;
+};
 
-int GenerateTrialStateDEMCMC(double const γ,
-                             double const ε) {
+using Population = std::vector<Parameters>;
+
+using Calculator = std::function<double(Parameters const&)>;
+
+std::vector<double> EvaluatePopulation(
+    Population const& population,
+    Calculator const& calculate_log_pdf) {
+  std::vector<double> log_pdf(population.size());
+  for (int i = 0; i < population.size(); ++i) {
+    auto const& parameters = population[i];
+    log_pdf[i] = calculate_log_pdf(parameters);
+  }
 }
 
-void RunDCMCMC(int const number_of_parameters,
+Population GenerateTrialStatesDEMCMC(Population const& population,
+                                     double const γ,
+                                     double const ε,
+                                     std::mt19937_64& engine) {
+  Population trial(population.size());
+  std::uniform_int_distribution<> j_distribution(0, population.size() - 2);
+  std::uniform_int_distribution<> k_distribution(0, population.size() - 3);
+  std::normal_distribution<> perturbation_distribution;
+  for (int i = 0; i < population.size(); ++i) {
+    // Choose head (k) and tail (j) for perturbation vector.
+    int j = j_distribution(engine);
+    if (j >= i) {
+      ++j;
+    }
+    int k = k_distribution(engine);
+    if (k >= i) {
+      ++k;
+    }
+    if (k >= j) {
+      ++k;
+    }
+
+    // Choose scale factor.
+    double const scale = (1.0 + ε * perturbation_distribution(engine)) * γ;
+
+    trial[i] = population[i] + scale * (population[k] - population[j])
+  }
+  return trial;
+}
+
+void RunDCMCMC(Population& population,
                int const number_of_generations,
-               int const population_size,
                double const ε,
-               std::function<double()> const& calculate_log_pdf) {
+               Calculator const& calculate_log_pdf) {
   CHECK_LE(1, number_of_generations);
-  CHECK_LT(number_of_parameters, population_size);
-  std::vector<int> accepts_chain(population_size, 0);
-  std::vector<int> rejects_chain(population_size, 0);
+  CHECK_LT(Parameters::count, population.size());
+  std::mt19937_64 engine;
+  std::uniform_real_distribution<> distribution(0.0, 1.0);
+
+  std::vector<Population> ancestry;
+  std::vector<std::vector<double>> ancestry_log_pdf;
+  std::vector<int> accepts_chain(population.size(), 0);
+  std::vector<int> rejects_chain(population.size(), 0);
   std::vector<int> accepts_generation(number_of_generations, 0);
   std::vector<int> rejects_generation(number_of_generations, 0);
 
-  double const log_pdf = EvaluatePopulation(
-      number_of_parameters, number_of_generations, calculate_log_pdf);
+  auto log_pdf = EvaluatePopulation(population, calculate_log_pdf);
 
   // Loop over generations.
   for (int generation = 0; generation < number_of_generations; ++generation) {
     // Every 10th generation try full-size steps.
     double const
-        γ = generation % 10 == 0 ? 1.0 : 2.38 / Sqrt(2 * number_of_parameters);
+        γ = generation % 10 == 0 ? 1.0 : 2.38 / Sqrt(2 * Parameters::count);
 
     // Evaluate model for each set of trial parameters.
-    auto const trial = GenerateTrialStatesDEMCMC(theta, γ, ε);
-    double const log_pdf_trial = EvaluatePopulation(trial, calculate_log_pdf);
+    auto const trial = GenerateTrialStatesDEMCMC(population, γ, ε, engine);
+    auto const log_pdf_trial = EvaluatePopulation(trial, calculate_log_pdf);
 
     // For each member of population.
-    for (int i = 0; i < population_size; ++i) {
+    for (int i = 0; i < population.size(); ++i) {
       double const log_pdf_ratio = log_pdf_trial[i] - log_pdf[i];
+      if (log_pdf_ratio > 0.0 ||
+          log_pdf_ratio > std::log(distribution(engine))) {
+        population[i] = trial[i];
+        log_pdf[i] = log_pdf_trial[i];
+        ++accepts_chain[i];
+        ++accepts_generation[generation];
+      } else {
+        ++rejects_chain[i];
+        ++rejects_generation[generation];
+      }
     }
+
+    // Record results.
+    ancestry.push_back(population);
+    ancestry_log_pdf.push_back(log_pdf);
   }
 }
 
