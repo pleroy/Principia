@@ -83,6 +83,33 @@ using Population = std::vector<Parameters>;
 
 using Calculator = std::function<double(Parameters const&)>;
 
+Parameters operator+(Parameters const& left, Parameters const& right) {
+  Parameters result = left;
+  result.eccentricity += right.eccentricity;
+  result.period += right.period;
+  result.argument_of_periapsis += right.argument_of_periapsis;
+  result.mean_anomaly += right.mean_anomaly;
+  return result;
+}
+
+Parameters operator-(Parameters const& left, Parameters const& right) {
+  Parameters result = left;
+  result.eccentricity -= right.eccentricity;
+  result.period -= right.period;
+  result.argument_of_periapsis -= right.argument_of_periapsis;
+  result.mean_anomaly -= right.mean_anomaly;
+  return result;
+}
+
+Parameters operator*(double const left, Parameters const& right) {
+  Parameters result = right;
+  result.eccentricity *= left;
+  result.period *= left;
+  result.argument_of_periapsis *= left;
+  result.mean_anomaly *= left;
+  return result;
+}
+
 std::vector<double> EvaluatePopulation(
     Population const& population,
     Calculator const& calculate_log_pdf) {
@@ -118,7 +145,7 @@ Population GenerateTrialStatesDEMCMC(Population const& population,
     // Choose scale factor.
     double const scale = (1.0 + ε * perturbation_distribution(engine)) * γ;
 
-    trial[i] = population[i] + scale * (population[k] - population[j])
+    trial[i] = population[i] + scale * (population[k] - population[j]);
   }
   return trial;
 }
