@@ -182,6 +182,55 @@ std::vector<double> EvaluatePopulation(
   return log_pdf;
 }
 
+void SubStepOptimization(SystemParameters& trial,
+                         Calculator const& calculate_log_pdf) {
+  Bundle bundle(4);
+  double log_pdf₁;
+  bundle.Add([&calculate_log_pdf, &log_pdf₁, trial]() {
+    log_pdf₁ = calculate_log_pdf(trial);
+    return Status::OK;
+  });
+
+  std::vector<Angle> M₂s(trial.size());
+  std::vector<Angle> M₃s(trial.size());;
+  std::vector<double> log_pdf₂s(trial.size());
+  std::vector<double> log_pdf₃s(trial.size());
+  for (int i = 0; i < trial.size(); ++i) {
+    SystemParameters perturbed_trial = trial;
+    PlanetParameters& perturbed_parameters = perturbed_trial[i];
+    perturbed_parameters.mean_anomaly += 0.1 * Degree;
+    M₂s[i] = perturbed_parameters.mean_anomaly;
+    bundle.Add([&calculate_log_pdf, i, &log_pdf₂s, perturbed_trial]() {
+      log_pdf₂s[i] = calculate_log_pdf(perturbed_trial);
+      return Status::OK;
+    });
+    perturbed_parameters.mean_anomaly -= 0.2 * Degree;
+    M₃s[i] = perturbed_parameters.mean_anomaly;
+      bundle.Add([&calculate_log_pdf, i, &log_pdf₃s, perturbed_trial]() {
+      log_pdf₃s[i] = calculate_log_pdf(perturbed_trial);
+      return Status::OK;
+    });
+  }
+  bundle.Join();
+
+  for (int i = 0; i < trial.size(); ++i) {
+    double const log_pdf₂ = log_pdf₂s[i];
+    double const log_pdf₃ = log_pdf₃s[i];
+    Angle const M₁ = trial[i].mean_anomaly;
+    Angle const M₂ = M₂s[i];
+    Angle const M₃ = M₃s[i];
+    Derivative<double, Angle> b₁ = (log_pdf₂ - log_pdf₁) / (M₂ - M₁);
+    Derivative<double, Angle, 2> b₂ =
+        ((log_pdf₃ - log_pdf₁) / (M₃ - M₁) - b₁) / (M₃ - M₂);
+    trial[i].mean_anomaly = (M₁ + M₂) / 2 - b₁ / (2 * b₂);
+    LOG(ERROR) << i << " " << M₃ / Degree << " " << M₁ / Degree << " "
+               << M₂ / Degree << " * " << trial[i].mean_anomaly/Degree;
+    LOG(ERROR) << "  " << log_pdf₃ << " " << log_pdf₁ << " " << log_pdf₂;
+  }
+  double const log_pdf = calculate_log_pdf(trial);
+  LOG(ERROR) << log_pdf;
+}
+
 Population GenerateTrialStatesDEMCMC(Population const& population,
                                      double const γ,
                                      double const ε,
@@ -249,7 +298,10 @@ void RunDEMCMC(Population& population,
                                  PlanetParameters::count);
 
     // Evaluate model for each set of trial parameters.
-    auto const trial = GenerateTrialStatesDEMCMC(population, γ, ε, engine);
+    auto trial = GenerateTrialStatesDEMCMC(population, γ, ε, engine);
+    for (auto& system_parameters : trial) {
+      SubStepOptimization(system_parameters, calculate_log_pdf);
+    }
     auto const log_pdf_trial = EvaluatePopulation(trial, calculate_log_pdf);
 
     // For each member of population.
@@ -272,67 +324,15 @@ void RunDEMCMC(Population& population,
                             *std::max_element(log_pdf.begin(), log_pdf.end()));
     LOG(ERROR) << "Min: " << *std::min_element(log_pdf.begin(), log_pdf.end())
                << " Max: " << *std::max_element(log_pdf.begin(), log_pdf.end())
-               << " Best: " << best_log_pdf;
+               << " Best: " << best_log_pdf
+               << " Accepts: " << accepts_generation[generation]
+               << " Rejects: " << rejects_generation[generation];
 
     // Record results.
     ancestry.push_back(population);
     ancestry_log_pdf.push_back(log_pdf);
   }
-
-  for (int generation = 0; generation < number_of_generations; ++generation) {
-    LOG(ERROR) << generation << " Accepts: " << accepts_generation[generation]
-               << " Rejects: " << rejects_generation[generation];
-  }
 }
-
-#if 0
-void Genome::SubStepOptimization(
-    std::function<double(Genome const&)> const& χ²) {
-  Bundle bundle(4);
-  double χ²₁;
-  bundle.Add([this, &χ², &χ²₁]() {
-    χ²₁ = χ²(*this);
-    return Status::OK;
-  });
-  std::vector<Angle> M₂s;
-  M₂s.resize(elements_.size());
-  std::vector<Angle> M₃s;
-  M₃s.resize(elements_.size());
-  std::vector<double> χ²₂s;
-  χ²₂s.resize(elements_.size());
-  std::vector<double> χ²₃s;
-  χ²₃s.resize(elements_.size());
-  for (int i = 0; i < elements_.size(); ++i) {
-    Genome perturbed_genome = *this;
-    auto& perturbed_element = perturbed_genome.elements_[i];
-    *perturbed_element.mean_anomaly += 0.1 * Degree;
-    M₂s[i] = *perturbed_element.mean_anomaly;
-    bundle.Add([perturbed_genome, i, &χ², &χ²₂s]() {
-      χ²₂s [i] = χ²(perturbed_genome);
-      return Status::OK;
-    });
-    *perturbed_element.mean_anomaly -= 0.2 * Degree;
-    M₃s[i] = *perturbed_element.mean_anomaly;
-      bundle.Add([perturbed_genome, i, &χ², &χ²₃s]() {
-      χ²₃s [i] = χ²(perturbed_genome);
-      return Status::OK;
-    });
-  }
-  bundle.Join();
-
-  for (int i = 0; i < elements_.size(); ++i) {
-    double const χ²₂ = χ²₂s [i];
-    double const χ²₃ = χ²₃s [i];
-    Angle const M₁ = *elements_[i].mean_anomaly;
-    Angle const M₂ = M₂s[i];
-    Angle const M₃ = M₃s[i];
-    Derivative<double, Angle> b₁ = (χ²₂ - χ²₁) / (M₂ - M₁);
-    Derivative<double, Angle, 2> b₂ =
-        ((χ²₃ - χ²₁) / (M₃ - M₁) - b₁) / (M₃ - M₂);
-    elements_[i].mean_anomaly = (M₁ + M₂) / 2 - b₁ / (2 * b₂);
-  }
-}
-#endif
 
 // TODO(phl): Literals are broken in 15.8.0 Preview 1.0 and are off by an
 // integral number of days.  Use this function as a stopgap measure and switch
