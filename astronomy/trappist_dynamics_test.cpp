@@ -170,10 +170,15 @@ std::vector<double> EvaluatePopulation(
     Population const& population,
     Calculator const& calculate_log_pdf) {
   std::vector<double> log_pdf(population.size());
+  Bundle bundle(4);
   for (int i = 0; i < population.size(); ++i) {
     auto const& parameters = population[i];
-    log_pdf[i] = calculate_log_pdf(parameters);
+    bundle.Add([&calculate_log_pdf, i, &log_pdf, &parameters]() {
+      log_pdf[i] = calculate_log_pdf(parameters);
+      return Status::OK;
+    });
   }
+  bundle.Join();
   return log_pdf;
 }
 
@@ -217,7 +222,7 @@ void RunDCMCMC(Population& population,
   std::mt19937_64 engine;
   std::uniform_real_distribution<> distribution(0.0, 1.0);
 
-  static double best_log_pdf = std::numeric_limits<double>::max();
+  static double best_log_pdf = std::numeric_limits<double>::lowest();
   std::vector<Population> ancestry;
   std::vector<std::vector<double>> ancestry_log_pdf;
   std::vector<int> accepts_chain(population.size(), 0);
@@ -258,10 +263,10 @@ void RunDCMCMC(Population& population,
     }
 
     // Traces.
-    best_log_pdf = std::min(best_log_pdf,
-                            *std::min_element(log_pdf.begin(), log_pdf.end()));
+    best_log_pdf = std::max(best_log_pdf,
+                            *std::max_element(log_pdf.begin(), log_pdf.end()));
     LOG(ERROR) << "Min: " << *std::min_element(log_pdf.begin(), log_pdf.end())
-               << "Max: " << *std::max_element(log_pdf.begin(), log_pdf.end())
+               << " Max: " << *std::max_element(log_pdf.begin(), log_pdf.end())
                << " Best: " << best_log_pdf;
 
     // Record results.
@@ -726,7 +731,7 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
         system.keplerian_initial_state_message(planet_name).elements()));
   }
 
-  auto χ²_of_system_parameters = 
+  auto log_pdf_of_system_parameters = 
       [&original_elements, &planet_names, &system, &verbose](
           SystemParameters const& system_parameters) {
         auto modified_system = system;
@@ -754,15 +759,25 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
                 ComputeTransits(*ephemeris, star, planet);
           }
         }
-        return Transitsχ²(observations, computations, verbose);
+        return -Transitsχ²(observations, computations, verbose);
       };
 
-  SystemParameters luca;
-  for (int i = 0; i < luca.size(); ++i) {
-    luca[i] = MakePlanetParameters(original_elements[i]);
+  Population great_old_ones;
+  std::mt19937_64 engine;
+  for (int i = 0; i < 50; ++i) {
+    great_old_ones.emplace_back();
+    SystemParameters& great_old_one = great_old_ones.back();
+    std::normal_distribution<> angle_distribution(0.0, 10.0);
+    for (int j = 0; j < great_old_one.size(); ++j) {
+      auto perturbed_elements = original_elements[j];
+      *perturbed_elements.argument_of_periapsis +=
+          angle_distribution(engine) * Degree;
+      *perturbed_elements.mean_anomaly +=
+          angle_distribution(engine) * Degree;
+      great_old_one[j] = MakePlanetParameters(perturbed_elements);
+    }
   }
-  Population luca_population(50, luca);
-  RunDCMCMC(luca_population, 100, /*ε=*/0.01, χ²_of_system_parameters);
+  RunDCMCMC(great_old_ones, 100, /*ε=*/0.01, log_pdf_of_system_parameters);
 }
 
 }  // namespace astronomy
