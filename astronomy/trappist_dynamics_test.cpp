@@ -59,19 +59,7 @@ using quantities::si::Second;
 
 namespace astronomy {
 
-using Transits = std::vector<Instant>;
-using TransitsByPlanet = std::map<std::string, Transits>;
-
-template<typename Value>
-struct Measured {
-  Value estimated_value;
-  Difference<Value> standard_uncertainty;
-};
-
-using MeasuredTransits = std::vector<Measured<Instant>>;
-using MeasuredTransitsByPlanet = std::map<std::string, MeasuredTransits>;
-
-struct Parameters {
+struct PlanetParameters {
   constexpr static int count = 4;
   double eccentricity;
   Time period;
@@ -79,12 +67,15 @@ struct Parameters {
   Angle mean_anomaly;
 };
 
-using Population = std::vector<Parameters>;
+using SystemParameters = std::array<PlanetParameters, 7>;
 
-using Calculator = std::function<double(Parameters const&)>;
+using Population = std::vector<SystemParameters>;
 
-Parameters operator+(Parameters const& left, Parameters const& right) {
-  Parameters result = left;
+using Calculator = std::function<double(SystemParameters const&)>;
+
+PlanetParameters operator+(PlanetParameters const& left,
+                           PlanetParameters const& right) {
+  PlanetParameters result = left;
   result.eccentricity += right.eccentricity;
   result.period += right.period;
   result.argument_of_periapsis += right.argument_of_periapsis;
@@ -92,8 +83,9 @@ Parameters operator+(Parameters const& left, Parameters const& right) {
   return result;
 }
 
-Parameters operator-(Parameters const& left, Parameters const& right) {
-  Parameters result = left;
+PlanetParameters operator-(PlanetParameters const& left,
+                           PlanetParameters const& right) {
+  PlanetParameters result = left;
   result.eccentricity -= right.eccentricity;
   result.period -= right.period;
   result.argument_of_periapsis -= right.argument_of_periapsis;
@@ -101,12 +93,76 @@ Parameters operator-(Parameters const& left, Parameters const& right) {
   return result;
 }
 
-Parameters operator*(double const left, Parameters const& right) {
-  Parameters result = right;
+PlanetParameters operator*(double const left, PlanetParameters const& right) {
+  PlanetParameters result = right;
   result.eccentricity *= left;
   result.period *= left;
   result.argument_of_periapsis *= left;
   result.mean_anomaly *= left;
+  return result;
+}
+
+SystemParameters operator+(SystemParameters const& left,
+                           SystemParameters const& right) {
+  SystemParameters result = left;
+  for (int i = 0; i < result.size(); ++i) {
+    result[i] = result[i] + right[i];
+  }
+  return result;
+}
+
+SystemParameters operator-(SystemParameters const& left,
+                           SystemParameters const& right) {
+  SystemParameters result = left;
+  for (int i = 0; i < result.size(); ++i) {
+    result[i] = result[i] - right[i];
+  }
+  return result;
+}
+
+SystemParameters operator*(double const left, SystemParameters const& right) {
+  SystemParameters result = right;
+  for (int i = 0; i < result.size(); ++i) {
+    result[i] = left * result[i];
+  }
+  return result;
+}
+
+KeplerianElements<Trappist> MakeKeplerianElements(
+    KeplerianElements<Trappist> const& blueprint,
+    PlanetParameters const& parameters) {
+  KeplerianElements<Trappist> elements = blueprint;
+  elements.asymptotic_true_anomaly = std::nullopt;
+  elements.turning_angle = std::nullopt;
+  elements.semimajor_axis = std::nullopt;
+  elements.specific_energy = std::nullopt;
+  elements.characteristic_energy = std::nullopt;
+  elements.mean_motion = std::nullopt;
+  elements.hyperbolic_mean_motion = std::nullopt;
+  elements.hyperbolic_excess_velocity = std::nullopt;
+  elements.semiminor_axis = std::nullopt;
+  elements.impact_parameter = std::nullopt;
+  elements.semilatus_rectum = std::nullopt;
+  elements.specific_angular_momentum = std::nullopt;
+  elements.periapsis_distance = std::nullopt;
+  elements.apoapsis_distance = std::nullopt;
+  elements.longitude_of_periapsis = std::nullopt;
+  elements.true_anomaly = std::nullopt;
+  elements.hyperbolic_mean_anomaly = std::nullopt;
+  *elements.argument_of_periapsis = parameters.argument_of_periapsis;
+  *elements.mean_anomaly = parameters.mean_anomaly;
+  *elements.period = parameters.period;
+  *elements.eccentricity = parameters.eccentricity;
+  return elements;
+}
+
+PlanetParameters MakePlanetParameters(
+    KeplerianElements<Trappist> const& elements) {
+  PlanetParameters result;
+  result.argument_of_periapsis = *elements.argument_of_periapsis;
+  result.eccentricity = *elements.eccentricity;
+  result.mean_anomaly = *elements.mean_anomaly;
+  result.period = *elements.period;
   return result;
 }
 
@@ -118,6 +174,7 @@ std::vector<double> EvaluatePopulation(
     auto const& parameters = population[i];
     log_pdf[i] = calculate_log_pdf(parameters);
   }
+  return log_pdf;
 }
 
 Population GenerateTrialStatesDEMCMC(Population const& population,
@@ -155,10 +212,12 @@ void RunDCMCMC(Population& population,
                double const ε,
                Calculator const& calculate_log_pdf) {
   CHECK_LE(1, number_of_generations);
-  CHECK_LT(Parameters::count, population.size());
+  CHECK_LT(std::tuple_size<SystemParameters>::value * PlanetParameters::count,
+           population.size());
   std::mt19937_64 engine;
   std::uniform_real_distribution<> distribution(0.0, 1.0);
 
+  static double best_log_pdf = std::numeric_limits<double>::max();
   std::vector<Population> ancestry;
   std::vector<std::vector<double>> ancestry_log_pdf;
   std::vector<int> accepts_chain(population.size(), 0);
@@ -170,9 +229,14 @@ void RunDCMCMC(Population& population,
 
   // Loop over generations.
   for (int generation = 0; generation < number_of_generations; ++generation) {
+    LOG_IF(ERROR, generation % 50 == 0) << "Generation: " << generation;
+
     // Every 10th generation try full-size steps.
     double const
-        γ = generation % 10 == 0 ? 1.0 : 2.38 / Sqrt(2 * Parameters::count);
+        γ = generation % 10 == 0
+                ? 1.0
+                : 2.38 / Sqrt(2 * std::tuple_size<SystemParameters>::value *
+                              PlanetParameters::count);
 
     // Evaluate model for each set of trial parameters.
     auto const trial = GenerateTrialStatesDEMCMC(population, γ, ε, engine);
@@ -193,55 +257,20 @@ void RunDCMCMC(Population& population,
       }
     }
 
+    // Traces.
+    best_log_pdf = std::min(best_log_pdf,
+                            *std::min_element(log_pdf.begin(), log_pdf.end()));
+    LOG(ERROR) << "Min: " << *std::min_element(log_pdf.begin(), log_pdf.end())
+               << "Max: " << *std::max_element(log_pdf.begin(), log_pdf.end())
+               << " Best: " << best_log_pdf;
+
     // Record results.
     ancestry.push_back(population);
     ancestry_log_pdf.push_back(log_pdf);
   }
 }
 
-void Genome::Mutate(std::mt19937_64& engine,
-                    double angle_stddev,
-                    double other_stddev) {
-  for (auto& element : elements_) {
-    element.asymptotic_true_anomaly = std::nullopt;
-    element.turning_angle = std::nullopt;
-    element.semimajor_axis = std::nullopt;
-    element.specific_energy = std::nullopt;
-    element.characteristic_energy = std::nullopt;
-    element.mean_motion = std::nullopt;
-    element.hyperbolic_mean_motion = std::nullopt;
-    element.hyperbolic_excess_velocity = std::nullopt;
-    element.semiminor_axis = std::nullopt;
-    element.impact_parameter = std::nullopt;
-    element.semilatus_rectum = std::nullopt;
-    element.specific_angular_momentum = std::nullopt;
-    element.periapsis_distance = std::nullopt;
-    element.apoapsis_distance = std::nullopt;
-    element.longitude_of_periapsis = std::nullopt;
-    element.true_anomaly = std::nullopt;
-    element.hyperbolic_mean_anomaly = std::nullopt;
-    std::normal_distribution<> angle_distribution(0.0, angle_stddev);
-    *element.argument_of_periapsis += angle_distribution(engine) * Degree;
-    *element.mean_anomaly += angle_distribution(engine) * Degree;
-    std::normal_distribution<> period_distribution(0.0, other_stddev);
-    *element.period += period_distribution(engine) * Second;
-
-    // When nudging the eccentricity, make sure that it remains within
-    // reasonable bounds.
-    std::normal_distribution<> eccentricity_distribution(0.0,
-                                                         1.0e-4 * other_stddev);
-    double new_eccentricity;
-    for (int i = 0; i < 10; ++i) {
-      new_eccentricity =
-          *element.eccentricity + eccentricity_distribution(engine);
-      if (new_eccentricity > 0.0 && new_eccentricity < 0.02) {
-        *element.eccentricity = new_eccentricity;
-        break;
-      }
-    }
-  }
-}
-
+#if 0
 void Genome::SubStepOptimization(
     std::function<double(Genome const&)> const& χ²) {
   Bundle bundle(4);
@@ -288,6 +317,7 @@ void Genome::SubStepOptimization(
     elements_[i].mean_anomaly = (M₁ + M₂) / 2 - b₁ / (2 * b₂);
   }
 }
+#endif
 
 // TODO(phl): Literals are broken in 15.8.0 Preview 1.0 and are off by an
 // integral number of days.  Use this function as a stopgap measure and switch
@@ -295,6 +325,22 @@ void Genome::SubStepOptimization(
 constexpr Instant JD(double const jd) {
   return Instant{} + (jd - 2451545.0) * Day;
 }
+
+double ShortDays(Instant const& time) {
+    return (time - JD(2450000.0)) / Day;
+}
+
+using Transits = std::vector<Instant>;
+using TransitsByPlanet = std::map<std::string, Transits>;
+
+template<typename Value>
+struct Measured {
+  Value estimated_value;
+  Difference<Value> standard_uncertainty;
+};
+
+using MeasuredTransits = std::vector<Measured<Instant>>;
+using MeasuredTransitsByPlanet = std::map<std::string, MeasuredTransits>;
 
 MeasuredTransitsByPlanet const observations = {
     {"Trappist-1b",
@@ -449,6 +495,50 @@ MeasuredTransitsByPlanet const observations = {
       {JD(2457812.69870), 0.00450 * Day}, {JD(2457831.46625), 0.00047 * Day},
       {JD(2457962.86271), 0.00083 * Day}}}};
 
+double Transitsχ²(MeasuredTransitsByPlanet const& observations,
+                  TransitsByPlanet const& computations,
+                  bool const verbose) {
+  double sum_of_squared_errors = 0;
+  Time max_error;
+  for (auto const& pair : observations) {
+    auto const& name = pair.first;
+    auto const& observed_transits = pair.second;
+    auto const& computed_transits = computations.at(name);
+    if (computed_transits.empty()) {
+      return std::numeric_limits<double>::infinity();
+    }
+    for (auto const& observed_transit : observed_transits) {
+      auto const next_computed_transit =
+          std::lower_bound(computed_transits.begin(),
+                           computed_transits.end(),
+                           observed_transit.estimated_value);
+      Time error;
+      if (next_computed_transit == computed_transits.begin()) {
+        error = *next_computed_transit - observed_transit.estimated_value;
+      } else if (next_computed_transit == computed_transits.end()) {
+        error = observed_transit.estimated_value - computed_transits.back();
+      } else {
+        error =
+            std::min(*next_computed_transit - observed_transit.estimated_value,
+                     observed_transit.estimated_value -
+                         *std::prev(next_computed_transit));
+      }
+      CHECK_LE(0.0 * Second, error);
+      LOG_IF(ERROR, verbose) << name << ": " << error;
+      if (error > max_error) {
+        max_error = error;
+        LOG_IF(ERROR, verbose)
+            << name << ": " << ShortDays(*std::prev(next_computed_transit))
+            << " " << ShortDays(observed_transit.estimated_value) << " "
+            << ShortDays(*next_computed_transit) << " " << error;
+      }
+      sum_of_squared_errors +=
+          Pow<2>(error / observed_transit.standard_uncertainty);
+    }
+  }
+  return sum_of_squared_errors;
+}
+
 class TrappistDynamicsTest : public ::testing::Test {
  protected:
   TrappistDynamicsTest()
@@ -509,10 +599,6 @@ class TrappistDynamicsTest : public ::testing::Test {
     return transits;
   }
 
-  static double ShortDays(Instant const& time) {
-    return (time - JD(2450000.0)) / Day;
-  }
-
   static Time Error(MeasuredTransitsByPlanet const& observations,
                     TransitsByPlanet const& computations,
                     bool const verbose) {
@@ -556,51 +642,6 @@ class TrappistDynamicsTest : public ::testing::Test {
     auto const result = Sqrt(sum_error² / number_of_transits);
     LOG_IF(ERROR, verbose)<<"Overall: "<<result<<" "<<number_of_transits;
     return result;
-  }
-
-  static double χ²(MeasuredTransitsByPlanet const& observations,
-                   TransitsByPlanet const& computations,
-                   bool const verbose) {
-    double sum_of_squared_errors = 0;
-    Time max_error;
-    for (auto const& pair : observations) {
-      auto const& name = pair.first;
-      auto const& observed_transits = pair.second;
-      auto const& computed_transits = computations.at(name);
-      if (computed_transits.empty()) {
-        return std::numeric_limits<double>::infinity();
-      }
-      for (auto const& observed_transit : observed_transits) {
-        auto const next_computed_transit =
-            std::lower_bound(computed_transits.begin(),
-                             computed_transits.end(),
-                             observed_transit.estimated_value);
-        Time error;
-        if (next_computed_transit == computed_transits.begin()) {
-          error = *next_computed_transit - observed_transit.estimated_value;
-        } else if (next_computed_transit == computed_transits.end()) {
-          error = observed_transit.estimated_value - computed_transits.back();
-        } else {
-          error = std::min(
-              *next_computed_transit - observed_transit.estimated_value,
-              observed_transit.estimated_value -
-                  *std::prev(next_computed_transit));
-        }
-        CHECK_LE(0.0 * Second, error);
-        LOG_IF(ERROR, verbose)<<name<<": "<<error;
-        if (error > max_error) {
-          max_error = error;
-          LOG_IF(ERROR, verbose)
-              << name << ": " 
-              << ShortDays(*std::prev(next_computed_transit)) << " "
-              << ShortDays(observed_transit.estimated_value) << " "
-              << ShortDays(*next_computed_transit) << " " << error;
-        }
-        sum_of_squared_errors +=
-            Pow<2>(error / observed_transit.standard_uncertainty);
-      }
-    }
-    return sum_of_squared_errors;
   }
 
   static std::string SanitizedName(MassiveBody const& body) {
@@ -666,7 +707,7 @@ TEST_F(TrappistDynamicsTest, MathematicaTransits) {
   LOG(ERROR) << "max error: "
              << Error(observations, computations, /*verbose=*/true);
   LOG(ERROR) << "χ²: "
-             << χ²(observations, computations, /*verbose=*/true);
+             << Transitsχ²(observations, computations, /*verbose=*/true);
 }
 
 TEST_F(TrappistDynamicsTest, Optimisation) {
@@ -679,18 +720,21 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
   auto planet_names = system.names();
   planet_names.erase(
       std::find(planet_names.begin(), planet_names.end(), star_name));
-  std::vector<KeplerianElements<Trappist>> elements;
+  std::vector<KeplerianElements<Trappist>> original_elements;
   for (auto const& planet_name : planet_names) {
-    elements.push_back(SolarSystem<Trappist>::MakeKeplerianElements(
+    original_elements.push_back(SolarSystem<Trappist>::MakeKeplerianElements(
         system.keplerian_initial_state_message(planet_name).elements()));
   }
 
-  auto χ²_of_genome = 
-      [&planet_names, &system, &verbose](Genome const& genome) {
+  auto χ²_of_system_parameters = 
+      [&original_elements, &planet_names, &system, &verbose](
+          SystemParameters const& system_parameters) {
         auto modified_system = system;
-        auto const& elements = genome.elements();
         for (int i = 0; i < planet_names.size(); ++i) {
-          modified_system.ReplaceElements(planet_names[i], elements[i]);
+          modified_system.ReplaceElements(
+              planet_names[i],
+              MakeKeplerianElements(original_elements[i],
+                                    system_parameters[i]));
         }
 
         auto const ephemeris = modified_system.MakeEphemeris(
@@ -710,38 +754,15 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
                 ComputeTransits(*ephemeris, star, planet);
           }
         }
-        return χ²(observations, computations, verbose);
+        return Transitsχ²(observations, computations, verbose);
       };
 
-  auto compute_fitness =
-      [&planet_names, &system, &verbose, &χ²_of_genome](Genome const& genome) {
-        double const error = χ²_of_genome(genome);
-        // This is the place where we cook the sausage.  This function must be
-        // steep enough to efficiently separate the wheat from the chaff without
-        // leading to monoculture.
-        return std::exp(60'000 / Sqrt(error)) - 1.0;
-      };
-
-  Genome luca(elements);
-  Population population(luca, 50, std::move(compute_fitness));
-  population.ComputeAllFitnesses();
-  for (int i = 0; i < 300; ++i) {
-    LOG_IF(ERROR, i % 50 == 0) << "Age: " << i;
-    double const stddev =
-        (i % 30 == 29) ? 100.0 / (i + 50.0) : 10.0 / (i + 50.0);
-    population.set_angle_stddev(stddev);
-    population.set_other_stddev(1.0);
-    population.BegetChildren(χ²_of_genome);
-    population.ComputeAllFitnesses();
+  SystemParameters luca;
+  for (int i = 0; i < luca.size(); ++i) {
+    luca[i] = MakePlanetParameters(original_elements[i]);
   }
-  for (int i = 0; i < planet_names.size(); ++i) {
-    LOG(ERROR) << planet_names[i] << ": "
-               << population.best_genome().elements()[i];
-  }
-
-  // Log the final fitness.
-  verbose = true;
-  compute_fitness(population.best_genome());
+  Population luca_population(50, luca);
+  RunDCMCMC(luca_population, 100, /*ε=*/0.01, χ²_of_system_parameters);
 }
 
 }  // namespace astronomy
