@@ -71,78 +71,44 @@ struct Measured {
 using MeasuredTransits = std::vector<Measured<Instant>>;
 using MeasuredTransitsByPlanet = std::map<std::string, MeasuredTransits>;
 
-// The random number generator used by the optimisation.
+double EvaluatePopulation(int const number_of_parameters,
+                          int const number_of_generations,
+                          std::function<double()> const& calculate_log_pdf) {}
 
-// The description of the characteristics of an individual, i.e., a
-// configuration of the Trappist system.
-class Genome {
- public:
-  explicit Genome(std::vector<KeplerianElements<Trappist>> const& elements);
+int GenerateTrialStateDEMCMC(double const γ,
+                             double const ε) {
+}
 
-  std::vector<KeplerianElements<Trappist>> const& elements() const;
+void RunDCMCMC(int const number_of_parameters,
+               int const number_of_generations,
+               int const population_size,
+               double const ε,
+               std::function<double()> const& calculate_log_pdf) {
+  CHECK_LE(1, number_of_generations);
+  CHECK_LT(number_of_parameters, population_size);
+  std::vector<int> accepts_chain(population_size, 0);
+  std::vector<int> rejects_chain(population_size, 0);
+  std::vector<int> accepts_generation(number_of_generations, 0);
+  std::vector<int> rejects_generation(number_of_generations, 0);
 
-  // The standard deviation of the angle mutations has a strong effect on
-  // the convergence of the algorithm: if it's too small we do not explore the
-  // genomic space efficiently and it takes forever to find decent solutions;
-  // if it's too large we explore the genomic space haphazardly and suffer
-  // from deleterious mutations.
-  void Mutate(std::mt19937_64& engine,
-              double angle_stddev,
-              double other_stddev);
+  double const log_pdf = EvaluatePopulation(
+      number_of_parameters, number_of_generations, calculate_log_pdf);
 
-  void SubStepOptimization(std::function<double(Genome const&)> const& χ²);
+  // Loop over generations.
+  for (int generation = 0; generation < number_of_generations; ++generation) {
+    // Every 10th generation try full-size steps.
+    double const
+        γ = generation % 10 == 0 ? 1.0 : 2.38 / Sqrt(2 * number_of_parameters);
 
-  static Genome OnePointCrossover(Genome const& g1,
-                                  Genome const& g2,
-                                  std::mt19937_64& engine);
-  static Genome TwoPointCrossover(Genome const& g1,
-                                  Genome const& g2,
-                                  std::mt19937_64& engine);
-  static Genome Blend(Genome const& g1,
-                      Genome const& g2,
-                      std::mt19937_64& engine);
+    // Evaluate model for each set of trial parameters.
+    auto const trial = GenerateTrialStatesDEMCMC(theta, γ, ε);
+    double const log_pdf_trial = EvaluatePopulation(trial, calculate_log_pdf);
 
- private:
-  std::vector<KeplerianElements<Trappist>> elements_;
-};
-
-// A set of genomes which can reproduce based on their fitness.
-class Population {
- public:
-  Population(Genome const& luca,
-             int const size,
-             std::function<double(Genome const&)> compute_fitness);
-
-  void ComputeAllFitnesses();
-
-  void BegetChildren(std::function<double(Genome const&)> const& χ²);
-
-  void set_angle_stddev(double angle_stddev);
-  void set_other_stddev(double other_stddev);
-
-  Genome best_genome() const;
-
- private:
-  Genome const* Pick() const;
-
-  std::function<double(Genome const&)> const compute_fitness_;
-  double angle_stddev_;
-  double other_stddev_;
-  mutable std::mt19937_64 engine_;
-  std::vector<Genome> current_;
-  std::vector<Genome> next_;
-  std::vector<double> fitnesses_;
-  std::vector<double> cumulative_fitnesses_;
-
-  double best_fitness_ = 0.0;
-  std::optional<Genome> best_genome_;
-};
-
-Genome::Genome(std::vector<KeplerianElements<Trappist>> const& elements)
-    : elements_(elements) {}
-
-std::vector<KeplerianElements<Trappist>> const& Genome::elements() const {
-  return elements_;
+    // For each member of population.
+    for (int i = 0; i < population_size; ++i) {
+      double const log_pdf_ratio = log_pdf_trial[i] - log_pdf[i];
+    }
+  }
 }
 
 void Genome::Mutate(std::mt19937_64& engine,
@@ -233,193 +199,6 @@ void Genome::SubStepOptimization(
         ((χ²₃ - χ²₁) / (M₃ - M₁) - b₁) / (M₃ - M₂);
     elements_[i].mean_anomaly = (M₁ + M₂) / 2 - b₁ / (2 * b₂);
   }
-}
-
-Genome Genome::OnePointCrossover(Genome const& g1,
-                                 Genome const& g2,
-                                 std::mt19937_64& engine) {
-  CHECK_EQ(g1.elements_.size(), g2.elements_.size());
-  std::vector<KeplerianElements<Trappist>> new_elements;
-  std::uniform_int_distribution<> order_distribution(0, 1);
-  std::uniform_int_distribution<> split_distribution(0, g1.elements_.size());
-  bool const reverse = order_distribution(engine) == 1;
-  int const split = split_distribution(engine);
-  if (reverse) {
-    for (int i = 0; i < split; ++i) {
-      new_elements.push_back(g1.elements_[i]);
-    }
-    for (int i = split; i < g2.elements_.size(); ++i) {
-      new_elements.push_back(g2.elements_[i]);
-    }
-  } else {
-    for (int i = 0; i < split; ++i) {
-      new_elements.push_back(g2.elements_[i]);
-    }
-    for (int i = split; i < g1.elements_.size(); ++i) {
-      new_elements.push_back(g1.elements_[i]);
-    }
-  }
-  return Genome(new_elements);
-}
-
-Genome Genome::TwoPointCrossover(Genome const& g1,
-                                 Genome const& g2,
-                                 std::mt19937_64& engine) {
-  CHECK_EQ(g1.elements_.size(), g2.elements_.size());
-  std::vector<KeplerianElements<Trappist>> new_elements;
-  std::uniform_int_distribution<> order_distribution(0, 1);
-  std::uniform_int_distribution<> split_distribution(0, g1.elements_.size());
-  bool const reverse = order_distribution(engine) == 1;
-  int split1 = split_distribution(engine);
-  int split2 = split_distribution(engine);
-  if (split2 < split1) {
-    std::swap(split1, split2);
-  }
-  if (reverse) {
-    for (int i = 0; i < split1; ++i) {
-      new_elements.push_back(g1.elements_[i]);
-    }
-    for (int i = split1; i < split2; ++i) {
-      new_elements.push_back(g2.elements_[i]);
-    }
-    for (int i = split2; i < g1.elements_.size(); ++i) {
-      new_elements.push_back(g1.elements_[i]);
-    }
-  } else {
-    for (int i = 0; i < split1; ++i) {
-      new_elements.push_back(g2.elements_[i]);
-    }
-    for (int i = split1; i < split2; ++i) {
-      new_elements.push_back(g1.elements_[i]);
-    }
-    for (int i = split2; i < g2.elements_.size(); ++i) {
-      new_elements.push_back(g2.elements_[i]);
-    }
-  }
-  return Genome(new_elements);
-}
-
-Genome Genome::Blend(Genome const& g1,
-                     Genome const& g2,
-                     std::mt19937_64& engine) {
-  CHECK_EQ(g1.elements_.size(), g2.elements_.size());
-  std::vector<KeplerianElements<Trappist>> new_elements;
-  std::uniform_real_distribution blend_distribution(0.0, 1.0);
-  double const blend = blend_distribution(engine);
-  for (int i = 0; i < g1.elements_.size(); ++i) {
-    KeplerianElements<Trappist> new_element = g1.elements_[i];
-    *new_element.argument_of_periapsis =
-        *g1.elements_[i].argument_of_periapsis * blend +
-        *g2.elements_[i].argument_of_periapsis * (1.0 - blend);
-    *new_element.argument_of_periapsis =
-        *g1.elements_[i].mean_anomaly * blend +
-        *g2.elements_[i].mean_anomaly * (1.0 - blend);
-    new_elements.push_back(new_element);
-  }
-  return Genome(new_elements);
-}
-
-Population::Population(Genome const& luca,
-                       int const size,
-                       std::function<double(Genome const&)> compute_fitness)
-    : current_(size, luca),
-      next_(size, luca),
-      compute_fitness_(std::move(compute_fitness)) {
-  // Initialize the angles randomly.
-  for (auto& genome : current_) {
-    genome.Mutate(engine_, /*angle_stddev=*/720.0, /*other_stddev=*/1.0);
-  }
-}
-
-void Population::ComputeAllFitnesses() {
-  // The fitness computation is expensive, do it in parallel on all genomes.
-  {
-    Bundle bundle(4);
-
-    fitnesses_.resize(current_.size(), 0.0);
-    for (int i = 0; i < current_.size(); ++i) {
-      bundle.Add([this, i]() {
-        fitnesses_[i] = compute_fitness_(current_[i]);
-        return Status();
-      });
-    }
-    bundle.Join();
-  }
-
-  double min_fitness = std::numeric_limits<double>::max();
-  double max_fitness = 0.0;
-  cumulative_fitnesses_.clear();
-  cumulative_fitnesses_.push_back(0.0);
-  for (int i = 0; i < current_.size(); ++i) {
-    double const fitness = fitnesses_[i];
-    cumulative_fitnesses_.push_back(cumulative_fitnesses_[i] + fitness);
-    min_fitness = std::min(min_fitness, fitness);
-    max_fitness = std::max(max_fitness, fitness);
-    if (fitness > best_fitness_) {
-      best_fitness_ = fitness;
-      best_genome_ = current_[i];
-    }
-  }
-  LOG(ERROR) << "Min: " << min_fitness << " Max: " << max_fitness
-             << " Best: " << best_fitness_;
-}
-
-void Population::BegetChildren(std::function<double(Genome const&)> const& χ²) {
-  for (int i = 0; i < next_.size(); ++i) {
-    Genome const* const parent1 = Pick();
-    Genome const* parent2;
-    // We want to avoid self-fecundation, as it leads to one lucky genome
-    // dominating the gene pool if it has a high fitness, and that's not good
-    // for exploring the genomic space.  So we try for a while to find a good
-    // partner, and if we don't we pick one at random.
-    bool found_partner = false;
-    for (int j = 0; j < 100; ++j) {
-      parent2 = Pick();
-      if (parent1 != parent2) {
-        found_partner = true;
-        break;
-      }
-    }
-    if (!found_partner) {
-      std::uniform_int_distribution<> partner_distribution(0,
-                                                           current_.size() - 1);
-      do
-        parent2 = &current_[partner_distribution(engine_)];
-      while (parent1 == parent2);
-    }
-    next_[i] = Genome::TwoPointCrossover(*parent1, *parent2, engine_);
-    next_[i].Mutate(engine_, angle_stddev_, other_stddev_);
-    next_[i].SubStepOptimization(χ²);
-  }
-  next_.swap(current_);
-}
-
-void Population::set_angle_stddev(double const angle_stddev) {
-  angle_stddev_ = angle_stddev;
-}
-
-void Population::set_other_stddev(double const other_stddev) {
-  other_stddev_ = other_stddev;
-}
-
-Genome Population::best_genome() const {
-  return *best_genome_;
-}
-
-Genome const* Population::Pick() const {
-  std::uniform_real_distribution<> fitness_distribution(
-      cumulative_fitnesses_.front(), cumulative_fitnesses_.back());
-  double const picked_fitness = fitness_distribution(engine_);
-  auto const picked_it = std::lower_bound(cumulative_fitnesses_.begin(),
-                                          cumulative_fitnesses_.end(),
-                                          picked_fitness);
-  CHECK(picked_it != cumulative_fitnesses_.begin());
-  CHECK(picked_it != cumulative_fitnesses_.end());
-  int const picked_index =
-      std::distance(cumulative_fitnesses_.begin(), picked_it) - 1;
-  CHECK_LE(0, picked_index);
-  CHECK_LT(picked_index, current_.size());
-  return &current_[picked_index];
 }
 
 // TODO(phl): Literals are broken in 15.8.0 Preview 1.0 and are off by an
