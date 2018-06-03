@@ -351,7 +351,7 @@ void Genome::Mutate(std::mt19937_64& engine,
                                                        1.0e-4 * other_stddev);
   for (auto& planet_parameters : system_parameters_) {
     planet_parameters.argument_of_periapsis += angle_distribution(engine) * Degree;
-    planet_parameters.mean_anomaly += angle_distribution(engine) * Degree;
+    //planet_parameters.mean_anomaly += angle_distribution(engine) * Degree;
     planet_parameters.period += period_distribution(engine) * Second;
 
     // When nudging the eccentricity, make sure that it remains within
@@ -370,7 +370,7 @@ void Genome::Mutate(std::mt19937_64& engine,
 
 void Genome::Optimize(Calculator const& calculate_log_pdf, bool const verbose) {
   SubStepOptimization(system_parameters_,
-                      /*threshold=*/30 * Degree,
+                      /*threshold=*/90 * Degree,
                       calculate_log_pdf,
                       verbose);
 }
@@ -470,6 +470,16 @@ Population::Population(Genome const& luca,
   // Initialize the angles randomly.
   for (auto& genome : current_) {
     genome.Mutate(engine_, /*angle_stddev=*/720.0, /*other_stddev=*/1.0);
+  }
+  for (int j = 0; j < 10; ++j) {
+    Bundle bundle(8);
+    for (int i = 0; i < current_.size(); ++i) {
+      bundle.Add([this, i](){
+        current_[i].Optimize(calculate_log_pdf_, /*verbose=*/i == 0);
+        return Status::OK;
+      });
+    }
+    bundle.Join();
   }
 }
 
@@ -1102,8 +1112,7 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
     *perturbed_elements.period += period_distribution(engine) * Second;
     *perturbed_elements.argument_of_periapsis +=
         angle_distribution(engine) * Degree;
-    *perturbed_elements.mean_anomaly +=
-        angle_distribution(engine) * Degree;
+    *perturbed_elements.mean_anomaly = 0.0 * Degree;
     *perturbed_elements.eccentricity += eccentricity_distribution(engine);
     great_old_one[j] = MakePlanetParameters(perturbed_elements);
   }
