@@ -172,7 +172,7 @@ std::vector<double> EvaluatePopulation(
     Population const& population,
     Calculator const& calculate_log_pdf) {
   std::vector<double> log_pdf(population.size());
-  Bundle bundle(4);
+  Bundle bundle(8);
   for (int i = 0; i < population.size(); ++i) {
     auto const& parameters = population[i];
     bundle.Add([&calculate_log_pdf, i, &log_pdf, &parameters]() {
@@ -233,7 +233,7 @@ void SubStepOptimization(SystemParameters& trial,
 void SubStepOptimization(SystemParameters& trial,
                          Calculator const& calculate_log_pdf,
                          bool const verbose) {
-  Bundle bundle(4);
+  Bundle bundle(8);
   double log_pdf₁;
   bundle.Add([&calculate_log_pdf, &log_pdf₁, trial]() {
     log_pdf₁ = calculate_log_pdf(trial);
@@ -352,7 +352,7 @@ void RunDEMCMC(Population& population,
     // Evaluate model for each set of trial parameters.
     auto trial = GenerateTrialStatesDEMCMC(population, γ, ε, engine);
     if (generation >= number_of_burn_in_generations) {
-      Bundle bundle(4);
+      Bundle bundle(8);
       std::vector<std::mt19937_64> engines(population.size());
       for (int i = 0; i < population.size(); ++i) {
         engines[i].seed(i + generation * population.size());
