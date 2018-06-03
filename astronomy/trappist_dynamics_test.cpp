@@ -1084,9 +1084,9 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
                         std::move(log_pdf_of_system_parameters),
                         std::move(compute_fitness));
   population.ComputeAllFitnesses();
-  for (int i = 0; i < 500; ++i) {
+  for (int i = 0; i < 40000; ++i) {
     double const stddev =
-        (i % 30 == 29) ? 700.0 / (i + 50.0) : 70.0 / (i + 50.0);
+        (i % 30 == 29) ? 30.0 / Sqrt(i + 5.0) : 70.0 / (i + 50.0);
     population.set_angle_stddev(stddev);
     population.set_other_stddev(1.0);
     population.BegetChildren();
