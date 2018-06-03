@@ -47,6 +47,7 @@ using quantities::Derivative;
 using quantities::Difference;
 using quantities::Exponentiation;
 using quantities::Pow;
+using quantities::SIUnit;
 using quantities::Square;
 using quantities::Sqrt;
 using quantities::Time;
@@ -202,7 +203,21 @@ void SubStepOptimization(SystemParameters& trial,
     Derivative<double, Angle> const b₁ = (log_pdf₂ - log_pdf₁) / (M₂ - M₁);
     Derivative<double, Angle, 2> const b₂ =
         ((log_pdf₃ - log_pdf₁) / (M₃ - M₁) - b₁) / (M₃ - M₂);
-    trial[i].mean_anomaly = (M₁ + M₂) / 2 - b₁ / (2 * b₂);
+    bool quadratic_solution_found = false;
+    if (b₂ < 0.0 * SIUnit<Derivative<double, Angle, 2>>()) {
+      Angle const candidate = (M₁ + M₂) / 2 - b₁ / (2 * b₂);
+      if (Abs(candidate - M₁) < 30.0 * Degree) {
+        trial[i].mean_anomaly = candidate;
+        quadratic_solution_found = true;
+      }
+    }
+    if (!quadratic_solution_found) {
+      if (log_pdf₃ > log_pdf₂) {
+        trial[i].mean_anomaly = M₃;
+      } else {
+        trial[i].mean_anomaly = M₂;
+      }
+    }
 
     LOG_IF(ERROR, verbose) << i << std::setprecision(10) << " " << M₃ / Degree
                            << " " << M₁ / Degree << " " << M₂ / Degree << " * "
