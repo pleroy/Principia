@@ -41,6 +41,7 @@ using physics::KeplerOrbit;
 using physics::MassiveBody;
 using physics::RelativeDegreesOfFreedom;
 using physics::SolarSystem;
+using quantities::Abs;
 using quantities::Angle;
 using quantities::Derivative;
 using quantities::Difference;
@@ -182,8 +183,41 @@ std::vector<double> EvaluatePopulation(
   return log_pdf;
 }
 
+#if 1
 void SubStepOptimization(SystemParameters& trial,
-                         Calculator const& calculate_log_pdf) {
+                         Calculator const& calculate_log_pdf,
+                         bool const verbose) {
+  for (int i = 0; i < trial.size(); ++i) {
+    Angle const M₁ = trial[i].mean_anomaly;
+    double const log_pdf₁ = calculate_log_pdf(trial);
+    SystemParameters perturbed_trial = trial;
+    PlanetParameters& perturbed_parameters = perturbed_trial[i];
+    perturbed_parameters.mean_anomaly += 1 * Degree;
+    Angle const M₂ = perturbed_parameters.mean_anomaly;
+    double const log_pdf₂ = calculate_log_pdf(perturbed_trial);
+    perturbed_parameters.mean_anomaly -= 2 * Degree;
+    Angle const M₃ = perturbed_parameters.mean_anomaly;
+    double const log_pdf₃ = calculate_log_pdf(perturbed_trial);
+
+    Derivative<double, Angle> const b₁ = (log_pdf₂ - log_pdf₁) / (M₂ - M₁);
+    Derivative<double, Angle, 2> const b₂ =
+        ((log_pdf₃ - log_pdf₁) / (M₃ - M₁) - b₁) / (M₃ - M₂);
+    trial[i].mean_anomaly = (M₁ + M₂) / 2 - b₁ / (2 * b₂);
+
+    LOG_IF(ERROR, verbose) << i << std::setprecision(10) << " " << M₃ / Degree
+                           << " " << M₁ / Degree << " " << M₂ / Degree << " * "
+                           << trial[i].mean_anomaly / Degree;
+    LOG_IF(ERROR, verbose) << "  " << std::setprecision(10) << log_pdf₃ << " "
+                           << log_pdf₁ << " " << log_pdf₂;
+  }
+
+  double const log_pdf = calculate_log_pdf(trial);
+  LOG_IF(ERROR, verbose) << log_pdf;
+}
+#else
+void SubStepOptimization(SystemParameters& trial,
+                         Calculator const& calculate_log_pdf,
+                         bool const verbose) {
   Bundle bundle(4);
   double log_pdf₁;
   bundle.Add([&calculate_log_pdf, &log_pdf₁, trial]() {
@@ -223,13 +257,16 @@ void SubStepOptimization(SystemParameters& trial,
     Derivative<double, Angle, 2> b₂ =
         ((log_pdf₃ - log_pdf₁) / (M₃ - M₁) - b₁) / (M₃ - M₂);
     trial[i].mean_anomaly = (M₁ + M₂) / 2 - b₁ / (2 * b₂);
-    LOG(ERROR) << i << " " << M₃ / Degree << " " << M₁ / Degree << " "
-               << M₂ / Degree << " * " << trial[i].mean_anomaly/Degree;
-    LOG(ERROR) << "  " << log_pdf₃ << " " << log_pdf₁ << " " << log_pdf₂;
+    LOG_IF(ERROR, verbose) << i << " " << M₃ / Degree << " " << M₁ / Degree
+                           << " " << M₂ / Degree << " * "
+                           << trial[i].mean_anomaly / Degree;
+    LOG_IF(ERROR, verbose) << "  " << log_pdf₃ << " " << log_pdf₁ << " "
+                           << log_pdf₂;
   }
   double const log_pdf = calculate_log_pdf(trial);
-  LOG(ERROR) << log_pdf;
+  LOG_IF(ERROR,verbose) << log_pdf;
 }
+#endif
 
 Population GenerateTrialStatesDEMCMC(Population const& population,
                                      double const γ,
@@ -299,8 +336,10 @@ void RunDEMCMC(Population& population,
 
     // Evaluate model for each set of trial parameters.
     auto trial = GenerateTrialStatesDEMCMC(population, γ, ε, engine);
-    for (auto& system_parameters : trial) {
-      SubStepOptimization(system_parameters, calculate_log_pdf);
+    if (generation >= number_of_burn_in_generations) {
+      for (int i = 0; i < population.size(); ++i) {
+        SubStepOptimization(trial[i], calculate_log_pdf, /*verbose=*/i == 0);
+      }
     }
     auto const log_pdf_trial = EvaluatePopulation(trial, calculate_log_pdf);
 
@@ -356,6 +395,17 @@ struct Measured {
 
 using MeasuredTransits = std::vector<Measured<Instant>>;
 using MeasuredTransitsByPlanet = std::map<std::string, MeasuredTransits>;
+
+// These periods, from https://arxiv.org/abs/1801.02554v1 Table 1, are used
+// solely for transit epoch computation.
+std::map<std::string, Time> nominal_periods = {
+    {"Trappist-1b", 1.51087637 * Day},
+    {"Trappist-1c", 2.42180746 * Day},
+    {"Trappist-1d", 4.049959 * Day},
+    {"Trappist-1e", 6.099043 * Day},
+    {"Trappist-1f", 9.205585 * Day},
+    {"Trappist-1g", 12.354473 * Day},
+    {"Trappist-1h", 18.767953 * Day}};
 
 MeasuredTransitsByPlanet const observations = {
     {"Trappist-1b",
@@ -510,6 +560,7 @@ MeasuredTransitsByPlanet const observations = {
       {JD(2457812.69870), 0.00450 * Day}, {JD(2457831.46625), 0.00047 * Day},
       {JD(2457962.86271), 0.00083 * Day}}}};
 
+#if 0
 double Transitsχ²(MeasuredTransitsByPlanet const& observations,
                   TransitsByPlanet const& computations,
                   bool const verbose) {
@@ -553,6 +604,64 @@ double Transitsχ²(MeasuredTransitsByPlanet const& observations,
   }
   return sum_of_squared_errors;
 }
+#else
+double Transitsχ²(MeasuredTransitsByPlanet const& observations,
+                  TransitsByPlanet const& computations,
+                  bool const verbose) {
+  double sum_of_squared_errors = 0;
+  Time max_error;
+  for (auto const& pair : observations) {
+    auto const& name = pair.first;
+    auto const& observed_transits = pair.second;
+    auto const& computed_transits = computations.at(name);
+    if (computed_transits.empty()) {
+      return std::numeric_limits<double>::infinity();
+    }
+    Instant const& initial_observed_transit = observed_transits.front().estimated_value;
+    auto initial_computed_transit = std::lower_bound(computed_transits.begin(),
+                                                     computed_transits.end(),
+                                                     initial_observed_transit);
+    if (initial_computed_transit == computed_transits.end()) {
+      --initial_computed_transit;
+    } else if (initial_computed_transit != computed_transits.begin() &&
+               *initial_computed_transit - initial_observed_transit >
+                   initial_observed_transit - initial_computed_transit[-1]) {
+      --initial_computed_transit;
+    }
+    int const relevant_computed_transits_size =
+        computed_transits.end() - initial_computed_transit;
+    for (auto const& observed_transit : observed_transits) {
+      int const transit_epoch = std::round(
+          (observed_transit.estimated_value - initial_observed_transit) /
+          nominal_periods.at(name));
+      if (transit_epoch >= relevant_computed_transits_size) {
+        // No computed transit corresponds to the observed transit.  Either the
+        // planet has escaped, or its period is so low that it does not transit
+        // enough over the simulation interval.  In any case, something is very
+        // wrong.
+        return std::numeric_limits<double>::infinity();
+      }
+      auto const computed_transit = initial_computed_transit[transit_epoch];
+      Time const error =
+          Abs(computed_transit - observed_transit.estimated_value);
+      CHECK_LE(0.0 * Second, error);
+      LOG_IF(ERROR, verbose) << name << ": " << error;
+      if (error > max_error) {
+        max_error = error;
+        LOG_IF(ERROR, verbose)
+            << name << " [" << transit_epoch << "]"
+            << ": computed: " << ShortDays(computed_transit)
+            << "; observed: " << ShortDays(observed_transit.estimated_value)
+            << u8" ± " << observed_transit.standard_uncertainty
+            << "; residual: " << error;
+      }
+      sum_of_squared_errors +=
+          Pow<2>(error / observed_transit.standard_uncertainty);
+    }
+  }
+  return sum_of_squared_errors;
+}
+#endif
 
 class TrappistDynamicsTest : public ::testing::Test {
  protected:
@@ -796,9 +905,9 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
   τ = 1000.0;
   RunDEMCMC(great_old_ones,
             /*number_of_generations=*/100,
-            /*number_of_generations_between_kicks=*/10,
+            /*number_of_generations_between_kicks=*/30,
             /*number_of_burn_in_generations=*/10,
-            /*ε=*/0.05,
+            /*ε=*/0.01,
             log_pdf_of_system_parameters);
 }
 
