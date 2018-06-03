@@ -352,9 +352,16 @@ void RunDEMCMC(Population& population,
     // Evaluate model for each set of trial parameters.
     auto trial = GenerateTrialStatesDEMCMC(population, γ, ε, engine);
     if (generation >= number_of_burn_in_generations) {
+      Bundle bundle(4);
+      std::vector<std::mt19937_64> engines(population.size());
       for (int i = 0; i < population.size(); ++i) {
-        SubStepOptimization(trial[i], calculate_log_pdf, /*verbose=*/i == 0);
+        engines[i].seed(i + generation * population.size());
+        bundle.Add([&calculate_log_pdf, &engines, i, &trial]() {
+          SubStepOptimization(trial[i], calculate_log_pdf, /*verbose=*/i == 0);
+          return Status::OK;
+        });
       }
+      bundle.Join();
     }
     auto const log_pdf_trial = EvaluatePopulation(trial, calculate_log_pdf);
 
@@ -632,7 +639,8 @@ double Transitsχ²(MeasuredTransitsByPlanet const& observations,
     if (computed_transits.empty()) {
       return std::numeric_limits<double>::infinity();
     }
-    Instant const& initial_observed_transit = observed_transits.front().estimated_value;
+    Instant const& initial_observed_transit =
+        observed_transits.front().estimated_value;
     auto initial_computed_transit = std::lower_bound(computed_transits.begin(),
                                                      computed_transits.end(),
                                                      initial_observed_transit);
@@ -902,9 +910,9 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
   for (int i = 0; i < 50; ++i) {
     great_old_ones.emplace_back();
     SystemParameters& great_old_one = great_old_ones.back();
-    std::normal_distribution<> angle_distribution(0.0, 70.0);
+    std::normal_distribution<> angle_distribution(0.0, 35.0);
     std::normal_distribution<> period_distribution(0.0, 1.0);
-    std::normal_distribution<> eccentricity_distribution(0.0, 6.0e-3);
+    std::normal_distribution<> eccentricity_distribution(0.0, 3.0e-3);
     for (int j = 0; j < great_old_one.size(); ++j) {
       auto perturbed_elements = original_elements[j];
       *perturbed_elements.period += period_distribution(engine) * Second;
@@ -919,9 +927,9 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
 
   τ = 1000.0;
   RunDEMCMC(great_old_ones,
-            /*number_of_generations=*/100,
+            /*number_of_generations=*/1200,
             /*number_of_generations_between_kicks=*/30,
-            /*number_of_burn_in_generations=*/10,
+            /*number_of_burn_in_generations=*/1000,
             /*ε=*/0.01,
             log_pdf_of_system_parameters);
 }
