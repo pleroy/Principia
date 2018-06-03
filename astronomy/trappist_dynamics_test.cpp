@@ -41,11 +41,13 @@ using physics::KeplerOrbit;
 using physics::MassiveBody;
 using physics::RelativeDegreesOfFreedom;
 using physics::SolarSystem;
+using quantities::Abs;
 using quantities::Angle;
 using quantities::Derivative;
 using quantities::Difference;
 using quantities::Exponentiation;
 using quantities::Pow;
+using quantities::SIUnit;
 using quantities::Square;
 using quantities::Sqrt;
 using quantities::Time;
@@ -59,27 +61,218 @@ using quantities::si::Second;
 
 namespace astronomy {
 
-using Transits = std::vector<Instant>;
-using TransitsByPlanet = std::map<std::string, Transits>;
-
-template<typename Value>
-struct Measured {
-  Value estimated_value;
-  Difference<Value> standard_uncertainty;
+struct PlanetParameters {
+  constexpr static int count = 4;
+  double eccentricity;
+  Time period;
+  Angle argument_of_periapsis;
+  Angle mean_anomaly;
 };
 
-using MeasuredTransits = std::vector<Measured<Instant>>;
-using MeasuredTransitsByPlanet = std::map<std::string, MeasuredTransits>;
+using SystemParameters = std::array<PlanetParameters, 7>;
 
-// The random number generator used by the optimisation.
+using Calculator = std::function<double(SystemParameters const&)>;
+
+PlanetParameters operator+(PlanetParameters const& left,
+                           PlanetParameters const& right) {
+  PlanetParameters result = left;
+  result.eccentricity += right.eccentricity;
+  result.period += right.period;
+  result.argument_of_periapsis += right.argument_of_periapsis;
+  result.mean_anomaly += right.mean_anomaly;
+  return result;
+}
+
+PlanetParameters operator-(PlanetParameters const& left,
+                           PlanetParameters const& right) {
+  PlanetParameters result = left;
+  result.eccentricity -= right.eccentricity;
+  result.period -= right.period;
+  result.argument_of_periapsis -= right.argument_of_periapsis;
+  result.mean_anomaly -= right.mean_anomaly;
+  return result;
+}
+
+PlanetParameters operator*(double const left, PlanetParameters const& right) {
+  PlanetParameters result = right;
+  result.eccentricity *= left;
+  result.period *= left;
+  result.argument_of_periapsis *= left;
+  result.mean_anomaly *= left;
+  return result;
+}
+
+SystemParameters operator+(SystemParameters const& left,
+                           SystemParameters const& right) {
+  SystemParameters result = left;
+  for (int i = 0; i < result.size(); ++i) {
+    result[i] = result[i] + right[i];
+  }
+  return result;
+}
+
+SystemParameters operator-(SystemParameters const& left,
+                           SystemParameters const& right) {
+  SystemParameters result = left;
+  for (int i = 0; i < result.size(); ++i) {
+    result[i] = result[i] - right[i];
+  }
+  return result;
+}
+
+SystemParameters operator*(double const left, SystemParameters const& right) {
+  SystemParameters result = right;
+  for (int i = 0; i < result.size(); ++i) {
+    result[i] = left * result[i];
+  }
+  return result;
+}
+
+KeplerianElements<Trappist> MakeKeplerianElements(
+    KeplerianElements<Trappist> const& blueprint,
+    PlanetParameters const& parameters) {
+  KeplerianElements<Trappist> elements = blueprint;
+  elements.asymptotic_true_anomaly = std::nullopt;
+  elements.turning_angle = std::nullopt;
+  elements.semimajor_axis = std::nullopt;
+  elements.specific_energy = std::nullopt;
+  elements.characteristic_energy = std::nullopt;
+  elements.mean_motion = std::nullopt;
+  elements.hyperbolic_mean_motion = std::nullopt;
+  elements.hyperbolic_excess_velocity = std::nullopt;
+  elements.semiminor_axis = std::nullopt;
+  elements.impact_parameter = std::nullopt;
+  elements.semilatus_rectum = std::nullopt;
+  elements.specific_angular_momentum = std::nullopt;
+  elements.periapsis_distance = std::nullopt;
+  elements.apoapsis_distance = std::nullopt;
+  elements.longitude_of_periapsis = std::nullopt;
+  elements.true_anomaly = std::nullopt;
+  elements.hyperbolic_mean_anomaly = std::nullopt;
+  *elements.argument_of_periapsis = parameters.argument_of_periapsis;
+  *elements.mean_anomaly = parameters.mean_anomaly;
+  *elements.period = parameters.period;
+  *elements.eccentricity = parameters.eccentricity;
+  return elements;
+}
+
+PlanetParameters MakePlanetParameters(
+    KeplerianElements<Trappist> const& elements) {
+  PlanetParameters result;
+  result.argument_of_periapsis = *elements.argument_of_periapsis;
+  result.eccentricity = *elements.eccentricity;
+  result.mean_anomaly = *elements.mean_anomaly;
+  result.period = *elements.period;
+  return result;
+}
+
+#if 1
+void SubStepOptimization(SystemParameters& trial,
+                         Angle const threshold,
+                         Calculator const& calculate_log_pdf,
+                         bool const verbose) {
+  for (int i = 0; i < trial.size(); ++i) {
+    Angle const M₁ = trial[i].mean_anomaly;
+    double const log_pdf₁ = calculate_log_pdf(trial);
+    SystemParameters perturbed_trial = trial;
+    PlanetParameters& perturbed_parameters = perturbed_trial[i];
+    perturbed_parameters.mean_anomaly += 1 * Degree;
+    Angle const M₂ = perturbed_parameters.mean_anomaly;
+    double const log_pdf₂ = calculate_log_pdf(perturbed_trial);
+    perturbed_parameters.mean_anomaly -= 2 * Degree;
+    Angle const M₃ = perturbed_parameters.mean_anomaly;
+    double const log_pdf₃ = calculate_log_pdf(perturbed_trial);
+
+    Derivative<double, Angle> const b₁ = (log_pdf₂ - log_pdf₁) / (M₂ - M₁);
+    Derivative<double, Angle, 2> const b₂ =
+        ((log_pdf₃ - log_pdf₁) / (M₃ - M₁) - b₁) / (M₃ - M₂);
+    bool quadratic_solution_found = false;
+    if (b₂ < 0.0 * SIUnit<Derivative<double, Angle, 2>>()) {
+      Angle const candidate = (M₁ + M₂) / 2 - b₁ / (2 * b₂);
+      if (Abs(candidate - M₁) < threshold) {
+        trial[i].mean_anomaly = candidate;
+        quadratic_solution_found = true;
+      }
+    }
+    if (!quadratic_solution_found) {
+      if (log_pdf₃ > log_pdf₂) {
+        trial[i].mean_anomaly = M₃;
+      } else {
+        trial[i].mean_anomaly = M₂;
+      }
+    }
+
+    LOG_IF(ERROR, verbose) << i << std::setprecision(10) << " " << M₃ / Degree
+                           << " " << M₁ / Degree << " " << M₂ / Degree << " * "
+                           << trial[i].mean_anomaly / Degree;
+    LOG_IF(ERROR, verbose) << "  " << std::setprecision(10) << log_pdf₃ << " "
+                           << log_pdf₁ << " " << log_pdf₂;
+  }
+
+  double const log_pdf = calculate_log_pdf(trial);
+  LOG_IF(ERROR, verbose) << log_pdf;
+}
+#else
+void SubStepOptimization(SystemParameters& trial,
+                         Calculator const& calculate_log_pdf,
+                         bool const verbose) {
+  Bundle bundle(8);
+  double log_pdf₁;
+  bundle.Add([&calculate_log_pdf, &log_pdf₁, trial]() {
+    log_pdf₁ = calculate_log_pdf(trial);
+    return Status::OK;
+  });
+
+  std::vector<Angle> M₂s(trial.size());
+  std::vector<Angle> M₃s(trial.size());;
+  std::vector<double> log_pdf₂s(trial.size());
+  std::vector<double> log_pdf₃s(trial.size());
+  for (int i = 0; i < trial.size(); ++i) {
+    SystemParameters perturbed_trial = trial;
+    PlanetParameters& perturbed_parameters = perturbed_trial[i];
+    perturbed_parameters.mean_anomaly += 0.1 * Degree;
+    M₂s[i] = perturbed_parameters.mean_anomaly;
+    bundle.Add([&calculate_log_pdf, i, &log_pdf₂s, perturbed_trial]() {
+      log_pdf₂s[i] = calculate_log_pdf(perturbed_trial);
+      return Status::OK;
+    });
+    perturbed_parameters.mean_anomaly -= 0.2 * Degree;
+    M₃s[i] = perturbed_parameters.mean_anomaly;
+      bundle.Add([&calculate_log_pdf, i, &log_pdf₃s, perturbed_trial]() {
+      log_pdf₃s[i] = calculate_log_pdf(perturbed_trial);
+      return Status::OK;
+    });
+  }
+  bundle.Join();
+
+  for (int i = 0; i < trial.size(); ++i) {
+    double const log_pdf₂ = log_pdf₂s[i];
+    double const log_pdf₃ = log_pdf₃s[i];
+    Angle const M₁ = trial[i].mean_anomaly;
+    Angle const M₂ = M₂s[i];
+    Angle const M₃ = M₃s[i];
+    Derivative<double, Angle> b₁ = (log_pdf₂ - log_pdf₁) / (M₂ - M₁);
+    Derivative<double, Angle, 2> b₂ =
+        ((log_pdf₃ - log_pdf₁) / (M₃ - M₁) - b₁) / (M₃ - M₂);
+    trial[i].mean_anomaly = (M₁ + M₂) / 2 - b₁ / (2 * b₂);
+    LOG_IF(ERROR, verbose) << i << " " << M₃ / Degree << " " << M₁ / Degree
+                           << " " << M₂ / Degree << " * "
+                           << trial[i].mean_anomaly / Degree;
+    LOG_IF(ERROR, verbose) << "  " << log_pdf₃ << " " << log_pdf₁ << " "
+                           << log_pdf₂;
+  }
+  double const log_pdf = calculate_log_pdf(trial);
+  LOG_IF(ERROR,verbose) << log_pdf;
+}
+#endif
 
 // The description of the characteristics of an individual, i.e., a
 // configuration of the Trappist system.
 class Genome {
  public:
-  explicit Genome(std::vector<KeplerianElements<Trappist>> const& elements);
+  explicit Genome(SystemParameters const& system_parameters);
 
-  std::vector<KeplerianElements<Trappist>> const& elements() const;
+  SystemParameters const& system_parameters() const;
 
   // The standard deviation of the angle mutations has a strong effect on
   // the convergence of the algorithm: if it's too small we do not explore the
@@ -90,7 +283,7 @@ class Genome {
               double angle_stddev,
               double other_stddev);
 
-  void SubStepOptimization(std::function<double(Genome const&)> const& χ²);
+  void Optimize(Calculator const& calculate_log_pdf, bool verbose);
 
   static Genome OnePointCrossover(Genome const& g1,
                                   Genome const& g2,
@@ -103,7 +296,7 @@ class Genome {
                       std::mt19937_64& engine);
 
  private:
-  std::vector<KeplerianElements<Trappist>> elements_;
+  SystemParameters system_parameters_;
 };
 
 // A set of genomes which can reproduce based on their fitness.
@@ -111,11 +304,12 @@ class Population {
  public:
   Population(Genome const& luca,
              int const size,
-             std::function<double(Genome const&)> compute_fitness);
+             Calculator calculate_log_pdf,
+             std::function<double(double)> compute_fitness);
 
   void ComputeAllFitnesses();
 
-  void BegetChildren(std::function<double(Genome const&)> const& χ²);
+  void BegetChildren();
 
   void set_angle_stddev(double angle_stddev);
   void set_other_stddev(double other_stddev);
@@ -125,150 +319,96 @@ class Population {
  private:
   Genome const* Pick() const;
 
-  std::function<double(Genome const&)> const compute_fitness_;
+  Calculator calculate_log_pdf_;
+  std::function<double(double)> compute_fitness_;
   double angle_stddev_;
   double other_stddev_;
   mutable std::mt19937_64 engine_;
   std::vector<Genome> current_;
   std::vector<Genome> next_;
+  std::vector<double> log_pdfs_;
   std::vector<double> fitnesses_;
   std::vector<double> cumulative_fitnesses_;
 
   double best_fitness_ = 0.0;
+  double best_log_pdf_ = std::numeric_limits<double>::max();
   std::optional<Genome> best_genome_;
 };
 
-Genome::Genome(std::vector<KeplerianElements<Trappist>> const& elements)
-    : elements_(elements) {}
+Genome::Genome(SystemParameters const& system_parameters)
+    : system_parameters_(system_parameters) {}
 
-std::vector<KeplerianElements<Trappist>> const& Genome::elements() const {
-  return elements_;
+SystemParameters const& Genome::system_parameters() const {
+  return system_parameters_;
 }
 
 void Genome::Mutate(std::mt19937_64& engine,
                     double angle_stddev,
                     double other_stddev) {
-  for (auto& element : elements_) {
-    element.asymptotic_true_anomaly = std::nullopt;
-    element.turning_angle = std::nullopt;
-    element.semimajor_axis = std::nullopt;
-    element.specific_energy = std::nullopt;
-    element.characteristic_energy = std::nullopt;
-    element.mean_motion = std::nullopt;
-    element.hyperbolic_mean_motion = std::nullopt;
-    element.hyperbolic_excess_velocity = std::nullopt;
-    element.semiminor_axis = std::nullopt;
-    element.impact_parameter = std::nullopt;
-    element.semilatus_rectum = std::nullopt;
-    element.specific_angular_momentum = std::nullopt;
-    element.periapsis_distance = std::nullopt;
-    element.apoapsis_distance = std::nullopt;
-    element.longitude_of_periapsis = std::nullopt;
-    element.true_anomaly = std::nullopt;
-    element.hyperbolic_mean_anomaly = std::nullopt;
-    std::normal_distribution<> angle_distribution(0.0, angle_stddev);
-    *element.argument_of_periapsis += angle_distribution(engine) * Degree;
-    *element.mean_anomaly += angle_distribution(engine) * Degree;
-    std::normal_distribution<> period_distribution(0.0, other_stddev);
-    *element.period += period_distribution(engine) * Second;
+  std::normal_distribution<> angle_distribution(0.0, angle_stddev);
+  std::normal_distribution<> period_distribution(0.0, other_stddev);
+  std::normal_distribution<> eccentricity_distribution(0.0,
+                                                       1.0e-4 * other_stddev);
+  for (auto& planet_parameters : system_parameters_) {
+    planet_parameters.argument_of_periapsis += angle_distribution(engine) * Degree;
+    planet_parameters.mean_anomaly += angle_distribution(engine) * Degree;
+    planet_parameters.period += period_distribution(engine) * Second;
 
     // When nudging the eccentricity, make sure that it remains within
     // reasonable bounds.
-    std::normal_distribution<> eccentricity_distribution(0.0,
-                                                         1.0e-4 * other_stddev);
     double new_eccentricity;
     for (int i = 0; i < 10; ++i) {
       new_eccentricity =
-          *element.eccentricity + eccentricity_distribution(engine);
+          planet_parameters.eccentricity + eccentricity_distribution(engine);
       if (new_eccentricity > 0.0 && new_eccentricity < 0.02) {
-        *element.eccentricity = new_eccentricity;
+        planet_parameters.eccentricity = new_eccentricity;
         break;
       }
     }
   }
 }
 
-void Genome::SubStepOptimization(
-    std::function<double(Genome const&)> const& χ²) {
-  Bundle bundle(4);
-  double χ²₁;
-  bundle.Add([this, &χ², &χ²₁]() {
-    χ²₁ = χ²(*this);
-    return Status::OK;
-  });
-  std::vector<Angle> M₂s;
-  M₂s.resize(elements_.size());
-  std::vector<Angle> M₃s;
-  M₃s.resize(elements_.size());
-  std::vector<double> χ²₂s;
-  χ²₂s.resize(elements_.size());
-  std::vector<double> χ²₃s;
-  χ²₃s.resize(elements_.size());
-  for (int i = 0; i < elements_.size(); ++i) {
-    Genome perturbed_genome = *this;
-    auto& perturbed_element = perturbed_genome.elements_[i];
-    *perturbed_element.mean_anomaly += 0.1 * Degree;
-    M₂s[i] = *perturbed_element.mean_anomaly;
-    bundle.Add([perturbed_genome, i, &χ², &χ²₂s]() {
-      χ²₂s [i] = χ²(perturbed_genome);
-      return Status::OK;
-    });
-    *perturbed_element.mean_anomaly -= 0.2 * Degree;
-    M₃s[i] = *perturbed_element.mean_anomaly;
-      bundle.Add([perturbed_genome, i, &χ², &χ²₃s]() {
-      χ²₃s [i] = χ²(perturbed_genome);
-      return Status::OK;
-    });
-  }
-  bundle.Join();
-
-  for (int i = 0; i < elements_.size(); ++i) {
-    double const χ²₂ = χ²₂s [i];
-    double const χ²₃ = χ²₃s [i];
-    Angle const M₁ = *elements_[i].mean_anomaly;
-    Angle const M₂ = M₂s[i];
-    Angle const M₃ = M₃s[i];
-    Derivative<double, Angle> b₁ = (χ²₂ - χ²₁) / (M₂ - M₁);
-    Derivative<double, Angle, 2> b₂ =
-        ((χ²₃ - χ²₁) / (M₃ - M₁) - b₁) / (M₃ - M₂);
-    elements_[i].mean_anomaly = (M₁ + M₂) / 2 - b₁ / (2 * b₂);
-  }
+void Genome::Optimize(Calculator const& calculate_log_pdf, bool const verbose) {
+  SubStepOptimization(system_parameters_,
+                      /*threshold=*/30 * Degree,
+                      calculate_log_pdf,
+                      verbose);
 }
 
 Genome Genome::OnePointCrossover(Genome const& g1,
                                  Genome const& g2,
                                  std::mt19937_64& engine) {
-  CHECK_EQ(g1.elements_.size(), g2.elements_.size());
-  std::vector<KeplerianElements<Trappist>> new_elements;
+  SystemParameters new_system_parameters;
   std::uniform_int_distribution<> order_distribution(0, 1);
-  std::uniform_int_distribution<> split_distribution(0, g1.elements_.size());
+  std::uniform_int_distribution<> split_distribution(
+      0, g1.system_parameters_.size());
   bool const reverse = order_distribution(engine) == 1;
   int const split = split_distribution(engine);
   if (reverse) {
     for (int i = 0; i < split; ++i) {
-      new_elements.push_back(g1.elements_[i]);
+      new_system_parameters[i] = g1.system_parameters_[i];
     }
-    for (int i = split; i < g2.elements_.size(); ++i) {
-      new_elements.push_back(g2.elements_[i]);
+    for (int i = split; i < g2.system_parameters_.size(); ++i) {
+      new_system_parameters[i] = g2.system_parameters_[i];
     }
   } else {
     for (int i = 0; i < split; ++i) {
-      new_elements.push_back(g2.elements_[i]);
+      new_system_parameters[i] = g2.system_parameters_[i];
     }
-    for (int i = split; i < g1.elements_.size(); ++i) {
-      new_elements.push_back(g1.elements_[i]);
+    for (int i = split; i < g1.system_parameters_.size(); ++i) {
+      new_system_parameters[i] = g1.system_parameters_[i];
     }
   }
-  return Genome(new_elements);
+  return Genome(new_system_parameters);
 }
 
 Genome Genome::TwoPointCrossover(Genome const& g1,
                                  Genome const& g2,
                                  std::mt19937_64& engine) {
-  CHECK_EQ(g1.elements_.size(), g2.elements_.size());
-  std::vector<KeplerianElements<Trappist>> new_elements;
+  SystemParameters new_system_parameters;
   std::uniform_int_distribution<> order_distribution(0, 1);
-  std::uniform_int_distribution<> split_distribution(0, g1.elements_.size());
+  std::uniform_int_distribution<> split_distribution(
+      0, g1.system_parameters_.size());
   bool const reverse = order_distribution(engine) == 1;
   int split1 = split_distribution(engine);
   int split2 = split_distribution(engine);
@@ -277,53 +417,55 @@ Genome Genome::TwoPointCrossover(Genome const& g1,
   }
   if (reverse) {
     for (int i = 0; i < split1; ++i) {
-      new_elements.push_back(g1.elements_[i]);
+      new_system_parameters[i] = g1.system_parameters_[i];
     }
     for (int i = split1; i < split2; ++i) {
-      new_elements.push_back(g2.elements_[i]);
+      new_system_parameters[i] = g2.system_parameters_[i];
     }
-    for (int i = split2; i < g1.elements_.size(); ++i) {
-      new_elements.push_back(g1.elements_[i]);
+    for (int i = split2; i < g1.system_parameters_.size(); ++i) {
+      new_system_parameters[i] = g1.system_parameters_[i];
     }
   } else {
     for (int i = 0; i < split1; ++i) {
-      new_elements.push_back(g2.elements_[i]);
+      new_system_parameters[i] = g2.system_parameters_[i];
     }
     for (int i = split1; i < split2; ++i) {
-      new_elements.push_back(g1.elements_[i]);
+      new_system_parameters[i] = g1.system_parameters_[i];
     }
-    for (int i = split2; i < g2.elements_.size(); ++i) {
-      new_elements.push_back(g2.elements_[i]);
+    for (int i = split2; i < g2.system_parameters_.size(); ++i) {
+      new_system_parameters[i] = g2.system_parameters_[i];
     }
   }
-  return Genome(new_elements);
+  return Genome(new_system_parameters);
 }
 
 Genome Genome::Blend(Genome const& g1,
                      Genome const& g2,
                      std::mt19937_64& engine) {
-  CHECK_EQ(g1.elements_.size(), g2.elements_.size());
-  std::vector<KeplerianElements<Trappist>> new_elements;
+  CHECK_EQ(g1.system_parameters_.size(), g2.system_parameters_.size());
+  SystemParameters new_system_parameters;
   std::uniform_real_distribution blend_distribution(0.0, 1.0);
   double const blend = blend_distribution(engine);
-  for (int i = 0; i < g1.elements_.size(); ++i) {
-    KeplerianElements<Trappist> new_element = g1.elements_[i];
-    *new_element.argument_of_periapsis =
-        *g1.elements_[i].argument_of_periapsis * blend +
-        *g2.elements_[i].argument_of_periapsis * (1.0 - blend);
-    *new_element.argument_of_periapsis =
-        *g1.elements_[i].mean_anomaly * blend +
-        *g2.elements_[i].mean_anomaly * (1.0 - blend);
-    new_elements.push_back(new_element);
+  for (int i = 0; i < g1.system_parameters_.size(); ++i) {
+    PlanetParameters new_planet_parameters = g1.system_parameters_[i];
+    new_planet_parameters.argument_of_periapsis =
+        g1.system_parameters_[i].argument_of_periapsis * blend +
+        g2.system_parameters_[i].argument_of_periapsis * (1.0 - blend);
+    new_planet_parameters.argument_of_periapsis =
+        g1.system_parameters_[i].mean_anomaly * blend +
+        g2.system_parameters_[i].mean_anomaly * (1.0 - blend);
+    new_system_parameters[i] = new_planet_parameters;
   }
-  return Genome(new_elements);
+  return Genome(new_system_parameters);
 }
 
 Population::Population(Genome const& luca,
                        int const size,
-                       std::function<double(Genome const&)> compute_fitness)
+                       Calculator calculate_log_pdf,
+                       std::function<double(double)> compute_fitness)
     : current_(size, luca),
       next_(size, luca),
+      calculate_log_pdf_(std::move(calculate_log_pdf)),
       compute_fitness_(std::move(compute_fitness)) {
   // Initialize the angles randomly.
   for (auto& genome : current_) {
@@ -334,12 +476,14 @@ Population::Population(Genome const& luca,
 void Population::ComputeAllFitnesses() {
   // The fitness computation is expensive, do it in parallel on all genomes.
   {
-    Bundle bundle(4);
+    Bundle bundle(8);
 
+    log_pdfs_.resize(current_.size(), 0.0);
     fitnesses_.resize(current_.size(), 0.0);
     for (int i = 0; i < current_.size(); ++i) {
       bundle.Add([this, i]() {
-        fitnesses_[i] = compute_fitness_(current_[i]);
+        log_pdfs_[i] = calculate_log_pdf_(current_[i].system_parameters());
+        fitnesses_[i] = compute_fitness_(log_pdfs_[i]);
         return Status();
       });
     }
@@ -358,13 +502,14 @@ void Population::ComputeAllFitnesses() {
     if (fitness > best_fitness_) {
       best_fitness_ = fitness;
       best_genome_ = current_[i];
+      best_log_pdf_ = log_pdfs_[i];
     }
   }
   LOG(ERROR) << "Min: " << min_fitness << " Max: " << max_fitness
-             << " Best: " << best_fitness_;
+             << " Best: " << best_fitness_ << u8" χ²: " << best_log_pdf_;
 }
 
-void Population::BegetChildren(std::function<double(Genome const&)> const& χ²) {
+void Population::BegetChildren() {
   for (int i = 0; i < next_.size(); ++i) {
     Genome const* const parent1 = Pick();
     Genome const* parent2;
@@ -389,7 +534,16 @@ void Population::BegetChildren(std::function<double(Genome const&)> const& χ²)
     }
     next_[i] = Genome::TwoPointCrossover(*parent1, *parent2, engine_);
     next_[i].Mutate(engine_, angle_stddev_, other_stddev_);
-    next_[i].SubStepOptimization(χ²);
+  }
+  {
+    Bundle bundle(8);
+    for (int i = 0; i < next_.size(); ++i) {
+      bundle.Add([this, i](){
+        next_[i].Optimize(calculate_log_pdf_, /*verbose=*/i == 0);
+        return Status::OK;
+      });
+    }
+    bundle.Join();
   }
   next_.swap(current_);
 }
@@ -428,6 +582,33 @@ Genome const* Population::Pick() const {
 constexpr Instant JD(double const jd) {
   return Instant{} + (jd - 2451545.0) * Day;
 }
+
+double ShortDays(Instant const& time) {
+    return (time - JD(2450000.0)) / Day;
+}
+
+using Transits = std::vector<Instant>;
+using TransitsByPlanet = std::map<std::string, Transits>;
+
+template<typename Value>
+struct Measured {
+  Value estimated_value;
+  Difference<Value> standard_uncertainty;
+};
+
+using MeasuredTransits = std::vector<Measured<Instant>>;
+using MeasuredTransitsByPlanet = std::map<std::string, MeasuredTransits>;
+
+// These periods, from https://arxiv.org/abs/1801.02554v1 Table 1, are used
+// solely for transit epoch computation.
+std::map<std::string, Time> nominal_periods = {
+    {"Trappist-1b", 1.51087637 * Day},
+    {"Trappist-1c", 2.42180746 * Day},
+    {"Trappist-1d", 4.049959 * Day},
+    {"Trappist-1e", 6.099043 * Day},
+    {"Trappist-1f", 9.205585 * Day},
+    {"Trappist-1g", 12.354473 * Day},
+    {"Trappist-1h", 18.767953 * Day}};
 
 MeasuredTransitsByPlanet const observations = {
     {"Trappist-1b",
@@ -582,6 +763,110 @@ MeasuredTransitsByPlanet const observations = {
       {JD(2457812.69870), 0.00450 * Day}, {JD(2457831.46625), 0.00047 * Day},
       {JD(2457962.86271), 0.00083 * Day}}}};
 
+#if 0
+double Transitsχ²(MeasuredTransitsByPlanet const& observations,
+                  TransitsByPlanet const& computations,
+                  bool const verbose) {
+  double sum_of_squared_errors = 0;
+  Time max_error;
+  for (auto const& pair : observations) {
+    auto const& name = pair.first;
+    auto const& observed_transits = pair.second;
+    auto const& computed_transits = computations.at(name);
+    if (computed_transits.empty()) {
+      return std::numeric_limits<double>::infinity();
+    }
+    for (auto const& observed_transit : observed_transits) {
+      auto const next_computed_transit =
+          std::lower_bound(computed_transits.begin(),
+                           computed_transits.end(),
+                           observed_transit.estimated_value);
+      Time error;
+      if (next_computed_transit == computed_transits.begin()) {
+        error = *next_computed_transit - observed_transit.estimated_value;
+      } else if (next_computed_transit == computed_transits.end()) {
+        error = observed_transit.estimated_value - computed_transits.back();
+      } else {
+        error =
+            std::min(*next_computed_transit - observed_transit.estimated_value,
+                     observed_transit.estimated_value -
+                         *std::prev(next_computed_transit));
+      }
+      CHECK_LE(0.0 * Second, error);
+      LOG_IF(ERROR, verbose) << name << ": " << error;
+      if (error > max_error) {
+        max_error = error;
+        LOG_IF(ERROR, verbose)
+            << name << ": " << ShortDays(*std::prev(next_computed_transit))
+            << " " << ShortDays(observed_transit.estimated_value) << " "
+            << ShortDays(*next_computed_transit) << " " << error;
+      }
+      sum_of_squared_errors +=
+          Pow<2>(error / observed_transit.standard_uncertainty);
+    }
+  }
+  return sum_of_squared_errors;
+}
+#else
+double Transitsχ²(MeasuredTransitsByPlanet const& observations,
+                  TransitsByPlanet const& computations,
+                  bool const verbose) {
+  double sum_of_squared_errors = 0;
+  Time max_error;
+  for (auto const& pair : observations) {
+    auto const& name = pair.first;
+    auto const& observed_transits = pair.second;
+    auto const& computed_transits = computations.at(name);
+    if (computed_transits.empty()) {
+      return std::numeric_limits<double>::infinity();
+    }
+    Instant const& initial_observed_transit =
+        observed_transits.front().estimated_value;
+    auto initial_computed_transit = std::lower_bound(computed_transits.begin(),
+                                                     computed_transits.end(),
+                                                     initial_observed_transit);
+    if (initial_computed_transit == computed_transits.end()) {
+      --initial_computed_transit;
+    } else if (initial_computed_transit != computed_transits.begin() &&
+               *initial_computed_transit - initial_observed_transit >
+                   initial_observed_transit - initial_computed_transit[-1]) {
+      --initial_computed_transit;
+    }
+    int const relevant_computed_transits_size =
+        computed_transits.end() - initial_computed_transit;
+    for (auto const& observed_transit : observed_transits) {
+      int const transit_epoch = std::round(
+          (observed_transit.estimated_value - initial_observed_transit) /
+          nominal_periods.at(name));
+      if (transit_epoch >= relevant_computed_transits_size) {
+        // No computed transit corresponds to the observed transit.  Either the
+        // planet has escaped, or its period is so low that it does not transit
+        // enough over the simulation interval.  In any case, something is very
+        // wrong.
+        return std::numeric_limits<double>::infinity();
+      }
+      auto const computed_transit = initial_computed_transit[transit_epoch];
+      Time const error =
+          Abs(computed_transit - observed_transit.estimated_value);
+      CHECK_LE(0.0 * Second, error);
+      LOG_IF(ERROR, verbose) << name << ": " << error;
+      if (error > max_error) {
+        max_error = error;
+        LOG_IF(ERROR, verbose)
+            << name << " [" << transit_epoch << "]"
+            << ": computed: " << ShortDays(computed_transit)
+            << "; observed: " << ShortDays(observed_transit.estimated_value)
+            << u8" ± " << observed_transit.standard_uncertainty
+            << "; residual: " << error;
+      }
+      sum_of_squared_errors +=
+          Pow<2>(error / observed_transit.standard_uncertainty);
+    }
+  }
+  return sum_of_squared_errors;
+}
+#endif
+
 class TrappistDynamicsTest : public ::testing::Test {
  protected:
   TrappistDynamicsTest()
@@ -642,10 +927,6 @@ class TrappistDynamicsTest : public ::testing::Test {
     return transits;
   }
 
-  static double ShortDays(Instant const& time) {
-    return (time - JD(2450000.0)) / Day;
-  }
-
   static Time Error(MeasuredTransitsByPlanet const& observations,
                     TransitsByPlanet const& computations,
                     bool const verbose) {
@@ -689,51 +970,6 @@ class TrappistDynamicsTest : public ::testing::Test {
     auto const result = Sqrt(sum_error² / number_of_transits);
     LOG_IF(ERROR, verbose)<<"Overall: "<<result<<" "<<number_of_transits;
     return result;
-  }
-
-  static double χ²(MeasuredTransitsByPlanet const& observations,
-                   TransitsByPlanet const& computations,
-                   bool const verbose) {
-    double sum_of_squared_errors = 0;
-    Time max_error;
-    for (auto const& pair : observations) {
-      auto const& name = pair.first;
-      auto const& observed_transits = pair.second;
-      auto const& computed_transits = computations.at(name);
-      if (computed_transits.empty()) {
-        return std::numeric_limits<double>::infinity();
-      }
-      for (auto const& observed_transit : observed_transits) {
-        auto const next_computed_transit =
-            std::lower_bound(computed_transits.begin(),
-                             computed_transits.end(),
-                             observed_transit.estimated_value);
-        Time error;
-        if (next_computed_transit == computed_transits.begin()) {
-          error = *next_computed_transit - observed_transit.estimated_value;
-        } else if (next_computed_transit == computed_transits.end()) {
-          error = observed_transit.estimated_value - computed_transits.back();
-        } else {
-          error = std::min(
-              *next_computed_transit - observed_transit.estimated_value,
-              observed_transit.estimated_value -
-                  *std::prev(next_computed_transit));
-        }
-        CHECK_LE(0.0 * Second, error);
-        LOG_IF(ERROR, verbose)<<name<<": "<<error;
-        if (error > max_error) {
-          max_error = error;
-          LOG_IF(ERROR, verbose)
-              << name << ": " 
-              << ShortDays(*std::prev(next_computed_transit)) << " "
-              << ShortDays(observed_transit.estimated_value) << " "
-              << ShortDays(*next_computed_transit) << " " << error;
-        }
-        sum_of_squared_errors +=
-            Pow<2>(error / observed_transit.standard_uncertainty);
-      }
-    }
-    return sum_of_squared_errors;
   }
 
   static std::string SanitizedName(MassiveBody const& body) {
@@ -799,7 +1035,7 @@ TEST_F(TrappistDynamicsTest, MathematicaTransits) {
   LOG(ERROR) << "max error: "
              << Error(observations, computations, /*verbose=*/true);
   LOG(ERROR) << "χ²: "
-             << χ²(observations, computations, /*verbose=*/true);
+             << Transitsχ²(observations, computations, /*verbose=*/true);
 }
 
 TEST_F(TrappistDynamicsTest, Optimisation) {
@@ -812,18 +1048,21 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
   auto planet_names = system.names();
   planet_names.erase(
       std::find(planet_names.begin(), planet_names.end(), star_name));
-  std::vector<KeplerianElements<Trappist>> elements;
+  std::vector<KeplerianElements<Trappist>> original_elements;
   for (auto const& planet_name : planet_names) {
-    elements.push_back(SolarSystem<Trappist>::MakeKeplerianElements(
+    original_elements.push_back(SolarSystem<Trappist>::MakeKeplerianElements(
         system.keplerian_initial_state_message(planet_name).elements()));
   }
 
-  auto χ²_of_genome = 
-      [&planet_names, &system, &verbose](Genome const& genome) {
+  auto log_pdf_of_system_parameters = 
+      [&original_elements, &planet_names, &system, &verbose](
+          SystemParameters const& system_parameters) {
         auto modified_system = system;
-        auto const& elements = genome.elements();
         for (int i = 0; i < planet_names.size(); ++i) {
-          modified_system.ReplaceElements(planet_names[i], elements[i]);
+          modified_system.ReplaceElements(
+              planet_names[i],
+              MakeKeplerianElements(original_elements[i],
+                                    system_parameters[i]));
         }
 
         auto const ephemeris = modified_system.MakeEphemeris(
@@ -843,38 +1082,56 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
                 ComputeTransits(*ephemeris, star, planet);
           }
         }
-        return χ²(observations, computations, verbose);
+        return -Transitsχ²(observations, computations, verbose) / 2.0;
       };
 
-  auto compute_fitness =
-      [&planet_names, &system, &verbose, &χ²_of_genome](Genome const& genome) {
-        double const error = χ²_of_genome(genome);
-        // This is the place where we cook the sausage.  This function must be
-        // steep enough to efficiently separate the wheat from the chaff without
-        // leading to monoculture.
-        return std::exp(60'000 / Sqrt(error)) - 1.0;
-      };
+  auto compute_fitness = [](double const log_pdf) {
+    // This is the place where we cook the sausage.  This function must be
+    // steep enough to efficiently separate the wheat from the chaff without
+    // leading to monoculture.
+    return std::exp(80'000 / Sqrt(-log_pdf)) - 1.0;
+  };
 
-  Genome luca(elements);
-  Population population(luca, 50, std::move(compute_fitness));
+  std::mt19937_64 engine;
+  SystemParameters great_old_one;
+  std::normal_distribution<> angle_distribution(0.0, 35.0);
+  std::normal_distribution<> period_distribution(0.0, 1.0);
+  std::normal_distribution<> eccentricity_distribution(0.0, 3.0e-3);
+  for (int j = 0; j < great_old_one.size(); ++j) {
+    auto perturbed_elements = original_elements[j];
+    *perturbed_elements.period += period_distribution(engine) * Second;
+    *perturbed_elements.argument_of_periapsis +=
+        angle_distribution(engine) * Degree;
+    *perturbed_elements.mean_anomaly +=
+        angle_distribution(engine) * Degree;
+    *perturbed_elements.eccentricity += eccentricity_distribution(engine);
+    great_old_one[j] = MakePlanetParameters(perturbed_elements);
+  }
+
+  Population population(Genome(great_old_one),
+                        50,
+                        std::move(log_pdf_of_system_parameters),
+                        std::move(compute_fitness));
   population.ComputeAllFitnesses();
-  for (int i = 0; i < 300; ++i) {
+  for (int i = 0; i < 50; ++i) {
     LOG_IF(ERROR, i % 50 == 0) << "Age: " << i;
     double const stddev =
         (i % 30 == 29) ? 100.0 / (i + 50.0) : 10.0 / (i + 50.0);
     population.set_angle_stddev(stddev);
     population.set_other_stddev(1.0);
-    population.BegetChildren(χ²_of_genome);
+    population.BegetChildren();
     population.ComputeAllFitnesses();
   }
   for (int i = 0; i < planet_names.size(); ++i) {
     LOG(ERROR) << planet_names[i] << ": "
-               << population.best_genome().elements()[i];
+               << MakeKeplerianElements(
+                      original_elements[i],
+                      population.best_genome().system_parameters()[i]);
   }
 
   // Log the final fitness.
   verbose = true;
-  compute_fitness(population.best_genome());
+  log_pdf_of_system_parameters(population.best_genome().system_parameters());
 }
 
 }  // namespace astronomy
