@@ -371,7 +371,7 @@ void Genome::Mutate(std::mt19937_64& engine,
 
 void Genome::Optimize(Calculator const& calculate_log_pdf, bool const verbose) {
   SubStepOptimization(system_parameters_,
-                      /*threshold=*/90 * Degree,
+                      /*threshold=*/120 * Degree,
                       calculate_log_pdf,
                       verbose);
 }
@@ -461,6 +461,7 @@ Population::Population(std::vector<Genome> const& great_old_ones,
       next_(great_old_ones),
       calculate_log_pdf_(std::move(calculate_log_pdf)),
       compute_fitness_(std::move(compute_fitness)) {
+#if 0
   for (int j = 0; j < 10; ++j) {
     Bundle bundle(8);
     for (int i = 0; i < current_.size(); ++i) {
@@ -471,6 +472,7 @@ Population::Population(std::vector<Genome> const& great_old_ones,
     }
     bundle.Join();
   }
+#endif
 }
 
 void Population::ComputeAllFitnesses() {
@@ -535,7 +537,8 @@ void Population::BegetChildren() {
     next_[i] = Genome::TwoPointCrossover(*parent1, *parent2, engine_);
     next_[i].Mutate(engine_, angle_stddev_, other_stddev_);
   }
-  if (age_ % 20 == 19) {
+#if 0
+  if (age_ % 23 == 22) {
     Bundle bundle(8);
     for (int i = 0; i < next_.size(); ++i) {
       bundle.Add([this, i](){
@@ -545,6 +548,7 @@ void Population::BegetChildren() {
     }
     bundle.Join();
   }
+#endif
   next_.swap(current_);
   ++age_;
 }
@@ -1095,19 +1099,19 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
 
   std::mt19937_64 engine;
   std::vector<Genome> great_old_ones;
-  std::normal_distribution<> angle1_distribution(0.0, 35.0);
+  std::normal_distribution<> angle1_distribution(0.0, 720.0);
   std::uniform_real_distribution<> angle2_distribution(0.0, 360.0);
   std::normal_distribution<> period_distribution(0.0, 1.0);
-  std::normal_distribution<> eccentricity_distribution(0.0, 3.0e-3);
+  std::normal_distribution<> eccentricity_distribution(0.0, 1.0e-4);
   for (int i = 0; i < 50; ++i) {
     SystemParameters great_old_one;
     for (int j = 0; j < great_old_one.size(); ++j) {
       auto perturbed_elements = original_elements[j];
       *perturbed_elements.period += period_distribution(engine) * Second;
       *perturbed_elements.argument_of_periapsis +=
-          angle2_distribution(engine) * Degree;
+          angle1_distribution(engine) * Degree;
       *perturbed_elements.mean_anomaly =
-          angle2_distribution(engine) * Degree;
+          angle1_distribution(engine) * Degree;
       *perturbed_elements.eccentricity += eccentricity_distribution(engine);
       great_old_one[j] = MakePlanetParameters(perturbed_elements);
     }
@@ -1118,10 +1122,10 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
                         std::move(log_pdf_of_system_parameters),
                         std::move(compute_fitness));
   population.ComputeAllFitnesses();
-  for (int i = 0; i < 50; ++i) {
+  for (int i = 0; i < 500; ++i) {
     LOG_IF(ERROR, i % 50 == 0) << "Age: " << i;
     double const stddev =
-        (i % 30 == 29) ? 100.0 / (i + 50.0) : 10.0 / (i + 50.0);
+        (i % 30 == 29) ? 700.0 / (i + 50.0) : 70.0 / (i + 50.0);
     population.set_angle_stddev(stddev);
     population.set_other_stddev(1.0);
     population.BegetChildren();
