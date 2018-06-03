@@ -273,6 +273,7 @@ class Genome {
   explicit Genome(SystemParameters const& system_parameters);
 
   SystemParameters const& system_parameters() const;
+  SystemParameters& system_parameters();
 
   // The standard deviation of the angle mutations has a strong effect on
   // the convergence of the algorithm: if it's too small we do not explore the
@@ -282,8 +283,6 @@ class Genome {
   void Mutate(std::mt19937_64& engine,
               double angle_stddev,
               double other_stddev);
-
-  void Optimize(Calculator const& calculate_log_pdf, bool verbose);
 
   static Genome OnePointCrossover(Genome const& g1,
                                   Genome const& g2,
@@ -302,7 +301,8 @@ class Genome {
 // A set of genomes which can reproduce based on their fitness.
 class Population {
  public:
-  Population(std::vector<Genome> const& great_old_ones,
+  Population(Genome const& luca,
+             int const size,
              Calculator calculate_log_pdf,
              std::function<double(double)> compute_fitness);
 
@@ -342,14 +342,18 @@ SystemParameters const& Genome::system_parameters() const {
   return system_parameters_;
 }
 
+SystemParameters& Genome::system_parameters() {
+  return system_parameters_;
+}
+
 void Genome::Mutate(std::mt19937_64& engine,
                     double angle_stddev,
                     double other_stddev) {
-  std::normal_distribution<> angle_distribution(0.0, angle_stddev);
-  std::normal_distribution<> period_distribution(0.0, other_stddev);
-  std::normal_distribution<> eccentricity_distribution(0.0,
-                                                       1.0e-4 * other_stddev);
   for (auto& planet_parameters : system_parameters_) {
+    std::normal_distribution<> angle_distribution(0.0, angle_stddev);
+    std::normal_distribution<> period_distribution(0.0, other_stddev);
+    std::normal_distribution<> eccentricity_distribution(0.0,
+                                                         1.0e-4 * other_stddev);
     planet_parameters.argument_of_periapsis +=
         angle_distribution(engine) * Degree;
     planet_parameters.mean_anomaly += angle_distribution(engine) * Degree;
@@ -367,13 +371,6 @@ void Genome::Mutate(std::mt19937_64& engine,
       }
     }
   }
-}
-
-void Genome::Optimize(Calculator const& calculate_log_pdf, bool const verbose) {
-  SubStepOptimization(system_parameters_,
-                      /*threshold=*/120 * Degree,
-                      calculate_log_pdf,
-                      verbose);
 }
 
 Genome Genome::OnePointCrossover(Genome const& g1,
@@ -454,25 +451,18 @@ Genome Genome::Blend(Genome const& g1,
   return Genome(new_system_parameters);
 }
 
-Population::Population(std::vector<Genome> const& great_old_ones,
+Population::Population(Genome const& luca,
+                       int const size,
                        Calculator calculate_log_pdf,
                        std::function<double(double)> compute_fitness)
-    : current_(great_old_ones),
-      next_(great_old_ones),
+    : current_(size, luca),
+      next_(size, luca),
       calculate_log_pdf_(std::move(calculate_log_pdf)),
       compute_fitness_(std::move(compute_fitness)) {
-#if 0
-  for (int j = 0; j < 10; ++j) {
-    Bundle bundle(8);
-    for (int i = 0; i < current_.size(); ++i) {
-      bundle.Add([this, i](){
-        current_[i].Optimize(calculate_log_pdf_, /*verbose=*/i == 0);
-        return Status::OK;
-      });
-    }
-    bundle.Join();
+  // Initialize the angles randomly.
+  for (auto& genome : current_) {
+    genome.Mutate(engine_, /*angle_stddev=*/720.0, /*other_stddev=*/1.0);
   }
-#endif
 }
 
 void Population::ComputeAllFitnesses() {
@@ -507,7 +497,7 @@ void Population::ComputeAllFitnesses() {
       best_log_pdf_ = log_pdfs_[i];
     }
   }
-  LOG(ERROR) << "Min: " << min_fitness << " Max: " << max_fitness
+  LOG(ERROR) << age_ << " Min: " << min_fitness << " Max: " << max_fitness
              << " Best: " << best_fitness_ << u8" χ²: " << best_log_pdf_;
 }
 
@@ -537,18 +527,6 @@ void Population::BegetChildren() {
     next_[i] = Genome::TwoPointCrossover(*parent1, *parent2, engine_);
     next_[i].Mutate(engine_, angle_stddev_, other_stddev_);
   }
-#if 0
-  if (age_ % 23 == 22) {
-    Bundle bundle(8);
-    for (int i = 0; i < next_.size(); ++i) {
-      bundle.Add([this, i](){
-        next_[i].Optimize(calculate_log_pdf_, /*verbose=*/i == 0);
-        return Status::OK;
-      });
-    }
-    bundle.Join();
-  }
-#endif
   next_.swap(current_);
   ++age_;
 }
@@ -768,7 +746,7 @@ MeasuredTransitsByPlanet const observations = {
       {JD(2457812.69870), 0.00450 * Day}, {JD(2457831.46625), 0.00047 * Day},
       {JD(2457962.86271), 0.00083 * Day}}}};
 
-#if 0
+#if 1
 double Transitsχ²(MeasuredTransitsByPlanet const& observations,
                   TransitsByPlanet const& computations,
                   bool const verbose) {
@@ -1097,33 +1075,16 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
     return std::exp(60'000 / Sqrt(-log_pdf)) - 1.0;
   };
 
-  std::mt19937_64 engine;
-  std::vector<Genome> great_old_ones;
-  std::normal_distribution<> angle1_distribution(0.0, 720.0);
-  std::uniform_real_distribution<> angle2_distribution(0.0, 360.0);
-  std::normal_distribution<> period_distribution(0.0, 1.0);
-  std::normal_distribution<> eccentricity_distribution(0.0, 1.0e-4);
-  for (int i = 0; i < 50; ++i) {
-    SystemParameters great_old_one;
-    for (int j = 0; j < great_old_one.size(); ++j) {
-      auto perturbed_elements = original_elements[j];
-      *perturbed_elements.period += period_distribution(engine) * Second;
-      *perturbed_elements.argument_of_periapsis +=
-          angle1_distribution(engine) * Degree;
-      *perturbed_elements.mean_anomaly =
-          angle1_distribution(engine) * Degree;
-      *perturbed_elements.eccentricity += eccentricity_distribution(engine);
-      great_old_one[j] = MakePlanetParameters(perturbed_elements);
-    }
-    great_old_ones.emplace_back(great_old_one);
+  SystemParameters system_parameters;
+  for (int i = 0; i < system_parameters.size(); ++i) {
+    system_parameters[i] = MakePlanetParameters(original_elements[i]);
   }
-
-  Population population(great_old_ones,
+  Genome luca(system_parameters);
+  Population population(luca, 50,
                         std::move(log_pdf_of_system_parameters),
                         std::move(compute_fitness));
   population.ComputeAllFitnesses();
   for (int i = 0; i < 500; ++i) {
-    LOG_IF(ERROR, i % 50 == 0) << "Age: " << i;
     double const stddev =
         (i % 30 == 29) ? 700.0 / (i + 50.0) : 70.0 / (i + 50.0);
     population.set_angle_stddev(stddev);
