@@ -302,8 +302,7 @@ class Genome {
 // A set of genomes which can reproduce based on their fitness.
 class Population {
  public:
-  Population(Genome const& luca,
-             int const size,
+  Population(std::vector<Genome> const& great_old_ones,
              Calculator calculate_log_pdf,
              std::function<double(double)> compute_fitness);
 
@@ -319,8 +318,8 @@ class Population {
  private:
   Genome const* Pick() const;
 
-  Calculator calculate_log_pdf_;
-  std::function<double(double)> compute_fitness_;
+  Calculator const calculate_log_pdf_;
+  std::function<double(double)> const compute_fitness_;
   double angle_stddev_;
   double other_stddev_;
   mutable std::mt19937_64 engine_;
@@ -329,6 +328,7 @@ class Population {
   std::vector<double> log_pdfs_;
   std::vector<double> fitnesses_;
   std::vector<double> cumulative_fitnesses_;
+  int age_ = 0;
 
   double best_fitness_ = 0.0;
   double best_log_pdf_ = std::numeric_limits<double>::max();
@@ -350,8 +350,9 @@ void Genome::Mutate(std::mt19937_64& engine,
   std::normal_distribution<> eccentricity_distribution(0.0,
                                                        1.0e-4 * other_stddev);
   for (auto& planet_parameters : system_parameters_) {
-    planet_parameters.argument_of_periapsis += angle_distribution(engine) * Degree;
-    //planet_parameters.mean_anomaly += angle_distribution(engine) * Degree;
+    planet_parameters.argument_of_periapsis +=
+        angle_distribution(engine) * Degree;
+    planet_parameters.mean_anomaly += angle_distribution(engine) * Degree;
     planet_parameters.period += period_distribution(engine) * Second;
 
     // When nudging the eccentricity, make sure that it remains within
@@ -447,30 +448,19 @@ Genome Genome::Blend(Genome const& g1,
   std::uniform_real_distribution blend_distribution(0.0, 1.0);
   double const blend = blend_distribution(engine);
   for (int i = 0; i < g1.system_parameters_.size(); ++i) {
-    PlanetParameters new_planet_parameters = g1.system_parameters_[i];
-    new_planet_parameters.argument_of_periapsis =
-        g1.system_parameters_[i].argument_of_periapsis * blend +
-        g2.system_parameters_[i].argument_of_periapsis * (1.0 - blend);
-    new_planet_parameters.argument_of_periapsis =
-        g1.system_parameters_[i].mean_anomaly * blend +
-        g2.system_parameters_[i].mean_anomaly * (1.0 - blend);
-    new_system_parameters[i] = new_planet_parameters;
+    new_system_parameters[i] = blend * g1.system_parameters_[i] +
+                               (1.0 - blend) * g2.system_parameters_[i];
   }
   return Genome(new_system_parameters);
 }
 
-Population::Population(Genome const& luca,
-                       int const size,
+Population::Population(std::vector<Genome> const& great_old_ones,
                        Calculator calculate_log_pdf,
                        std::function<double(double)> compute_fitness)
-    : current_(size, luca),
-      next_(size, luca),
+    : current_(great_old_ones),
+      next_(great_old_ones),
       calculate_log_pdf_(std::move(calculate_log_pdf)),
       compute_fitness_(std::move(compute_fitness)) {
-  // Initialize the angles randomly.
-  for (auto& genome : current_) {
-    genome.Mutate(engine_, /*angle_stddev=*/720.0, /*other_stddev=*/1.0);
-  }
   for (int j = 0; j < 10; ++j) {
     Bundle bundle(8);
     for (int i = 0; i < current_.size(); ++i) {
@@ -545,7 +535,7 @@ void Population::BegetChildren() {
     next_[i] = Genome::TwoPointCrossover(*parent1, *parent2, engine_);
     next_[i].Mutate(engine_, angle_stddev_, other_stddev_);
   }
-  {
+  if (age_ % 20 == 19) {
     Bundle bundle(8);
     for (int i = 0; i < next_.size(); ++i) {
       bundle.Add([this, i](){
@@ -556,6 +546,7 @@ void Population::BegetChildren() {
     bundle.Join();
   }
   next_.swap(current_);
+  ++age_;
 }
 
 void Population::set_angle_stddev(double const angle_stddev) {
@@ -1092,33 +1083,38 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
                 ComputeTransits(*ephemeris, star, planet);
           }
         }
-        return -Transitsχ²(observations, computations, verbose) / 2.0;
+        return -Transitsχ²(observations, computations, verbose);
       };
 
   auto compute_fitness = [](double const log_pdf) {
     // This is the place where we cook the sausage.  This function must be
     // steep enough to efficiently separate the wheat from the chaff without
     // leading to monoculture.
-    return std::exp(80'000 / Sqrt(-log_pdf)) - 1.0;
+    return std::exp(60'000 / Sqrt(-log_pdf)) - 1.0;
   };
 
   std::mt19937_64 engine;
-  SystemParameters great_old_one;
-  std::normal_distribution<> angle_distribution(0.0, 35.0);
+  std::vector<Genome> great_old_ones;
+  std::normal_distribution<> angle1_distribution(0.0, 35.0);
+  std::uniform_real_distribution<> angle2_distribution(0.0, 360.0);
   std::normal_distribution<> period_distribution(0.0, 1.0);
   std::normal_distribution<> eccentricity_distribution(0.0, 3.0e-3);
-  for (int j = 0; j < great_old_one.size(); ++j) {
-    auto perturbed_elements = original_elements[j];
-    *perturbed_elements.period += period_distribution(engine) * Second;
-    *perturbed_elements.argument_of_periapsis +=
-        angle_distribution(engine) * Degree;
-    *perturbed_elements.mean_anomaly = 0.0 * Degree;
-    *perturbed_elements.eccentricity += eccentricity_distribution(engine);
-    great_old_one[j] = MakePlanetParameters(perturbed_elements);
+  for (int i = 0; i < 50; ++i) {
+    SystemParameters great_old_one;
+    for (int j = 0; j < great_old_one.size(); ++j) {
+      auto perturbed_elements = original_elements[j];
+      *perturbed_elements.period += period_distribution(engine) * Second;
+      *perturbed_elements.argument_of_periapsis +=
+          angle2_distribution(engine) * Degree;
+      *perturbed_elements.mean_anomaly =
+          angle2_distribution(engine) * Degree;
+      *perturbed_elements.eccentricity += eccentricity_distribution(engine);
+      great_old_one[j] = MakePlanetParameters(perturbed_elements);
+    }
+    great_old_ones.emplace_back(great_old_one);
   }
 
-  Population population(Genome(great_old_one),
-                        50,
+  Population population(great_old_ones,
                         std::move(log_pdf_of_system_parameters),
                         std::move(compute_fitness));
   population.ComputeAllFitnesses();
