@@ -303,6 +303,7 @@ class Population {
  public:
   Population(Genome const& luca,
              int const size,
+             bool const mutate_at_birth,
              Calculator calculate_log_pdf,
              std::function<double(double)> compute_fitness);
 
@@ -453,15 +454,28 @@ Genome Genome::Blend(Genome const& g1,
 
 Population::Population(Genome const& luca,
                        int const size,
+                       bool const mutate_at_birth,
                        Calculator calculate_log_pdf,
                        std::function<double(double)> compute_fitness)
     : current_(size, luca),
       next_(size, luca),
       calculate_log_pdf_(std::move(calculate_log_pdf)),
       compute_fitness_(std::move(compute_fitness)) {
-  // Initialize the angles randomly.
-  for (auto& genome : current_) {
-    genome.Mutate(engine_, /*angle_stddev=*/720.0, /*other_stddev=*/1.0);
+  if (mutate_at_birth) {
+    // Initialize the angles randomly.
+    for (auto& genome : current_) {
+      genome.Mutate(engine_, /*angle_stddev=*/720.0, /*other_stddev=*/1.0);
+    }
+  //} else {
+  //  Genome better_luca = luca;
+  //  for (int i = 0; i < 10; ++i) {
+  //    SubStepOptimization(better_luca.system_parameters(),
+  //                        /*threshold=*/30.0 * Degree,
+  //                        calculate_log_pdf_,
+  //                        true);
+  //  }
+  //  current_ = std::vector<Genome>(size, better_luca);
+  //  next_ = std::vector<Genome>(size, better_luca);
   }
 }
 
@@ -855,7 +869,7 @@ class TrappistDynamicsTest : public ::testing::Test {
   TrappistDynamicsTest()
       : system_(SOLUTION_DIR / "astronomy" / "trappist_gravity_model.proto.txt",
                 SOLUTION_DIR / "astronomy" /
-                    "trappist_initial_state_jd_2457010_000000000.proto.txt"),
+                    "trappist_initial_state_jd_2457000_000000000b.proto.txt"),
         ephemeris_(system_.MakeEphemeris(
             /*fitting_tolerance=*/5 * Milli(Metre),
             Ephemeris<Trappist>::FixedStepParameters(
@@ -1025,7 +1039,7 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
   SolarSystem<Trappist> const system(
       SOLUTION_DIR / "astronomy" / "trappist_gravity_model.proto.txt",
       SOLUTION_DIR / "astronomy" /
-          "trappist_initial_state_jd_2457000_000000000.proto.txt");
+          "trappist_initial_state_jd_2457000_000000000a.proto.txt");
 
   bool verbose = false;
   auto planet_names = system.names();
@@ -1080,7 +1094,7 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
     system_parameters[i] = MakePlanetParameters(original_elements[i]);
   }
   Genome luca(system_parameters);
-  Population population(luca, 50,
+  Population population(luca, 50, /*mutate_at_birth=*/true,
                         std::move(log_pdf_of_system_parameters),
                         std::move(compute_fitness));
   population.ComputeAllFitnesses();
@@ -1089,6 +1103,89 @@ TEST_F(TrappistDynamicsTest, Optimisation) {
         (i % 30 == 29) ? 30.0 / Sqrt(i + 5.0) : 70.0 / (i + 50.0);
     population.set_angle_stddev(stddev);
     population.set_other_stddev(1.0);
+    population.BegetChildren();
+    population.ComputeAllFitnesses();
+  }
+  for (int i = 0; i < planet_names.size(); ++i) {
+    LOG(ERROR) << planet_names[i] << ": "
+               << MakeKeplerianElements(
+                      original_elements[i],
+                      population.best_genome().system_parameters()[i]);
+  }
+
+  // Log the final fitness.
+  verbose = true;
+  log_pdf_of_system_parameters(population.best_genome().system_parameters());
+}
+
+TEST_F(TrappistDynamicsTest, Optimisation2) {
+  SolarSystem<Trappist> const system(
+      SOLUTION_DIR / "astronomy" / "trappist_gravity_model.proto.txt",
+      SOLUTION_DIR / "astronomy" /
+          "trappist_initial_state_jd_2457000_000000000b.proto.txt");
+
+  bool verbose = false;
+  auto planet_names = system.names();
+  planet_names.erase(
+      std::find(planet_names.begin(), planet_names.end(), star_name));
+  std::vector<KeplerianElements<Trappist>> original_elements;
+  for (auto const& planet_name : planet_names) {
+    original_elements.push_back(SolarSystem<Trappist>::MakeKeplerianElements(
+        system.keplerian_initial_state_message(planet_name).elements()));
+  }
+
+  auto log_pdf_of_system_parameters = 
+      [&original_elements, &planet_names, &system, &verbose](
+          SystemParameters const& system_parameters) {
+        auto modified_system = system;
+        for (int i = 0; i < planet_names.size(); ++i) {
+          modified_system.ReplaceElements(
+              planet_names[i],
+              MakeKeplerianElements(original_elements[i],
+                                    system_parameters[i]));
+        }
+
+        auto const ephemeris = modified_system.MakeEphemeris(
+            /*fitting_tolerance=*/5 * Metre,
+            Ephemeris<Trappist>::FixedStepParameters(
+                SymmetricLinearMultistepIntegrator<Quinlan1999Order8A,
+                                                   Position<Trappist>>(),
+                /*step=*/0.07 * Day));
+        ephemeris->Prolong(modified_system.epoch() + 1000 * Day);
+
+        TransitsByPlanet computations;
+        auto const& star = modified_system.massive_body(*ephemeris, star_name);
+        auto const bodies = ephemeris->bodies();
+        for (auto const& planet : bodies) {
+          if (planet != star) {
+            computations[planet->name()] =
+                ComputeTransits(*ephemeris, star, planet);
+          }
+        }
+        return -Transitsχ²(observations, computations, verbose);
+      };
+
+  auto compute_fitness = [](double const log_pdf) {
+    // This is the place where we cook the sausage.  This function must be
+    // steep enough to efficiently separate the wheat from the chaff without
+    // leading to monoculture.
+    return std::exp(60'000 / Sqrt(-log_pdf)) - 1.0;
+  };
+
+  SystemParameters system_parameters;
+  for (int i = 0; i < system_parameters.size(); ++i) {
+    system_parameters[i] = MakePlanetParameters(original_elements[i]);
+  }
+  Genome luca(system_parameters);
+  Population population(luca, 50, /*mutate_at_birth=*/false,
+                        std::move(log_pdf_of_system_parameters),
+                        std::move(compute_fitness));
+  population.ComputeAllFitnesses();
+  for (int i = 0; i < 3000; ++i) {
+    double const stddev =
+        (i % 30 == 29) ? 0.1 / Sqrt(i + 5.0) : 0.5 / (i + 50.0);
+    population.set_angle_stddev(stddev);
+    population.set_other_stddev(0.1);
     population.BegetChildren();
     population.ComputeAllFitnesses();
   }
