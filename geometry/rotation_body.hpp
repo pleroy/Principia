@@ -10,6 +10,7 @@
 #include "geometry/quaternion.hpp"
 #include "geometry/r3_element.hpp"
 #include "geometry/sign.hpp"
+#include "numerics/fast_sin_cos_2π.hpp"
 #include "quantities/elementary_functions.hpp"
 
 namespace principia {
@@ -17,8 +18,10 @@ namespace geometry {
 namespace internal_rotation {
 
 using base::not_null;
+using numerics::FastSinCos2π;
 using quantities::Cos;
 using quantities::Sin;
+using quantities::SIUnit;
 
 // Well-conditioned conversion of a rotation matrix to a quaternion.  See
 // http://en.wikipedia.org/wiki/Rotation_matrix#Quaternion and
@@ -65,7 +68,24 @@ FORCE_INLINE(inline) Quaternion ToQuaternion(R3x3Matrix<double> const& matrix) {
 }
 
 // Returns a rotation of |angle| around |axis|.  |axis| must be normalized.
-inline Quaternion AngleAxis(Angle const& angle, R3Element<double> const& axis) {
+template<Implementation implementation = Implementation::Precise>
+Quaternion AngleAxis(Angle const& angle, R3Element<double> const& axis);
+
+template<>
+inline Quaternion AngleAxis<Implementation::Fast>(
+    Angle const& angle,
+    R3Element<double> const& axis) {
+  double const half_angle_in_cycles = (0.5 / (2 * π * SIUnit<Angle>())) * angle;
+  double sin;
+  double cos;
+  FastSinCos2π(half_angle_in_cycles, sin, cos);
+  return Quaternion(cos, sin * axis);
+}
+
+template<>
+inline Quaternion AngleAxis<Implementation::Precise>(
+    Angle const& angle,
+    R3Element<double> const& axis) {
   quantities::Angle const half_angle = 0.5 * angle;
   return Quaternion(Cos(half_angle), Sin(half_angle) * axis);
 }
@@ -133,26 +153,34 @@ Rotation<FromFrame, ToFrame>::Rotation(Angle const& angle,
     : Rotation(AngleAxis(angle, Normalize(axis).coordinates())) {}
 
 template<typename FromFrame, typename ToFrame>
-template<typename F, typename T, typename>
+template<typename F, typename T, Implementation implementation,
+         typename>
 Rotation<FromFrame, ToFrame>::Rotation(
     Angle const& α,
     Angle const& β,
     Angle const& γ,
     EulerAngles const axes,
-    DefinesFrame<ToFrame> tag)
-    : Rotation(Rotation<ToFrame, FromFrame>(α, β, γ, axes, tag).Inverse()) {}
+    DefinesFrame<ToFrame> tag1,
+    Using<implementation> tag2)
+    : Rotation(
+          Rotation<ToFrame, FromFrame>(α, β, γ, axes, tag1, tag2).Inverse()) {}
 
 template<typename FromFrame, typename ToFrame>
-template<typename F, typename T, typename, typename>
+template<typename F, typename T, Implementation implementation,
+         typename, typename>
 Rotation<FromFrame, ToFrame>::Rotation(
     Angle const& α,
     Angle const& β,
     Angle const& γ,
     EulerAngles const axes,
-    DefinesFrame<FromFrame> tag)
-    : Rotation(AngleAxis(α, BasisVector(BinaryCodedTernaryDigit(2, axes))) *
-               AngleAxis(β, BasisVector(BinaryCodedTernaryDigit(1, axes))) *
-               AngleAxis(γ, BasisVector(BinaryCodedTernaryDigit(0, axes)))) {}
+    DefinesFrame<FromFrame> tag1,
+    Using<implementation> tag2)
+    : Rotation(AngleAxis<implementation>(
+                   α, BasisVector(BinaryCodedTernaryDigit(2, axes))) *
+               AngleAxis<implementation>(
+                   β, BasisVector(BinaryCodedTernaryDigit(1, axes))) *
+               AngleAxis<implementation>(
+                   γ, BasisVector(BinaryCodedTernaryDigit(0, axes)))) {}
 
 template<typename FromFrame, typename ToFrame>
 template<typename F, typename T, typename>

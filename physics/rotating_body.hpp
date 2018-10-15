@@ -22,8 +22,10 @@ using base::not_null;
 using geometry::AngularVelocity;
 using geometry::DefinesFrame;
 using geometry::EulerAngles;
+using geometry::Implementation;
 using geometry::Instant;
 using geometry::Rotation;
+using geometry::Using;
 using geometry::Vector;
 using quantities::Angle;
 using quantities::AngularFrequency;
@@ -151,7 +153,8 @@ Rotation<SurfaceFrame, Frame> RotatingBody<Frame>::FromSurfaceFrame(
       π / 2 * Radian - declination_of_pole(),
       AngleAt(t),
       EulerAngles::ZXZ,
-      DefinesFrame<SurfaceFrame>{});
+      DefinesFrame<SurfaceFrame>{},
+      Using<Implementation::Fast>{});
 }
 
 template<typename Frame>

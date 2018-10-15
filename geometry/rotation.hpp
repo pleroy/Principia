@@ -64,6 +64,14 @@ enum class CardanoAngles {
 template<typename Frame>
 struct DefinesFrame final {};
 
+enum class Implementation {
+  Fast,
+  Precise,
+};
+
+template<Implementation implementation>
+struct Using final {};
+
 // An orientation-preserving orthogonal map between the inner product spaces
 // |FromFrame| and |ToFrame|, as well as the induced maps on the exterior
 // algebra.
@@ -146,22 +154,26 @@ class Rotation : public LinearMap<FromFrame, ToFrame> {
 
   template<typename F = FromFrame,
            typename T = ToFrame,
+           Implementation implementation = Implementation::Precise,
            typename = std::enable_if_t<!std::is_same<F, T>::value>>
   Rotation(Angle const& α,
            Angle const& β,
            Angle const& γ,
            EulerAngles axes,
-           DefinesFrame<ToFrame> tag);
+           DefinesFrame<ToFrame> tag1,
+           Using<implementation> tag2 = Using<Implementation::Precise>{});
 
   template<typename F = FromFrame,
            typename T = ToFrame,
+           Implementation implementation = Implementation::Precise,
            typename = std::enable_if_t<!std::is_same<F, T>::value>,
            typename = void>
   Rotation(Angle const& α,
            Angle const& β,
            Angle const& γ,
            EulerAngles axes,
-           DefinesFrame<FromFrame> tag);
+           DefinesFrame<FromFrame> tag1,
+           Using<implementation> tag2 = Using<Implementation::Precise>{});
 
   // Constructors from Cardano angles.
   // Example: if |Aircraft| is the frame of an aircraft (x forward, y right,
@@ -252,7 +264,9 @@ Rotation<FromFrame, ToFrame> operator*(
 using internal_rotation::CardanoAngles;
 using internal_rotation::DefinesFrame;
 using internal_rotation::EulerAngles;
+using internal_rotation::Implementation;
 using internal_rotation::Rotation;
+using internal_rotation::Using;
 
 }  // namespace geometry
 }  // namespace principia
