@@ -203,5 +203,8 @@
     <ClCompile Include="geodesy_test.cpp">
       <Filter>Test Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\numerics\fast_sin_cos_2π.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

@@ -41,6 +41,7 @@
     <ClCompile Include="..\journal\profiles.cpp" />
     <ClCompile Include="..\journal\recorder.cpp" />
     <ClCompile Include="..\numerics\cbrt.cpp" />
+    <ClCompile Include="..\numerics\fast_sin_cos_2π.cpp" />
     <ClCompile Include="burn.cpp" />
     <ClCompile Include="celestial.cpp" />
     <ClCompile Include="flight_plan.cpp" />

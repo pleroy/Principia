@@ -62,6 +62,7 @@
     <ClCompile Include="..\base\bundle.cpp" />
     <ClCompile Include="..\base\status.cpp" />
     <ClCompile Include="..\numerics\cbrt.cpp" />
+    <ClCompile Include="..\numerics\fast_sin_cos_2π.cpp" />
     <ClCompile Include="date_time_test.cpp" />
     <ClCompile Include="ksp_fingerprint_test.cpp" />
     <ClCompile Include="ksp_resonance_test.cpp" />
