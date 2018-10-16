@@ -103,10 +103,13 @@ Rotation<FromFrame, ToFrame>::Rotation(Quaternion const& quaternion)
     : quaternion_(quaternion) {}
 
 template<typename FromFrame, typename ToFrame>
-template<typename Scalar, typename F, typename T, typename>
+template<typename Scalar, typename F, typename T, Implementation implementation,
+         typename>
 Rotation<FromFrame, ToFrame>::Rotation(quantities::Angle const& angle,
-                                       Bivector<Scalar, FromFrame> const& axis)
-    : Rotation(AngleAxis(angle, Normalize(axis).coordinates())) {}
+                                       Bivector<Scalar, FromFrame> const& axis,
+                                       Using<implementation> tag)
+    : Rotation(
+          AngleAxis<implementation>(angle, Normalize(axis).coordinates())) {}
 
 template<typename FromFrame, typename ToFrame>
 template<int rank_x, int rank_y, int rank_z, typename F, typename T, typename>
@@ -139,22 +142,27 @@ Rotation<FromFrame, ToFrame>::Rotation(
 }
 
 template<typename FromFrame, typename ToFrame>
-template<typename Scalar, typename F, typename T, typename>
+template<typename Scalar, typename F, typename T, Implementation implementation,
+         typename>
 Rotation<FromFrame, ToFrame>::Rotation(Angle const& angle,
                                        Bivector<Scalar, FromFrame> const& axis,
-                                       DefinesFrame<ToFrame> tag)
-    : Rotation(AngleAxis(-angle, Normalize(axis).coordinates())) {}
+                                       DefinesFrame<ToFrame> tag1,
+                                       Using<implementation> tag2)
+    : Rotation(
+          AngleAxis<implementation>(-angle, Normalize(axis).coordinates())) {}
 
 template<typename FromFrame, typename ToFrame>
-template<typename Scalar, typename F, typename T, typename, typename>
+template<typename Scalar, typename F, typename T, Implementation implementation,
+         typename, typename>
 Rotation<FromFrame, ToFrame>::Rotation(Angle const& angle,
                                        Bivector<Scalar, ToFrame> const& axis,
-                                       DefinesFrame<FromFrame> tag)
-    : Rotation(AngleAxis(angle, Normalize(axis).coordinates())) {}
+                                       DefinesFrame<FromFrame> tag1,
+                                       Using<implementation> tag2)
+    : Rotation(
+          AngleAxis<implementation>(angle, Normalize(axis).coordinates())) {}
 
 template<typename FromFrame, typename ToFrame>
-template<typename F, typename T, Implementation implementation,
-         typename>
+template<typename F, typename T, Implementation implementation, typename>
 Rotation<FromFrame, ToFrame>::Rotation(
     Angle const& α,
     Angle const& β,
@@ -183,26 +191,33 @@ Rotation<FromFrame, ToFrame>::Rotation(
                    γ, BasisVector(BinaryCodedTernaryDigit(0, axes)))) {}
 
 template<typename FromFrame, typename ToFrame>
-template<typename F, typename T, typename>
+template<typename F, typename T, Implementation implementation, typename>
 Rotation<FromFrame, ToFrame>::Rotation(
     Angle const& α,
     Angle const& β,
     Angle const& γ,
     CardanoAngles const axes,
-    DefinesFrame<ToFrame> tag)
-    : Rotation(Rotation<ToFrame, FromFrame>(α, β, γ, axes, tag).Inverse()) {}
+    DefinesFrame<ToFrame> tag1,
+    Using<implementation> tag2)
+    : Rotation(
+          Rotation<ToFrame, FromFrame>(α, β, γ, axes, tag1, tag2).Inverse()) {}
 
 template<typename FromFrame, typename ToFrame>
-template<typename F, typename T, typename, typename>
+template<typename F, typename T, Implementation implementation,
+         typename, typename>
 Rotation<FromFrame, ToFrame>::Rotation(
     Angle const& α,
     Angle const& β,
     Angle const& γ,
     CardanoAngles const axes,
-    DefinesFrame<FromFrame> tag)
-    : Rotation(AngleAxis(α, BasisVector(BinaryCodedTernaryDigit(2, axes))) *
-               AngleAxis(β, BasisVector(BinaryCodedTernaryDigit(1, axes))) *
-               AngleAxis(γ, BasisVector(BinaryCodedTernaryDigit(0, axes)))) {}
+    DefinesFrame<FromFrame> tag1,
+    Using<implementation> tag2)
+    : Rotation(AngleAxis<implementation>(
+                   α, BasisVector(BinaryCodedTernaryDigit(2, axes))) *
+               AngleAxis<implementation>(
+                   β, BasisVector(BinaryCodedTernaryDigit(1, axes))) *
+               AngleAxis<implementation>(
+                   γ, BasisVector(BinaryCodedTernaryDigit(0, axes)))) {}
 
 template<typename FromFrame, typename ToFrame>
 Sign Rotation<FromFrame, ToFrame>::Determinant() const {

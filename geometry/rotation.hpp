@@ -85,8 +85,11 @@ class Rotation : public LinearMap<FromFrame, ToFrame> {
   template<typename Scalar,
            typename F = FromFrame,
            typename T = ToFrame,
+           Implementation implementation = Implementation::Precise,
            typename = std::enable_if_t<std::is_same<F, T>::value>>
-  Rotation(Angle const& angle, Bivector<Scalar, FromFrame> const& axis);
+  Rotation(Angle const& angle,
+           Bivector<Scalar, FromFrame> const& axis,
+           Using<implementation> tag = Using<Implementation::Precise>{});
 
   // The constructors below define passive rotations (changes of coordinates
   // between orthonormal bases sharing the same orientation, rather than
@@ -127,19 +130,23 @@ class Rotation : public LinearMap<FromFrame, ToFrame> {
   template<typename Scalar,
            typename F = FromFrame,
            typename T = ToFrame,
+           Implementation implementation = Implementation::Precise,
            typename = std::enable_if_t<!std::is_same<F, T>::value>>
   Rotation(Angle const& angle,
            Bivector<Scalar, FromFrame> const& axis,
-           DefinesFrame<ToFrame> tag);
+           DefinesFrame<ToFrame> tag1,
+           Using<implementation> tag2 = Using<Implementation::Precise>{});
 
   template<typename Scalar,
            typename F = FromFrame,
            typename T = ToFrame,
+           Implementation implementation = Implementation::Precise,
            typename = std::enable_if_t<!std::is_same<F, T>::value>,
            typename = void>
   Rotation(Angle const& angle,
            Bivector<Scalar, ToFrame> const& axis,
-           DefinesFrame<FromFrame> tag);
+           DefinesFrame<FromFrame> tag1,
+           Using<implementation> tag2 = Using<Implementation::Precise>{});
 
   // Constructors from Euler angles.
   // Example: if |Orbit| is the frame of an orbit (x towards the periapsis,
@@ -188,22 +195,26 @@ class Rotation : public LinearMap<FromFrame, ToFrame> {
 
   template<typename F = FromFrame,
            typename T = ToFrame,
+           Implementation implementation = Implementation::Precise,
            typename = std::enable_if_t<!std::is_same<F, T>::value>>
   Rotation(Angle const& α,
            Angle const& β,
            Angle const& γ,
            CardanoAngles axes,
-           DefinesFrame<ToFrame> tag);
+           DefinesFrame<ToFrame> tag1,
+           Using<implementation> tag2 = Using<Implementation::Precise>{});
 
   template<typename F = FromFrame,
            typename T = ToFrame,
+           Implementation implementation = Implementation::Precise,
            typename = std::enable_if_t<!std::is_same<F, T>::value>,
            typename = void>
   Rotation(Angle const& α,
            Angle const& β,
            Angle const& γ,
            CardanoAngles axes,
-           DefinesFrame<FromFrame> tag);
+           DefinesFrame<FromFrame> tag1,
+           Using<implementation> tag2 = Using<Implementation::Precise>{});
 
   Sign Determinant() const override;
 
