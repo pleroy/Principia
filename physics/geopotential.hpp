@@ -3,6 +3,7 @@
 #include "base/not_null.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/named_quantities.hpp"
+#include "geometry/rotation.hpp"
 #include "physics/oblate_body.hpp"
 #include "quantities/named_quantities.hpp"
 #include "serialization/numerics.pb.h"
@@ -14,6 +15,7 @@ namespace internal_geopotential {
 using base::not_null;
 using geometry::Displacement;
 using geometry::Instant;
+using geometry::Rotation;
 using geometry::Vector;
 using quantities::Acceleration;
 using quantities::Angle;
@@ -22,6 +24,7 @@ using quantities::GravitationalParameter;
 using quantities::Length;
 using quantities::Quotient;
 using quantities::Square;
+using serialization::Numerics;
 
 // Representation of the geopotential model of an oblate body.
 template<typename Frame>
@@ -91,6 +94,11 @@ class Geopotential {
                            Displacement<Frame> const& r,
                            Exponentiation<Length, -2> const& one_over_r²,
                            Exponentiation<Length, -3> const& one_over_r³) const;
+
+  static Rotation<SurfaceFrame, Frame> FromSurfaceFrame(
+      OblateBody<Frame> const& body,
+      Numerics::Mode const mode,
+      Instant const& t);
 
   not_null<OblateBody<Frame> const*> body_;
   serialization::Numerics::Mode mode_;

@@ -89,6 +89,7 @@ template<int... degrees>
 struct Geopotential<Frame>::AllDegrees<std::integer_sequence<int, degrees...>> {
   static Vector<ReducedAcceleration, Frame>
   Acceleration(OblateBody<Frame> const& body,
+               Numerics::Mode mode,
                Instant const& t,
                Displacement<Frame> const& r,
                Length const& r_norm,
@@ -279,6 +280,7 @@ template<int... degrees>
 Vector<Quotient<Acceleration, GravitationalParameter>, Frame>
 Geopotential<Frame>::AllDegrees<std::integer_sequence<int, degrees...>>::
 Acceleration(OblateBody<Frame> const& body,
+             Numerics::Mode const mode,
              Instant const& t,
              Displacement<Frame> const& r,
              Length const& r_norm,
@@ -317,8 +319,7 @@ Acceleration(OblateBody<Frame> const& body,
     x̂ = body.biequatorial();
     ŷ = body.equatorial();
   } else {
-    auto const from_surface_frame =
-      body.template FromSurfaceFrame<SurfaceFrame>(t);
+    auto const from_surface_frame = FromSurfaceFrame(body, mode, t);
     x̂ = from_surface_frame(x_);
     ŷ = from_surface_frame(y_);
   }
@@ -403,7 +404,7 @@ Geopotential<Frame>::SphericalHarmonicsAcceleration(
 #define PRINCIPIA_CASE_SPHERICAL_HARMONICS(d)                                  \
   case (d):                                                                    \
     return AllDegrees<std::make_integer_sequence<int, (d + 1)>>::Acceleration( \
-        *body_, t, r, r_norm, r², one_over_r³)
+        *body_, mode_, t, r, r_norm, r², one_over_r³)
 
 template<typename Frame>
 Vector<Quotient<Acceleration, GravitationalParameter>, Frame>
@@ -451,6 +452,22 @@ Geopotential<Frame>::Degree2ZonalAcceleration(
           (-1.5 + 7.5 * r_axis_projection * r_axis_projection * one_over_r²) *
           r;
   return axis_effect + radial_effect;
+}
+
+template<typename Frame>
+auto Geopotential<Frame>::FromSurfaceFrame(OblateBody<Frame> const& body,
+                                           Numerics::Mode const mode,
+                                           Instant const& t)
+    -> Rotation<SurfaceFrame, Frame> {
+  switch (mode) {
+    case Numerics::FAST:
+      return body.template FromSurfaceFrame<SurfaceFrame, Numerics::FAST>(t);
+    case Numerics::PRECISE:
+      return body.template FromSurfaceFrame<SurfaceFrame, Numerics::PRECISE>(t);
+    default:
+      LOG(FATAL) << "Unexpected mode " << mode;
+      base::noreturn();
+  }
 }
 
 template<typename Frame>
