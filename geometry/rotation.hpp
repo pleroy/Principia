@@ -9,6 +9,7 @@
 #include "geometry/r3x3_matrix.hpp"
 #include "geometry/sign.hpp"
 #include "serialization/geometry.pb.h"
+#include "serialization/numerics.pb.h"
 
 namespace principia {
 namespace geometry {
@@ -21,6 +22,7 @@ namespace internal_rotation {
 
 using base::not_null;
 using quantities::Angle;
+using serialization::Numerics;
 
 template<typename FromFrame, typename ToFrame>
 std::ostream& operator<<(std::ostream& out,
@@ -64,12 +66,7 @@ enum class CardanoAngles {
 template<typename Frame>
 struct DefinesFrame final {};
 
-enum class Implementation {
-  Fast,
-  Precise,
-};
-
-template<Implementation implementation>
+template<Numerics::Mode mode>
 struct Using final {};
 
 // An orientation-preserving orthogonal map between the inner product spaces
@@ -85,11 +82,11 @@ class Rotation : public LinearMap<FromFrame, ToFrame> {
   template<typename Scalar,
            typename F = FromFrame,
            typename T = ToFrame,
-           Implementation implementation = Implementation::Precise,
+           Numerics::Mode mode = Numerics::PRECISE,
            typename = std::enable_if_t<std::is_same<F, T>::value>>
   Rotation(Angle const& angle,
            Bivector<Scalar, FromFrame> const& axis,
-           Using<implementation> tag = Using<Implementation::Precise>{});
+           Using<mode> tag = Using<Numerics::PRECISE>{});
 
   // The constructors below define passive rotations (changes of coordinates
   // between orthonormal bases sharing the same orientation, rather than
@@ -130,23 +127,23 @@ class Rotation : public LinearMap<FromFrame, ToFrame> {
   template<typename Scalar,
            typename F = FromFrame,
            typename T = ToFrame,
-           Implementation implementation = Implementation::Precise,
+           Numerics::Mode mode = Numerics::PRECISE,
            typename = std::enable_if_t<!std::is_same<F, T>::value>>
   Rotation(Angle const& angle,
            Bivector<Scalar, FromFrame> const& axis,
            DefinesFrame<ToFrame> tag1,
-           Using<implementation> tag2 = Using<Implementation::Precise>{});
+           Using<mode> tag2 = Using<Numerics::PRECISE>{});
 
   template<typename Scalar,
            typename F = FromFrame,
            typename T = ToFrame,
-           Implementation implementation = Implementation::Precise,
+           Numerics::Mode mode = Numerics::PRECISE,
            typename = std::enable_if_t<!std::is_same<F, T>::value>,
            typename = void>
   Rotation(Angle const& angle,
            Bivector<Scalar, ToFrame> const& axis,
            DefinesFrame<FromFrame> tag1,
-           Using<implementation> tag2 = Using<Implementation::Precise>{});
+           Using<mode> tag2 = Using<Numerics::PRECISE>{});
 
   // Constructors from Euler angles.
   // Example: if |Orbit| is the frame of an orbit (x towards the periapsis,
@@ -161,18 +158,18 @@ class Rotation : public LinearMap<FromFrame, ToFrame> {
 
   template<typename F = FromFrame,
            typename T = ToFrame,
-           Implementation implementation = Implementation::Precise,
+           Numerics::Mode mode = Numerics::PRECISE,
            typename = std::enable_if_t<!std::is_same<F, T>::value>>
   Rotation(Angle const& α,
            Angle const& β,
            Angle const& γ,
            EulerAngles axes,
            DefinesFrame<ToFrame> tag1,
-           Using<implementation> tag2 = Using<Implementation::Precise>{});
+           Using<mode> tag2 = Using<Numerics::PRECISE>{});
 
   template<typename F = FromFrame,
            typename T = ToFrame,
-           Implementation implementation = Implementation::Precise,
+           Numerics::Mode mode = Numerics::PRECISE,
            typename = std::enable_if_t<!std::is_same<F, T>::value>,
            typename = void>
   Rotation(Angle const& α,
@@ -180,7 +177,7 @@ class Rotation : public LinearMap<FromFrame, ToFrame> {
            Angle const& γ,
            EulerAngles axes,
            DefinesFrame<FromFrame> tag1,
-           Using<implementation> tag2 = Using<Implementation::Precise>{});
+           Using<mode> tag2 = Using<Numerics::PRECISE>{});
 
   // Constructors from Cardano angles.
   // Example: if |Aircraft| is the frame of an aircraft (x forward, y right,
@@ -195,18 +192,18 @@ class Rotation : public LinearMap<FromFrame, ToFrame> {
 
   template<typename F = FromFrame,
            typename T = ToFrame,
-           Implementation implementation = Implementation::Precise,
+           Numerics::Mode mode = Numerics::PRECISE,
            typename = std::enable_if_t<!std::is_same<F, T>::value>>
   Rotation(Angle const& α,
            Angle const& β,
            Angle const& γ,
            CardanoAngles axes,
            DefinesFrame<ToFrame> tag1,
-           Using<implementation> tag2 = Using<Implementation::Precise>{});
+           Using<mode> tag2 = Using<Numerics::PRECISE>{});
 
   template<typename F = FromFrame,
            typename T = ToFrame,
-           Implementation implementation = Implementation::Precise,
+           Numerics::Mode mode = Numerics::PRECISE,
            typename = std::enable_if_t<!std::is_same<F, T>::value>,
            typename = void>
   Rotation(Angle const& α,
@@ -214,7 +211,7 @@ class Rotation : public LinearMap<FromFrame, ToFrame> {
            Angle const& γ,
            CardanoAngles axes,
            DefinesFrame<FromFrame> tag1,
-           Using<implementation> tag2 = Using<Implementation::Precise>{});
+           Using<mode> tag2 = Using<Numerics::PRECISE>{});
 
   Sign Determinant() const override;
 
@@ -275,7 +272,6 @@ Rotation<FromFrame, ToFrame> operator*(
 using internal_rotation::CardanoAngles;
 using internal_rotation::DefinesFrame;
 using internal_rotation::EulerAngles;
-using internal_rotation::Implementation;
 using internal_rotation::Rotation;
 using internal_rotation::Using;
 

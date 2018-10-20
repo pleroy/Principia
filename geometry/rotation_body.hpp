@@ -68,11 +68,11 @@ FORCE_INLINE(inline) Quaternion ToQuaternion(R3x3Matrix<double> const& matrix) {
 }
 
 // Returns a rotation of |angle| around |axis|.  |axis| must be normalized.
-template<Implementation implementation = Implementation::Precise>
+template<Numerics::Mode mode = Numerics::PRECISE>
 Quaternion AngleAxis(Angle const& angle, R3Element<double> const& axis);
 
 template<>
-inline Quaternion AngleAxis<Implementation::Fast>(
+inline Quaternion AngleAxis<Numerics::FAST>(
     Angle const& angle,
     R3Element<double> const& axis) {
   double const half_angle_in_cycles = (0.5 / (2 * π * SIUnit<Angle>())) * angle;
@@ -83,7 +83,7 @@ inline Quaternion AngleAxis<Implementation::Fast>(
 }
 
 template<>
-inline Quaternion AngleAxis<Implementation::Precise>(
+inline Quaternion AngleAxis<Numerics::PRECISE>(
     Angle const& angle,
     R3Element<double> const& axis) {
   quantities::Angle const half_angle = 0.5 * angle;
@@ -103,13 +103,12 @@ Rotation<FromFrame, ToFrame>::Rotation(Quaternion const& quaternion)
     : quaternion_(quaternion) {}
 
 template<typename FromFrame, typename ToFrame>
-template<typename Scalar, typename F, typename T, Implementation implementation,
+template<typename Scalar, typename F, typename T, Numerics::Mode mode,
          typename>
 Rotation<FromFrame, ToFrame>::Rotation(quantities::Angle const& angle,
                                        Bivector<Scalar, FromFrame> const& axis,
-                                       Using<implementation> tag)
-    : Rotation(
-          AngleAxis<implementation>(angle, Normalize(axis).coordinates())) {}
+                                       Using<mode> tag)
+    : Rotation(AngleAxis<mode>(angle, Normalize(axis).coordinates())) {}
 
 template<typename FromFrame, typename ToFrame>
 template<int rank_x, int rank_y, int rank_z, typename F, typename T, typename>
@@ -142,39 +141,37 @@ Rotation<FromFrame, ToFrame>::Rotation(
 }
 
 template<typename FromFrame, typename ToFrame>
-template<typename Scalar, typename F, typename T, Implementation implementation,
+template<typename Scalar, typename F, typename T, Numerics::Mode mode,
          typename>
 Rotation<FromFrame, ToFrame>::Rotation(Angle const& angle,
                                        Bivector<Scalar, FromFrame> const& axis,
                                        DefinesFrame<ToFrame> tag1,
-                                       Using<implementation> tag2)
-    : Rotation(
-          AngleAxis<implementation>(-angle, Normalize(axis).coordinates())) {}
+                                       Using<mode> tag2)
+    : Rotation(AngleAxis<mode>(-angle, Normalize(axis).coordinates())) {}
 
 template<typename FromFrame, typename ToFrame>
-template<typename Scalar, typename F, typename T, Implementation implementation,
+template<typename Scalar, typename F, typename T, Numerics::Mode mode,
          typename, typename>
 Rotation<FromFrame, ToFrame>::Rotation(Angle const& angle,
                                        Bivector<Scalar, ToFrame> const& axis,
                                        DefinesFrame<FromFrame> tag1,
-                                       Using<implementation> tag2)
-    : Rotation(
-          AngleAxis<implementation>(angle, Normalize(axis).coordinates())) {}
+                                       Using<mode> tag2)
+    : Rotation(AngleAxis<mode>(angle, Normalize(axis).coordinates())) {}
 
 template<typename FromFrame, typename ToFrame>
-template<typename F, typename T, Implementation implementation, typename>
+template<typename F, typename T, Numerics::Mode mode, typename>
 Rotation<FromFrame, ToFrame>::Rotation(
     Angle const& α,
     Angle const& β,
     Angle const& γ,
     EulerAngles const axes,
     DefinesFrame<ToFrame> tag1,
-    Using<implementation> tag2)
+    Using<mode> tag2)
     : Rotation(
           Rotation<ToFrame, FromFrame>(α, β, γ, axes, tag1, tag2).Inverse()) {}
 
 template<typename FromFrame, typename ToFrame>
-template<typename F, typename T, Implementation implementation,
+template<typename F, typename T, Numerics::Mode mode,
          typename, typename>
 Rotation<FromFrame, ToFrame>::Rotation(
     Angle const& α,
@@ -182,28 +179,28 @@ Rotation<FromFrame, ToFrame>::Rotation(
     Angle const& γ,
     EulerAngles const axes,
     DefinesFrame<FromFrame> tag1,
-    Using<implementation> tag2)
-    : Rotation(AngleAxis<implementation>(
+    Using<mode> tag2)
+    : Rotation(AngleAxis<mode>(
                    α, BasisVector(BinaryCodedTernaryDigit(2, axes))) *
-               AngleAxis<implementation>(
+               AngleAxis<mode>(
                    β, BasisVector(BinaryCodedTernaryDigit(1, axes))) *
-               AngleAxis<implementation>(
+               AngleAxis<mode>(
                    γ, BasisVector(BinaryCodedTernaryDigit(0, axes)))) {}
 
 template<typename FromFrame, typename ToFrame>
-template<typename F, typename T, Implementation implementation, typename>
+template<typename F, typename T, Numerics::Mode mode, typename>
 Rotation<FromFrame, ToFrame>::Rotation(
     Angle const& α,
     Angle const& β,
     Angle const& γ,
     CardanoAngles const axes,
     DefinesFrame<ToFrame> tag1,
-    Using<implementation> tag2)
+    Using<mode> tag2)
     : Rotation(
           Rotation<ToFrame, FromFrame>(α, β, γ, axes, tag1, tag2).Inverse()) {}
 
 template<typename FromFrame, typename ToFrame>
-template<typename F, typename T, Implementation implementation,
+template<typename F, typename T, Numerics::Mode mode,
          typename, typename>
 Rotation<FromFrame, ToFrame>::Rotation(
     Angle const& α,
@@ -211,12 +208,12 @@ Rotation<FromFrame, ToFrame>::Rotation(
     Angle const& γ,
     CardanoAngles const axes,
     DefinesFrame<FromFrame> tag1,
-    Using<implementation> tag2)
-    : Rotation(AngleAxis<implementation>(
+    Using<mode> tag2)
+    : Rotation(AngleAxis<mode>(
                    α, BasisVector(BinaryCodedTernaryDigit(2, axes))) *
-               AngleAxis<implementation>(
+               AngleAxis<mode>(
                    β, BasisVector(BinaryCodedTernaryDigit(1, axes))) *
-               AngleAxis<implementation>(
+               AngleAxis<mode>(
                    γ, BasisVector(BinaryCodedTernaryDigit(0, axes)))) {}
 
 template<typename FromFrame, typename ToFrame>
