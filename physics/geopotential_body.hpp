@@ -383,8 +383,10 @@ Acceleration(OblateBody<Frame> const& body,
 }
 
 template<typename Frame>
-Geopotential<Frame>::Geopotential(not_null<OblateBody<Frame> const*> body)
-    : body_(body) {}
+Geopotential<Frame>::Geopotential(not_null<OblateBody<Frame> const*> body,
+                                  serialization::Numerics::Mode const mode)
+    : body_(body),
+      mode_(mode) {}
 
 template<typename Frame>
 Vector<Quotient<Acceleration, GravitationalParameter>, Frame>

@@ -5,6 +5,7 @@
 #include "geometry/named_quantities.hpp"
 #include "physics/oblate_body.hpp"
 #include "quantities/named_quantities.hpp"
+#include "serialization/numerics.pb.h"
 
 namespace principia {
 namespace physics {
@@ -26,7 +27,8 @@ using quantities::Square;
 template<typename Frame>
 class Geopotential {
  public:
-  explicit Geopotential(not_null<OblateBody<Frame> const*> body);
+  Geopotential(not_null<OblateBody<Frame> const*> body,
+               serialization::Numerics::Mode mode);
 
   Vector<Quotient<Acceleration, GravitationalParameter>, Frame>
   SphericalHarmonicsAcceleration(
@@ -91,6 +93,7 @@ class Geopotential {
                            Exponentiation<Length, -3> const& one_over_r³) const;
 
   not_null<OblateBody<Frame> const*> body_;
+  serialization::Numerics::Mode mode_;
 };
 
 }  // namespace internal_geopotential

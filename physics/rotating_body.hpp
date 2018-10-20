@@ -109,9 +109,13 @@ class RotatingBody : public MassiveBody {
   // a reference ellipsoid, and a longitude around the negative pole---except
   // for the Earth, the Moon, and the Sun.
   // In the case of the Earth, see geodetic vs. geocentric latitudes.
-  template<typename SurfaceFrame>
+  template<typename SurfaceFrame,
+           serialization::Numerics::Mode mode =
+               serialization::Numerics::PRECISE>
   Rotation<SurfaceFrame, Frame> FromSurfaceFrame(Instant const& t) const;
-  template<typename SurfaceFrame>
+  template<typename SurfaceFrame,
+           serialization::Numerics::Mode mode =
+               serialization::Numerics::PRECISE>
   Rotation<Frame, SurfaceFrame> ToSurfaceFrame(Instant const& t) const;
 
   // Returns the rotation at time |t|.
@@ -145,7 +149,8 @@ class RotatingBody : public MassiveBody {
 // dllexport.
 
 template<typename Frame>
-template<typename SurfaceFrame>
+template<typename SurfaceFrame,
+         serialization::Numerics::Mode mode>
 Rotation<SurfaceFrame, Frame> RotatingBody<Frame>::FromSurfaceFrame(
     Instant const& t) const {
   return Rotation<SurfaceFrame, Frame>(
@@ -154,14 +159,15 @@ Rotation<SurfaceFrame, Frame> RotatingBody<Frame>::FromSurfaceFrame(
       AngleAt(t),
       EulerAngles::ZXZ,
       DefinesFrame<SurfaceFrame>{},
-      Using<Implementation::Fast>{});
+      Using<mode>{});
 }
 
 template<typename Frame>
-template<typename SurfaceFrame>
+template<typename SurfaceFrame,
+         serialization::Numerics::Mode mode>
 Rotation<Frame, SurfaceFrame> RotatingBody<Frame>::ToSurfaceFrame(
     Instant const& t) const {
-  return FromSurfaceFrame<SurfaceFrame>(t).Inverse();
+  return FromSurfaceFrame<SurfaceFrame, mode>(t).Inverse();
 }
 
 }  // namespace internal_rotating_body

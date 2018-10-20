@@ -97,7 +97,8 @@ TEST_F(GeopotentialTest, J2) {
       OblateBody<World>(massive_body_parameters_,
                         rotating_body_parameters_,
                         OblateBody<World>::Parameters(/*j2=*/6, 1 * Metre));
-  Geopotential<World> const geopotential(&body);
+  Geopotential<World> const geopotential(&body,
+                                         serialization::Numerics::PRECISE);
 
   // The acceleration at a point located on the axis is along the axis.
   {
@@ -169,7 +170,8 @@ TEST_F(GeopotentialTest, C22S22) {
                         rotating_body_parameters_,
                         OblateBody<World>::Parameters::ReadFromMessage(
                             message, 1 * Metre));
-  Geopotential<World> const geopotential(&body);
+  Geopotential<World> const geopotential(&body,
+                                         serialization::Numerics::PRECISE);
 
   // The acceleration at a point located on the axis is along the axis for the
   // (2, 2) harmonics.
@@ -224,7 +226,8 @@ TEST_F(GeopotentialTest, J3) {
                         rotating_body_parameters_,
                         OblateBody<World>::Parameters::ReadFromMessage(
                             message, 1 * Metre));
-  Geopotential<World> const geopotential(&body);
+  Geopotential<World> const geopotential(&body,
+                                         serialization::Numerics::PRECISE);
 
   // The acceleration at a point located on the axis is along the axis.
   {
@@ -279,7 +282,8 @@ TEST_F(GeopotentialTest, TestVector) {
       rotating_body_parameters,
       OblateBody<ICRS>::Parameters::ReadFromMessage(
           earth_message.geopotential(), earth_reference_radius));
-  Geopotential<ICRS> const geopotential(&earth);
+  Geopotential<ICRS> const geopotential(&earth,
+                                        serialization::Numerics::PRECISE);
 
   // This test vector is from Kuga & Carrara, "Fortran- and C-codes for higher
   // order and degree geopotential computation",
