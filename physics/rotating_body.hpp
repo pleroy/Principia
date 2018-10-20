@@ -13,6 +13,7 @@
 #include "geometry/rotation.hpp"
 #include "quantities/named_quantities.hpp"
 #include "quantities/quantities.hpp"
+#include "serialization/numerics.pb.h"
 
 namespace principia {
 namespace physics {
@@ -22,7 +23,6 @@ using base::not_null;
 using geometry::AngularVelocity;
 using geometry::DefinesFrame;
 using geometry::EulerAngles;
-using geometry::Implementation;
 using geometry::Instant;
 using geometry::Rotation;
 using geometry::Using;
@@ -31,6 +31,7 @@ using quantities::Angle;
 using quantities::AngularFrequency;
 using quantities::Length;
 using quantities::si::Radian;
+using serialization::Numerics;
 
 template<typename Frame>
 class RotatingBody : public MassiveBody {
@@ -110,12 +111,10 @@ class RotatingBody : public MassiveBody {
   // for the Earth, the Moon, and the Sun.
   // In the case of the Earth, see geodetic vs. geocentric latitudes.
   template<typename SurfaceFrame,
-           serialization::Numerics::Mode mode =
-               serialization::Numerics::PRECISE>
+           Numerics::Mode mode = Numerics::PRECISE>
   Rotation<SurfaceFrame, Frame> FromSurfaceFrame(Instant const& t) const;
   template<typename SurfaceFrame,
-           serialization::Numerics::Mode mode =
-               serialization::Numerics::PRECISE>
+           Numerics::Mode mode = Numerics::PRECISE>
   Rotation<Frame, SurfaceFrame> ToSurfaceFrame(Instant const& t) const;
 
   // Returns the rotation at time |t|.
@@ -149,8 +148,7 @@ class RotatingBody : public MassiveBody {
 // dllexport.
 
 template<typename Frame>
-template<typename SurfaceFrame,
-         serialization::Numerics::Mode mode>
+template<typename SurfaceFrame, Numerics::Mode mode>
 Rotation<SurfaceFrame, Frame> RotatingBody<Frame>::FromSurfaceFrame(
     Instant const& t) const {
   return Rotation<SurfaceFrame, Frame>(
@@ -163,8 +161,7 @@ Rotation<SurfaceFrame, Frame> RotatingBody<Frame>::FromSurfaceFrame(
 }
 
 template<typename Frame>
-template<typename SurfaceFrame,
-         serialization::Numerics::Mode mode>
+template<typename SurfaceFrame, Numerics::Mode mode>
 Rotation<Frame, SurfaceFrame> RotatingBody<Frame>::ToSurfaceFrame(
     Instant const& t) const {
   return FromSurfaceFrame<SurfaceFrame, mode>(t).Inverse();
