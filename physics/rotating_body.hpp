@@ -154,7 +154,7 @@ Rotation<SurfaceFrame, Frame> RotatingBody<Frame>::FromSurfaceFrame(
       AngleAt(t),
       EulerAngles::ZXZ,
       DefinesFrame<SurfaceFrame>{},
-      Using<Implementation::Fast>{});
+      Using<Implementation::Precise>{});
 }
 
 template<typename Frame>

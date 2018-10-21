@@ -49,7 +49,10 @@ void BM_FastSinCos2πPoorlyPredictedLatency(benchmark::State& state) {
     double sin = π;
     double cos = 0.0;
     for (int i = 0; i < 1e3; ++i) {
-      FastSinCos2π(ThoroughlyMixTrigonometricLines(cos, sin), sin, cos);
+      auto a = ThoroughlyMixTrigonometricLines(cos, sin);
+      sin = std::sin(a);
+      cos = std::cos(a);
+//      FastSinCos2π(, sin, cos);
     }
   }
 }
@@ -59,7 +62,10 @@ void BM_FastSinCos2πWellPredictedLatency(benchmark::State& state) {
     double sin = π;
     double cos = 0.0;
     for (int i = 0; i < 1e3; ++i) {
-      FastSinCos2π(PoorlyMixTrigonometricLines(cos, sin), sin, cos);
+      auto a = PoorlyMixTrigonometricLines(cos, sin);
+      sin = std::sin(a);
+      cos = std::cos(a);
+//      FastSinCos2π(, sin, cos);
     }
   }
 }
@@ -76,7 +82,9 @@ void BM_FastSinCos2πThroughput(benchmark::State& state) {
     double sin;
     double cos;
     for (double const x : input) {
-      FastSinCos2π(x, sin, cos);
+//      FastSinCos2π(x, sin, cos);
+      sin = std::sin(x);
+      cos = std::cos(x);
     }
     benchmark::DoNotOptimize(sin);
     benchmark::DoNotOptimize(cos);
