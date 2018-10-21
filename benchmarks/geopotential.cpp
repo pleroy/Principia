@@ -20,6 +20,7 @@
 #include "quantities/parser.hpp"
 #include "quantities/quantities.hpp"
 #include "quantities/si.hpp"
+#include "serialization/numerics.pb.h"
 
 namespace principia {
 namespace physics {
@@ -48,6 +49,7 @@ using quantities::si::Degree;
 using quantities::si::Metre;
 using quantities::si::Radian;
 using quantities::si::Second;
+using serialization::Numerics;
 
 template<typename Frame>
 Vector<Quotient<Acceleration, GravitationalParameter>, Frame>
@@ -116,7 +118,8 @@ OblateBody<ICRS> MakeEarthBody(SolarSystem<ICRS> const& solar_system,
 }
 
 void BM_ComputeGeopotentialCpp(benchmark::State& state) {
-  int const max_degree = state.range_x();
+  int const max_degree = state.range(0);
+  Numerics::Mode const mode = static_cast<Numerics::Mode>(state.range(1));
 
   SolarSystem<ICRS> solar_system_2000(
             SOLUTION_DIR / "astronomy" / "sol_gravity_model.proto.txt",
@@ -124,7 +127,7 @@ void BM_ComputeGeopotentialCpp(benchmark::State& state) {
                 "sol_initial_state_jd_2451545_000000000.proto.txt");
 
   auto const earth = MakeEarthBody(solar_system_2000, max_degree);
-  Geopotential<ICRS> const geopotential(&earth);
+  Geopotential<ICRS> const geopotential(&earth, mode);
 
   std::mt19937_64 random(42);
   std::uniform_real_distribution<> distribution(-1e7, 1e7);
@@ -206,7 +209,16 @@ void BM_ComputeGeopotentialF90(benchmark::State& state) {
 
 #undef PRINCIPIA_CASE_COMPUTE_GEOPOTENTIAL_F90
 
-BENCHMARK(BM_ComputeGeopotentialCpp)->Arg(2)->Arg(3)->Arg(5)->Arg(10);
+BENCHMARK(BM_ComputeGeopotentialCpp)
+    ->Args({2, Numerics::FAST})
+    ->Args({3, Numerics::FAST})
+    ->Args({5, Numerics::FAST})
+    ->Args({10, Numerics::FAST});
+BENCHMARK(BM_ComputeGeopotentialCpp)
+    ->Args({2, Numerics::PRECISE})
+    ->Args({3, Numerics::PRECISE})
+    ->Args({5, Numerics::PRECISE})
+    ->Args({10, Numerics::PRECISE});
 BENCHMARK(BM_ComputeGeopotentialF90)->Arg(2)->Arg(3)->Arg(5)->Arg(10);
 
 }  // namespace physics

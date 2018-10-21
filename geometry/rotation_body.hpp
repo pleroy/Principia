@@ -68,7 +68,7 @@ FORCE_INLINE(inline) Quaternion ToQuaternion(R3x3Matrix<double> const& matrix) {
 }
 
 // Returns a rotation of |angle| around |axis|.  |axis| must be normalized.
-template<Numerics::Mode mode = Numerics::PRECISE>
+template<Numerics::Mode mode>
 Quaternion AngleAxis(Angle const& angle, R3Element<double> const& axis);
 
 template<>
