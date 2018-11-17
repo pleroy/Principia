@@ -1,4 +1,6 @@
 ﻿
+#pragma hdrstop("serialization.pch")
+
 #include "quantities/parser.hpp"
 
 #include <array>

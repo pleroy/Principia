@@ -1,4 +1,6 @@
 ﻿
+#pragma hdrstop("serialization.pch")
+
 #include <functional>
 #include <string>
 

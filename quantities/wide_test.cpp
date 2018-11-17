@@ -1,4 +1,6 @@
 
+#pragma hdrstop("serialization.pch")
+
 #include "quantities/wide.hpp"
 
 #include "gmock/gmock.h"

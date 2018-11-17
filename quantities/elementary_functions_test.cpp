@@ -1,4 +1,8 @@
 ﻿
+//#pragma hdrstop("C:\\Users\\phl\\Projects\\GitHub\\Principia\\Principia\\serialization\\Debug\\x64\\serialization.pch")
+
+#include "serialization/stdafx.h"
+
 #include <functional>
 #include <string>
 
