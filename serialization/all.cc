@@ -8,3 +8,4 @@
 #include "serialization/numerics.pb.h"
 #include "serialization/physics.pb.h"
 #include "serialization/quantities.pb.h"
+#include "all.h"
