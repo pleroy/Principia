@@ -1,5 +1,5 @@
 
-#pragma hdrstop("serialization.pch")
+#include "serialization/all.h"
 
 #include "quantities/wide.hpp"
 
