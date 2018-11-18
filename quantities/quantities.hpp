@@ -8,13 +8,16 @@
 #include <string>
 #include <type_traits>
 
+#include "base/macros.hpp"
 #include "base/not_constructible.hpp"
 #include "base/not_null.hpp"
 #include "quantities/dimensions.hpp"
 #include "quantities/generators.hpp"
 #include "quantities/traits.hpp"
 #include "quantities/wide.hpp"
+#if !PRINCIPIA_COMPILER_MSVC
 #include "serialization/quantities.pb.h"
+#endif
 
 namespace principia {
 namespace quantities {
