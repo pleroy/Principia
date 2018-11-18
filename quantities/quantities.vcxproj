@@ -17,7 +17,7 @@
     <ClCompile>
       <PrecompiledHeaderFile>precompiled/all.h</PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile>$(SolutionDir)precompiled\$(IntDir)precompiled.pch</PrecompiledHeaderOutputFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)serialization;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
