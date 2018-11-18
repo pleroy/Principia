@@ -45,9 +45,6 @@
     <ClInclude Include="journal.pb.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="all.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="geometry.pb.cc">
@@ -72,9 +69,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="journal.pb.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="all.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
