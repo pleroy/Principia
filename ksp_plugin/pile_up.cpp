@@ -122,6 +122,8 @@ void PileUp::NudgeParts() const {
     part->set_rigid_motion(
         RigidMotion<RigidPart, Barycentric>::MakeNonRotatingMotion(
             actual_part_degrees_of_freedom));
+  LOG_IF(ERROR, part->part_id() == 1270955523)<<"P:"<<actual_part_degrees_of_freedom;
+    CHECK_EQ(actual_part_degrees_of_freedom, part->degrees_of_freedom());
   }
 }
 

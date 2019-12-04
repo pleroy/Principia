@@ -75,7 +75,12 @@ RigidMotion<FromFrame, ToFrame>::Inverse() const {
   return RigidMotion<ToFrame, FromFrame>(
       rigid_transformation_.Inverse(),
       -orthogonal_map()(angular_velocity_of_to_frame_),
-      (*this)({FromFrame::origin, Velocity<FromFrame>()}).velocity());
+      -orthogonal_map()(velocity_of_to_frame_origin_ +
+                        angular_velocity_of_to_frame_ *
+                            (FromFrame::origin -
+                             rigid_transformation_.Inverse()(ToFrame::origin)) /
+                            Radian));
+      //(*this)({FromFrame::origin, Velocity<FromFrame>()}).velocity());
 }
 
 template<typename FromFrame, typename ToFrame>
@@ -128,8 +133,8 @@ RigidMotion<FromFrame, ToFrame> operator*(
       left.rigid_transformation() * right.rigid_transformation(),
       right.angular_velocity_of_to_frame_ +
           right.orthogonal_map().Inverse()(left.angular_velocity_of_to_frame_),
-      right.Inverse()(left.Inverse()(
-          {ToFrame::origin, Velocity<ToFrame>()})).velocity());
+      right.velocity_of_to_frame_origin_ +
+          right.orthogonal_map().Inverse()(left.velocity_of_to_frame_origin_));
 }
 
 template<typename FromFrame, typename ToFrame>

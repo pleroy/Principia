@@ -38,8 +38,8 @@ bool Player::Play(int const index) {
     return false;
   }
 
-#if 0
-  LOG_IF(ERROR, index > 3170000) << "index: " << index << "\n"
+#if 1
+  LOG_IF(ERROR, index > 247'896) << "index: " << index << "\n"
                                  << method_in->ShortDebugString() << "\n"
                                  << method_out_return->ShortDebugString();
 #endif

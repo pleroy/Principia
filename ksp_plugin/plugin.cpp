@@ -466,6 +466,34 @@ void Plugin::InsertOrKeepLoadedPart(
       vessel->AddPart(current_vessel->ExtractPart(part_id));
     }
   } else {
+    LOG_IF(ERROR, part_id == 1270955523)
+        << "PRM:" << part_rigid_motion.angular_velocity_of_to_frame() << " "
+        << part_rigid_motion.velocity_of_to_frame_origin()<<" "
+        <<part_rigid_motion.rigid_transformation().from_origin_<<" "
+        <<part_rigid_motion.rigid_transformation().to_origin_<<" "
+        <<part_rigid_motion.rigid_transformation().linear_map().Determinant()<<" "
+        <<part_rigid_motion.rigid_transformation().linear_map().rotation().quaternion();
+    LOG_IF(ERROR, part_id == 1270955523)
+        << "W2B:" << world_to_barycentric_motion.angular_velocity_of_to_frame()
+        << " " << world_to_barycentric_motion.velocity_of_to_frame_origin()<<" "
+        <<world_to_barycentric_motion.rigid_transformation().from_origin_<<" "
+        <<world_to_barycentric_motion.rigid_transformation().to_origin_<<" "
+        <<world_to_barycentric_motion.rigid_transformation().linear_map().Determinant()<<" "
+        <<world_to_barycentric_motion.rigid_transformation().linear_map().rotation().quaternion();
+
+
+    LOG_IF(ERROR, part_id == 1270955523)
+        << "W:"
+        << part_rigid_motion({RigidPart::origin, Velocity<RigidPart>{}});
+    LOG_IF(ERROR, part_id == 1270955523)
+        << "W2:"
+        << ((world_to_barycentric_motion *
+              part_rigid_motion)({RigidPart::origin, Velocity<RigidPart>{}}));
+    LOG_IF(ERROR, part_id == 1270955523)
+        << "W3:"
+        << world_to_barycentric_motion.Inverse()((world_to_barycentric_motion *
+              part_rigid_motion)({RigidPart::origin, Velocity<RigidPart>{}}));
+
     AddPart(vessel,
             part_id,
             name,

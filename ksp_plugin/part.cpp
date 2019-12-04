@@ -85,6 +85,7 @@ RigidMotion<RigidPart, Barycentric> const& Part::rigid_motion() const {
 }
 
 DegreesOfFreedom<Barycentric> Part::degrees_of_freedom() const {
+  LOG_IF(ERROR, part_id_ == 1270955523)<<rigid_motion_({RigidPart::origin, Velocity<RigidPart>{}});
   return rigid_motion_({RigidPart::origin, Velocity<RigidPart>{}});
 }
 
@@ -200,12 +201,17 @@ not_null<std::unique_ptr<Part>> Part::ReadFromMessage(
             degrees_of_freedom),
         std::move(deletion_callback));
   } else {
+    auto const degrees_of_freedom =
+        DegreesOfFreedom<Barycentric>::ReadFromMessage(
+            message.degrees_of_freedom());
     part = make_not_null_unique<Part>(
         message.part_id(),
         message.name(),
         InertiaTensor<RigidPart>::ReadFromMessage(message.inertia_tensor()),
-        RigidMotion<RigidPart, Barycentric>::ReadFromMessage(
-            message.rigid_motion()),
+        RigidMotion<RigidPart, Barycentric>::MakeNonRotatingMotion(
+            degrees_of_freedom),
+        //RigidMotion<RigidPart, Barycentric>::ReadFromMessage(
+        //    message.rigid_motion()),
         std::move(deletion_callback));
   }
 

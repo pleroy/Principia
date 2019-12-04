@@ -171,14 +171,26 @@ TEST_F(RigidMotionTest, GroupoidAssociativity) {
 
 TEST_F(RigidMotionTest, GroupoidAction) {
   auto const terrestrial_to_geocentric = geocentric_to_terrestrial_.Inverse();
-  auto const geocentric_to_lunar =
-      selenocentric_to_lunar_ * geocentric_to_selenocentric_;
-  DegreesOfFreedom<Lunar> const d1 =
-      (geocentric_to_lunar * terrestrial_to_geocentric)(degrees_of_freedom_);
-  DegreesOfFreedom<Lunar> const d2 =
-      geocentric_to_lunar(terrestrial_to_geocentric(degrees_of_freedom_));
-  EXPECT_THAT(d1.position() - Lunar::origin,
-              AlmostEquals(d2.position() - Lunar::origin, 5));
+  DegreesOfFreedom<Selenocentric> const d1 =
+      (geocentric_to_selenocentric_ *
+       terrestrial_to_geocentric)(degrees_of_freedom_);
+  DegreesOfFreedom<Selenocentric> const d2 = geocentric_to_selenocentric_(
+      terrestrial_to_geocentric(degrees_of_freedom_));
+  EXPECT_THAT(d1.position() - Selenocentric::origin,
+              AlmostEquals(d2.position() - Selenocentric::origin, 5));
+  EXPECT_THAT(d1.velocity(), AlmostEquals(d2.velocity(), 1));
+}
+
+TEST_F(RigidMotionTest, GroupoidAction2) {
+  auto const terrestrial_to_geocentric = geocentric_to_terrestrial_.Inverse();
+  DegreesOfFreedom<Geocentric> const d1 =
+      terrestrial_to_geocentric(degrees_of_freedom_);
+  DegreesOfFreedom<Geocentric> const d2 =
+      geocentric_to_selenocentric_.Inverse()(
+          (geocentric_to_selenocentric_ *
+           terrestrial_to_geocentric)(degrees_of_freedom_));
+  EXPECT_THAT(d1.position() - Geocentric::origin,
+              AlmostEquals(d2.position() - Geocentric::origin, 5));
   EXPECT_THAT(d1.velocity(), AlmostEquals(d2.velocity(), 1));
 }
 

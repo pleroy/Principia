@@ -69,7 +69,7 @@ class OrthogonalMap : public LinearMap<FromFrame, ToFrame> {
   static OrthogonalMap ReadFromMessage(
       serialization::OrthogonalMap const& message);
 
- private:
+ //private:
   OrthogonalMap(Sign const& determinant,
                 Rotation<FromFrame, ToFrame> const& rotation);
 

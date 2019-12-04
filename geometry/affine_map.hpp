@@ -32,7 +32,7 @@ class AffineMap final {
   void WriteToMessage(not_null<serialization::AffineMap*> message) const;
   static AffineMap ReadFromMessage(serialization::AffineMap const& message);
 
- private:
+ //private:
   Point<FromVector> from_origin_;
   Point<ToVector> to_origin_;
   LinearMap<FromFrame, ToFrame> linear_map_;
