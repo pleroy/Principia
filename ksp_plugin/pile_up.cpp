@@ -4,6 +4,7 @@
 #include <functional>
 #include <list>
 #include <map>
+#include <memory>
 
 #include "base/map_util.hpp"
 #include "geometry/grassmann.hpp"
@@ -11,6 +12,7 @@
 #include "geometry/named_quantities.hpp"
 #include "ksp_plugin/integrators.hpp"
 #include "ksp_plugin/part.hpp"
+#include "physics/euler_solver.hpp"
 #include "physics/rigid_motion.hpp"
 #include "quantities/named_quantities.hpp"
 
@@ -32,6 +34,7 @@ using geometry::Velocity;
 using geometry::Wedge;
 using physics::Anticommutator;
 using physics::DegreesOfFreedom;
+using physics::EulerSolver;
 using physics::RigidMotion;
 using quantities::AngularMomentum;
 using quantities::si::Radian;
@@ -104,8 +107,8 @@ Status PileUp::DeformAndAdvanceTime(Instant const& t) {
   return status;
 }
 
-void PileUp::RecomputeFromParts() {
-  RecomputeFromParts(parts_);
+void PileUp::RecomputeFromParts(Instant const& t) {
+  RecomputeFromParts(t, parts_);
 }
 
 void PileUp::WriteToMessage(not_null<serialization::PileUp*> message) const {
@@ -407,6 +410,7 @@ void PileUp::AppendToPart(DiscreteTrajectory<Barycentric>::Iterator it) const {
 }
 
 DegreesOfFreedom<Barycentric> PileUp::RecomputeFromParts(
+    Instant const& t,
     std::list<not_null<Part*>> const& parts) {
   // First compute the overall mass and centre of mass of the pile-up.  Also
   // compute the overall force applied to it.
@@ -461,6 +465,18 @@ DegreesOfFreedom<Barycentric> PileUp::RecomputeFromParts(
                   part_degrees_of_freedom.velocity()) *
             Radian;
   }
+
+  using RigidPileUpPrincipalAxes =
+      Frame<enum class RigidPileUpPrincipalAxesTag>;
+
+  auto const principal_axes =
+      inertia_tensor_.Diagonalize<RigidPileUpPrincipalAxes>();
+  auto const euler_solver =
+      std::make_unique<EulerSolver<RigidPileUp, RigidPileUpPrincipalAxes>>(
+          principal_axes.moments_of_inertia,
+          principal_axes.rotation(angular_momentum_),
+          principal_axes.rotation.Inverse(),
+          t);
 
   angular_momentum_ = pile_up_angular_momentum;
   inertia_tensor_ = pile_up_inertia_tensor;

@@ -35,7 +35,7 @@ using quantities::Time;
 // for corrections and adaptations.
 template<typename InertialFrame, typename PrincipalAxesFrame>
 class EulerSolver {
-  static_assert(InertialFrame::is_inertial);
+  static_assert(InertialFrame::is_inertial, "InertialFrame must be inertial");
 
  public:
   using AngularMomentumBivector = Bivector<AngularMomentum, PrincipalAxesFrame>;

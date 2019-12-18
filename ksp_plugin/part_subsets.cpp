@@ -67,7 +67,7 @@ void Subset<Part>::Properties::Collect(
   collected_ = true;
   if (EqualsExistingPileUp()) {
     PileUp& pile_up = *parts_.front()->containing_pile_up();
-    pile_up.RecomputeFromParts();
+    pile_up.RecomputeFromParts(t);
   } else {
     if (StrictSubsetOfExistingPileUp()) {
       for (auto const part : parts_) {

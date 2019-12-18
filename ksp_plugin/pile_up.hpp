@@ -80,7 +80,7 @@ class PileUp {
   Status DeformAndAdvanceTime(Instant const& t);
 
   // Recomputes the state of motion of the pile-up based on that of its parts.
-  void RecomputeFromParts();
+  void RecomputeFromParts(Instant const& t);
 
   // We'd like to return |not_null<std::shared_ptr<PileUp> const&|, but the
   // compiler gets confused when defining the corresponding lambda, and thinks
@@ -144,6 +144,7 @@ class PileUp {
   // Computes the angular momentum, inertia tensor and intrinsic force from the
   // list of parts.  Returns the barycentre of the parts.
   DegreesOfFreedom<Barycentric> RecomputeFromParts(
+      Instant const& t,
       std::list<not_null<Part*>> const& parts);
 
   // Wrapped in a |unique_ptr| to be moveable.
