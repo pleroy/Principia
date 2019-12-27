@@ -58,7 +58,8 @@ PileUp::PileUp(
       history_(make_not_null_unique<DiscreteTrajectory<Barycentric>>()),
       deletion_callback_(std::move(deletion_callback)) {
   LOG(INFO) << "Constructing pile up at " << this;
-  DegreesOfFreedom<Barycentric> const barycentre = RecomputeFromParts(parts_);
+  DegreesOfFreedom<Barycentric> const barycentre =
+      RecomputeFromParts(t, parts_);
   history_->Append(t, barycentre);
 
   RigidMotion<Barycentric, RigidPileUp> const barycentric_to_pile_up{
@@ -220,7 +221,7 @@ not_null<std::unique_ptr<PileUp>> PileUp::ReadFromMessage(
         part_id_to_part(part_id),
         DegreesOfFreedom<ApparentBubble>::ReadFromMessage(degrees_of_freedom));
   }
-  pile_up->RecomputeFromParts();
+  pile_up->RecomputeFromParts(pile_up->psychohistory_->back().time);
   return check_not_null(std::move(pile_up));
 }
 
