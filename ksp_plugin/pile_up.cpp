@@ -466,9 +466,13 @@ DegreesOfFreedom<Barycentric> PileUp::RecomputeFromParts(
                   part_degrees_of_freedom.velocity()) *
             Radian;
   }
+  angular_momentum_ = pile_up_angular_momentum;
+  inertia_tensor_ = pile_up_inertia_tensor;
+  intrinsic_force_ = pile_up_intrinsic_force;
 
-  using RigidPileUpPrincipalAxes =
-      Frame<enum class RigidPileUpPrincipalAxesTag>;
+  using RigidPileUpPrincipalAxes = Frame<enum class RigidPileUpPrincipalAxesTag,
+                                         NonInertial,
+                                         RigidPileUp::handedness>;
 
   auto const principal_axes =
       inertia_tensor_.Diagonalize<RigidPileUpPrincipalAxes>();
@@ -479,9 +483,6 @@ DegreesOfFreedom<Barycentric> PileUp::RecomputeFromParts(
           principal_axes.rotation.Inverse(),
           t);
 
-  angular_momentum_ = pile_up_angular_momentum;
-  inertia_tensor_ = pile_up_inertia_tensor;
-  intrinsic_force_ = pile_up_intrinsic_force;
   return pile_up_barycentre;
 }
 
