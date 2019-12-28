@@ -65,7 +65,7 @@ class InertiaTensor {
   template<typename PrincipalAxesFrame>
   struct PrincipalAxes {
     R3Element<MomentOfInertia> moments_of_inertia;
-    Rotation<Frame, PrincipalAxesFrame> rotation;
+    Rotation<PrincipalAxesFrame, Frame> rotation;
   };
 
   // Diagonalization is possible in any frame, but it's mostly used in a frame

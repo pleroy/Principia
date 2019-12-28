@@ -479,8 +479,8 @@ DegreesOfFreedom<Barycentric> PileUp::RecomputeFromParts(
   auto const euler_solver =
       std::make_unique<EulerSolver<RigidPileUp, RigidPileUpPrincipalAxes>>(
           principal_axes.moments_of_inertia,
-          principal_axes.rotation(angular_momentum_),
-          principal_axes.rotation.Inverse(),
+          angular_momentum_,
+          principal_axes.rotation,
           t);
 
   return pile_up_barycentre;
