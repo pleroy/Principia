@@ -12,7 +12,6 @@
 #include "geometry/named_quantities.hpp"
 #include "ksp_plugin/integrators.hpp"
 #include "ksp_plugin/part.hpp"
-#include "physics/euler_solver.hpp"
 #include "physics/rigid_motion.hpp"
 #include "quantities/named_quantities.hpp"
 
@@ -34,7 +33,6 @@ using geometry::Velocity;
 using geometry::Wedge;
 using physics::Anticommutator;
 using physics::DegreesOfFreedom;
-using physics::EulerSolver;
 using physics::RigidMotion;
 using quantities::AngularMomentum;
 using quantities::si::Radian;
@@ -470,13 +468,9 @@ DegreesOfFreedom<Barycentric> PileUp::RecomputeFromParts(
   inertia_tensor_ = pile_up_inertia_tensor;
   intrinsic_force_ = pile_up_intrinsic_force;
 
-  using RigidPileUpPrincipalAxes = Frame<enum class RigidPileUpPrincipalAxesTag,
-                                         NonInertial,
-                                         RigidPileUp::handedness>;
-
   auto const principal_axes =
       inertia_tensor_.Diagonalize<RigidPileUpPrincipalAxes>();
-  auto const euler_solver =
+  euler_solver_ =
       std::make_unique<EulerSolver<RigidPileUp, RigidPileUpPrincipalAxes>>(
           principal_axes.moments_of_inertia,
           angular_momentum_,

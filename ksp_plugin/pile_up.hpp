@@ -13,6 +13,7 @@
 #include "integrators/integrators.hpp"
 #include "physics/discrete_trajectory.hpp"
 #include "physics/ephemeris.hpp"
+#include "physics/euler_solver.hpp"
 #include "physics/inertia_tensor.hpp"
 #include "physics/massless_body.hpp"
 #include "ksp_plugin/frames.hpp"
@@ -37,6 +38,7 @@ using integrators::Integrator;
 using physics::DiscreteTrajectory;
 using physics::DegreesOfFreedom;
 using physics::Ephemeris;
+using physics::EulerSolver;
 using physics::InertiaTensor;
 using physics::MasslessBody;
 using physics::RelativeDegreesOfFreedom;
@@ -104,6 +106,11 @@ class PileUp {
   using AppendToPartTrajectory =
       void (Part::*)(Instant const&, DegreesOfFreedom<Barycentric> const&);
 
+  // The principal axes of the pile-up.
+  using RigidPileUpPrincipalAxes = Frame<enum class RigidPileUpPrincipalAxesTag,
+                                         NonInertial,
+                                         RigidPileUp::handedness>;
+
   // For deserialization.
   PileUp(std::list<not_null<Part*>>&& parts,
          Ephemeris<Barycentric>::AdaptiveStepParameters const&
@@ -159,6 +166,8 @@ class PileUp {
   Bivector<AngularMomentum, RigidPileUp> angular_momentum_;
   InertiaTensor<RigidPileUp> inertia_tensor_;
   Vector<Force, Barycentric> intrinsic_force_;
+  std::unique_ptr<EulerSolver<RigidPileUp, RigidPileUpPrincipalAxes>>
+      euler_solver_;
 
   // The |history_| is the past trajectory of the pile-up.  It is normally
   // integrated with a fixed step using |fixed_instance_|, except in the
