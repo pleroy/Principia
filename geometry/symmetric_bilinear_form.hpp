@@ -49,7 +49,7 @@ class SymmetricBilinearForm {
   template<typename Eigenframe>
   struct Eigensystem {
     SymmetricBilinearForm<Scalar, Eigenframe> form;
-    Rotation<Eigenframe, Frame> rotation;
+    Rotation<Frame, Eigenframe> rotation;
   };
 
   // Computes a form equivalent to the current one but diagonalized with
