@@ -610,7 +610,7 @@ TEST_F(PileUpTest, MidStepIntrinsicForce) {
                                              -168 * Metre / Pow<2>(Second),
                                              504 * Metre / Pow<2>(Second)}};
   p1_.increment_intrinsic_force(p1_.inertia_tensor().mass() * a);
-  pile_up.RecomputeFromParts();
+  pile_up.RecomputeFromParts(astronomy::J2000 + 1.5 * fixed_step);
   pile_up.AdvanceTime(astronomy::J2000 + 2 * fixed_step);
   pile_up.NudgeParts();
   EXPECT_THAT(p1_.degrees_of_freedom().velocity(),

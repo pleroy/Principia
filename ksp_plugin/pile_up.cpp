@@ -267,8 +267,8 @@ void PileUp::DeformPileUpIfNeeded() {
   if (apparent_part_rigid_motion_.empty()) {
     return;
   }
-  // A consistency check that |SetPartApparentDegreesOfFreedom| was called for
-  // all the parts.
+  // A consistency check that |SetPartApparentRigidMotion| was called for all
+  // the parts.
   // TODO(egg): I'd like to log some useful information on check failure, but I
   // need a clean way of getting the debug strings of all parts (rather than
   // giant self-evaluating lambdas).
@@ -302,7 +302,7 @@ void PileUp::DeformPileUpIfNeeded() {
           AngularVelocity<ApparentBubble>(),
           apparent_centre_of_mass.velocity());
 
-  // Now update the positions of the parts in the pile-up frame.
+  // Now update the motions of the parts in the pile-up frame.
   actual_part_rigid_motion_.clear();
   for (auto const& pair : apparent_part_rigid_motion_) {
     auto const part = pair.first;
