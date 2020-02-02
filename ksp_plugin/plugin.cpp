@@ -1464,6 +1464,10 @@ not_null<std::unique_ptr<Plugin>> Plugin::ReadFromMessage(
   return plugin;
 }
 
+std::string Plugin::WriteCelestialTrajectoriesToMathematica() const {
+  return ephemeris_->WriteCelestialTrajectoriesToMathematica();
+}
+
 Plugin::Plugin(
     Ephemeris<Barycentric>::FixedStepParameters const& history_parameters,
     Ephemeris<Barycentric>::AdaptiveStepParameters const&

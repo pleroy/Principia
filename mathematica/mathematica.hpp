@@ -32,8 +32,6 @@ std::string Option(std::string const& name, T const& right);
 template<typename T>
 std::string Assign(std::string const& name, T const& right);
 
-std::string Export(std::string const& file, std::string const& expression);
-
 template<typename T, typename U>
 std::string PlottableDataset(std::vector<T> const& x, std::vector<U> const& y);
 

@@ -155,6 +155,8 @@ class PolynomialInMonomialBasis<Value, Point<Argument>, degree_, Evaluator>
   static PolynomialInMonomialBasis ReadFromMessage(
       serialization::Polynomial const& message);
 
+  std::string ToMathematica() const;
+
  private:
   Coefficients coefficients_;
   Point<Argument> origin_;

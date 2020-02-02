@@ -10,6 +10,7 @@
 #include "geometry/cartesian_product.hpp"
 #include "geometry/serialization.hpp"
 #include "numerics/combinatorics.hpp"
+#include "mathematica/mathematica.hpp"
 
 namespace principia {
 namespace numerics {
@@ -276,6 +277,14 @@ ReadFromMessage(serialization::Polynomial const& message) {
   TupleSerializer<Coefficients, 0>::FillFromMessage(extension, coefficients);
   auto const origin = Point<Argument>::ReadFromMessage(extension.origin());
   return PolynomialInMonomialBasis(coefficients, origin);
+}
+
+template<typename Value, typename Argument, int degree_,
+         template<typename, typename, int> class Evaluator>
+std::string
+PolynomialInMonomialBasis<Value, Point<Argument>, degree_, Evaluator>::
+ToMathematica() const {
+  return mathematica::ToMathematica(coefficients_);
 }
 
 template<typename Value, typename Argument, int ldegree_, int rdegree_,

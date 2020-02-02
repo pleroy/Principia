@@ -437,6 +437,8 @@ class Plugin {
   static not_null<std::unique_ptr<Plugin>> ReadFromMessage(
       serialization::Plugin const& message);
 
+  std::string WriteCelestialTrajectoriesToMathematica() const;
+
  private:
   using GUIDToOwnedVessel = std::map<GUID, not_null<std::unique_ptr<Vessel>>>;
   using IndexToOwnedCelestial =
