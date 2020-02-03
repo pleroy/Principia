@@ -11,6 +11,7 @@
 #include "astronomy/epoch.hpp"
 #include "geometry/named_quantities.hpp"
 #include "glog/logging.h"
+#include "mathematica/mathematica.hpp"
 #include "numerics/fit_hermite_spline.hpp"
 
 namespace principia {
@@ -345,6 +346,20 @@ DiscreteTrajectory<Frame>::ReadFromMessage(
                     }));
   trajectory->FillSubTreeFromMessage(message, forks);
   return trajectory;
+}
+
+template<typename Frame>
+std::string DiscreteTrajectory<Frame>::WriteToMathematica() const {
+  std::string result;
+  for (auto const& [instant, degrees_of_freedom] : timeline_) {
+    result += mathematica::ToMathematica(
+                  std::tuple<Instant, Position<Frame>, Velocity<Frame>>{
+                      instant,
+                      degrees_of_freedom.position(),
+                      degrees_of_freedom.velocity()}) +
+              "\n";
+  }
+  return result;
 }
 
 template<typename Frame>

@@ -176,6 +176,8 @@ class DiscreteTrajectory : public Forkable<DiscreteTrajectory<Frame>,
       serialization::DiscreteTrajectory const& message,
       std::vector<DiscreteTrajectory<Frame>**> const& forks);
 
+  std::string WriteToMathematica() const;
+
  protected:
   // The API inherited from Forkable.
   not_null<DiscreteTrajectory*> that() override;

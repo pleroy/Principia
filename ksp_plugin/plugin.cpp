@@ -41,6 +41,7 @@
 #include "ksp_plugin/integrators.hpp"
 #include "ksp_plugin/part.hpp"
 #include "ksp_plugin/part_subsets.hpp"
+#include "mathematica/mathematica.hpp"
 #include "physics/apsides.hpp"
 #include "physics/barycentric_rotating_dynamic_frame_body.hpp"
 #include "physics/body_centred_body_direction_dynamic_frame.hpp"
@@ -1464,8 +1465,15 @@ not_null<std::unique_ptr<Plugin>> Plugin::ReadFromMessage(
   return plugin;
 }
 
-std::string Plugin::WriteCelestialTrajectoriesToMathematica() const {
-  return ephemeris_->WriteCelestialTrajectoriesToMathematica();
+std::string Plugin::WriteVesselTrajectoriesToMathematica() const {
+  std::string result;
+  for (auto const& [guid, vessel] : vessels_) {
+    result += mathematica::Assign(mathematica::Apply(
+                  "trajectory", {mathematica::Escape(guid)}),
+                  vessel->WriteHistoryToMathematica()) +
+              "\n";
+  }
+  return result;
 }
 
 Plugin::Plugin(

@@ -483,6 +483,10 @@ void Vessel::MakeSynchronous() {
   synchronous_ = true;
 }
 
+std::string Vessel::WriteHistoryToMathematica() const {
+  return history_->WriteToMathematica();
+}
+
 Vessel::Vessel()
     : body_(),
       prediction_adaptive_step_parameters_(DefaultPredictionParameters()),

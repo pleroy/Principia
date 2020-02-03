@@ -695,8 +695,8 @@ TEST_F(InterfaceTest, DISABLED_SECULAR_DeserializePluginDebug) {
   }
   EXPECT_THAT(plugin, NotNull());
   {
-    OFStream file(TEMP_DIR / "continuous_trajectories.wl");
-    file << plugin->WriteCelestialTrajectoriesToMathematica();
+    OFStream file(TEMP_DIR / "vessel_trajectories.wl");
+    file << plugin->WriteVesselTrajectoriesToMathematica();
   }
 
   // Write that plugin back to another file with the same format.

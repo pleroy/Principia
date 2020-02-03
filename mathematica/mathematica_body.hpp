@@ -129,12 +129,12 @@ std::string ToMathematica(Quantity<D> const& quantity) {
 }
 
 template<typename S, typename F>
-std::string ToMathematica(Vector<S, F> const & vector) {
+std::string ToMathematica(Vector<S, F> const& vector) {
   return ToMathematica(vector.coordinates());
 }
 
 template<typename V>
-std::string ToMathematica(Point<V> const & point) {
+std::string ToMathematica(Point<V> const& point) {
   return ToMathematica(point - Point<V>());
 }
 

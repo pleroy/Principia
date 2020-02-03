@@ -185,6 +185,8 @@ class Vessel {
   static void MakeAsynchronous();
   static void MakeSynchronous();
 
+  std::string WriteHistoryToMathematica() const;
+
  protected:
   // For mocking.
   Vessel();

@@ -6,12 +6,18 @@
 #include "geometry/interval.hpp"
 #include "geometry/named_quantities.hpp"
 #include "physics/body.hpp"
-#include "physics/discrete_trajectory.hpp"
 #include "physics/massive_body.hpp"
 #include "quantities/named_quantities.hpp"
 #include "quantities/quantities.hpp"
 
 namespace principia {
+
+namespace physics {
+FORWARD_DECLARE_FROM(discrete_trajectory,
+                     TEMPLATE(typename Frame) class,
+                     DiscreteTrajectory);
+}  // namespace physics
+
 namespace astronomy {
 namespace internal_orbital_elements {
 
