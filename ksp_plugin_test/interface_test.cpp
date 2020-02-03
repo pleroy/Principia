@@ -92,6 +92,7 @@ using testing_utilities::EqualsProto;
 using testing_utilities::FillUniquePtr;
 using testing_utilities::ReadFromBinaryFile;
 using testing_utilities::ReadFromHexadecimalFile;
+using testing_utilities::ReadLinesFromBase64File;
 using testing_utilities::ReadLinesFromHexadecimalFile;
 using ::testing::AllOf;
 using ::testing::ByMove;
@@ -674,7 +675,7 @@ TEST_F(InterfaceTest, DISABLED_SECULAR_DeserializePluginDebug) {
   // Read a plugin from a file containing only the "serialized_plugin = " lines.
   {
     PushDeserializer* deserializer = nullptr;
-    auto const lines = ReadLinesFromHexadecimalFile(
+    auto const lines = ReadLinesFromBase64File(
         R"(C:\Users\phl.mantegna\Downloads\0 1958.sfs)");
     for (std::string const& line : lines) {
       principia__DeserializePlugin(line.c_str(),
