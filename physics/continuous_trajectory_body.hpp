@@ -342,19 +342,6 @@ bool ContinuousTrajectory<Frame>::ReadFromCheckpoint(
 }
 
 template<typename Frame>
-std::string
-ContinuousTrajectory<Frame>::WriteCelestialTrajectoriesToMathematica() const {
-  std::string result;
-  for (auto const& pair : polynomials_) {
-    Time const t = pair.t_max - Instant{};
-    std::string const p = pair.polynomial->ToMathematica();
-    result +=
-        mathematica::ToMathematica(std::tuple<Time, std::string>{t, p}) + "\n";
-  }
-  return result;
-}
-
-template<typename Frame>
 ContinuousTrajectory<Frame>::ContinuousTrajectory()
     : checkpointer_(/*reader=*/nullptr, /*writer=*/nullptr) {}
 

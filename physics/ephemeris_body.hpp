@@ -19,7 +19,6 @@
 #include "integrators/integrators.hpp"
 #include "integrators/ordinary_differential_equations.hpp"
 #include "numerics/hermite3.hpp"
-#include "mathematica/mathematica.hpp"
 #include "physics/continuous_trajectory.hpp"
 #include "quantities/elementary_functions.hpp"
 #include "quantities/named_quantities.hpp"
@@ -831,19 +830,6 @@ Ephemeris<Frame>::Guard::operator=(Guard&& other) {
     other.ephemeris_ = nullptr;
   }
   return *this;
-}
-
-template<typename Frame>
-std::string Ephemeris<Frame>::WriteCelestialTrajectoriesToMathematica() const {
-  std::string result;
-  for (auto const& [body, trajectory] : bodies_to_trajectories_) {
-    result +=
-        mathematica::Assign(
-            mathematica::Apply("body", {mathematica::Escape(body->name())}),
-            trajectory->WriteCelestialTrajectoriesToMathematica()) +
-        "\n";
-  }
-  return result;
 }
 
 template<typename Frame>

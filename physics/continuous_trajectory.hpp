@@ -106,9 +106,7 @@ class ContinuousTrajectory : public Trajectory<Frame> {
            typename = std::enable_if_t<base::is_serializable_v<F>>>
   bool ReadFromCheckpoint(serialization::ContinuousTrajectory const& message);
 
-  std::string WriteCelestialTrajectoriesToMathematica() const;
-
-protected:
+ protected:
   // For mocking.
   ContinuousTrajectory();
 

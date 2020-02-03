@@ -54,8 +54,6 @@ class Polynomial {
   template<template<typename, typename, int> class Evaluator>
   static not_null<std::unique_ptr<Polynomial>> ReadFromMessage(
       serialization::Polynomial const& message);
-
-  virtual std::string ToMathematica() const = 0;
 };
 
 template<typename Value, typename Argument, int degree_,
@@ -88,8 +86,6 @@ class PolynomialInMonomialBasis : public Polynomial<Value, Argument> {
       not_null<serialization::Polynomial*> message) const override;
   static PolynomialInMonomialBasis ReadFromMessage(
       serialization::Polynomial const& message);
-
-  std::string ToMathematica() const override;
 
  private:
   Coefficients coefficients_;
@@ -158,8 +154,6 @@ class PolynomialInMonomialBasis<Value, Point<Argument>, degree_, Evaluator>
       not_null<serialization::Polynomial*> message) const override;
   static PolynomialInMonomialBasis ReadFromMessage(
       serialization::Polynomial const& message);
-
-  std::string ToMathematica() const override;
 
  private:
   Coefficients coefficients_;

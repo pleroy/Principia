@@ -300,8 +300,6 @@ class Ephemeris {
     Instant t_min_;
   };
 
-  std::string WriteCelestialTrajectoriesToMathematica() const;
-
  protected:
   // For mocking purposes, leaves everything uninitialized and uses the given
   // |integrator|.
