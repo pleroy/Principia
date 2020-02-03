@@ -837,10 +837,11 @@ template<typename Frame>
 std::string Ephemeris<Frame>::WriteCelestialTrajectoriesToMathematica() const {
   std::string result;
   for (auto const& [body, trajectory] : bodies_to_trajectories_) {
-    result += mathematica::Assign(
-                  mathematica::Apply("body", mathematica::Escape(body->name())),
-                  trajectory->WriteCelestialTrajectoriesToMathematica()) +
-              "\n";
+    result +=
+        mathematica::Assign(
+            mathematica::Apply("body", {mathematica::Escape(body->name())}),
+            trajectory->WriteCelestialTrajectoriesToMathematica()) +
+        "\n";
   }
   return result;
 }

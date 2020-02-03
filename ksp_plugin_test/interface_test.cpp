@@ -675,21 +675,21 @@ TEST_F(InterfaceTest, DISABLED_SECULAR_DeserializePluginDebug) {
   {
     PushDeserializer* deserializer = nullptr;
     auto const lines = ReadLinesFromHexadecimalFile(
-        R"(C:\Users\phl.mantegna\Downloads\2038-long-load_erdos\2038-long-load_erdos.sfs)");
+        R"(C:\Users\phl.mantegna\Downloads\0 1958.sfs)");
     for (std::string const& line : lines) {
       principia__DeserializePlugin(line.c_str(),
                                    line.size(),
                                    &deserializer,
                                    &plugin,
                                    /*compressor=*/"gipfeli",
-                                   "hexadecimal");
+                                   "base64");
     }
     principia__DeserializePlugin(lines.front().c_str(),
                                  0,
                                  &deserializer,
                                  &plugin,
                                  /*compressor=*/"gipfeli",
-                                 "hexadecimal");
+                                 "base64");
     LOG(ERROR) << "Deserialization complete";
   }
   EXPECT_THAT(plugin, NotNull());

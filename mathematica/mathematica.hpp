@@ -86,7 +86,6 @@ typename RemoveUnit<std::vector<T>>::Unitless ExpressIn(
 using internal_mathematica::Apply;
 using internal_mathematica::Assign;
 using internal_mathematica::Escape;
-using internal_mathematica::Export;
 using internal_mathematica::ExpressIn;
 using internal_mathematica::Option;
 using internal_mathematica::PlottableDataset;
