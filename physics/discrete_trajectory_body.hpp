@@ -13,6 +13,7 @@
 #include "glog/logging.h"
 #include "mathematica/mathematica.hpp"
 #include "numerics/fit_hermite_spline.hpp"
+#include "quantities/si.hpp"
 
 namespace principia {
 namespace physics {
@@ -60,6 +61,8 @@ using astronomy::InfiniteFuture;
 using astronomy::InfinitePast;
 using base::make_not_null_unique;
 using numerics::FitHermiteSpline;
+using quantities::si::Metre;
+using quantities::si::Second;
 
 template<typename Frame>
 not_null<DiscreteTrajectory<Frame>*>
@@ -350,16 +353,16 @@ DiscreteTrajectory<Frame>::ReadFromMessage(
 
 template<typename Frame>
 std::string DiscreteTrajectory<Frame>::WriteToMathematica() const {
-  std::string result;
+  std::vector<std::string> entries;
   for (auto const& [instant, degrees_of_freedom] : timeline_) {
-    result += mathematica::ToMathematica(
-                  std::tuple<Instant, Position<Frame>, Velocity<Frame>>{
-                      instant,
-                      degrees_of_freedom.position(),
-                      degrees_of_freedom.velocity()}) +
-              "\n";
+    auto const t = mathematica::ExpressIn(Second, instant);
+    auto const q = mathematica::ExpressIn(Metre, degrees_of_freedom.position());
+    auto const p =
+        mathematica::ExpressIn(Metre / Second, degrees_of_freedom.velocity());
+    entries.push_back(mathematica::ToMathematica(std::make_tuple(t, q, p)) +
+                      "\n");
   }
-  return result;
+  return mathematica::ToMathematica(entries);
 }
 
 template<typename Frame>

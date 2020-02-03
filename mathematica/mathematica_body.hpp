@@ -185,6 +185,12 @@ struct RemoveUnit<Vector<T, F>> {
   using Unitless = Vector<typename RemoveUnit<T>::Unitless, F>;
 };
 
+template<typename V>
+struct RemoveUnit<Point<V>> {
+  using Unit = typename RemoveUnit<V>::Unit;
+  using Unitless = typename RemoveUnit<V>::Unitless;
+};
+
 template<typename T>
 struct RemoveUnit<std::vector<T>> {
   using Unit = typename RemoveUnit<T>::Unit;
@@ -193,9 +199,16 @@ struct RemoveUnit<std::vector<T>> {
 
 template<typename T>
 typename RemoveUnit<T>::Unitless ExpressIn(
-    typename RemoveUnit<T>::Unit const& unit,
-    T const& value) {
+  typename RemoveUnit<T>::Unit const& unit,
+  T const& value) {
   return value / unit;
+}
+
+template<typename V>
+typename RemoveUnit<Point<V>>::Unitless ExpressIn(
+  typename RemoveUnit<V>::Unit const& unit,
+  Point<V> const& value) {
+  return (value - Point<V>()) / unit;
 }
 
 template<typename T>
