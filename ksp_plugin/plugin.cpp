@@ -41,6 +41,7 @@
 #include "ksp_plugin/integrators.hpp"
 #include "ksp_plugin/part.hpp"
 #include "ksp_plugin/part_subsets.hpp"
+#include "mathematica/mathematica.hpp"
 #include "physics/apsides.hpp"
 #include "physics/barycentric_rotating_dynamic_frame_body.hpp"
 #include "physics/body_centred_body_direction_dynamic_frame.hpp"
@@ -128,6 +129,10 @@ Plugin::Plugin(std::string const& game_epoch,
 }
 
 Plugin::~Plugin() {
+  if (!mma_trace_.empty()) {
+    base::OFStream file(TEMP_DIR / "plugin.wl");
+    file << mathematica::Assign("plugin", mma_trace_);
+  }
   // We must manually destroy the vessels, triggering the destruction of the
   // parts, which have callbacks to remove themselves from |part_id_to_vessel_|,
   // which must therefore still exist.  This also causes the parts to be
@@ -492,6 +497,13 @@ void Plugin::InsertOrKeepLoadedPart(
   part->set_mass(mass);
   part->set_is_solid_rocket_motor(is_solid_rocket_motor);
   part->set_inertia_tensor(inertia_tensor);
+  AngularVelocity<RigidPart> w =
+      part_rigid_motion.angular_velocity_of_to_frame();
+  Bivector<quantities::AngularMomentum, RigidPart> l1 =
+      part->inertia_tensor() * w;
+  auto /*Bivector<quantities::AngularMomentum, World>*/ l2 =
+      part_rigid_motion.rigid_transformation().linear_map()(l1);
+  LOG(WARNING)<<"Part "<<part->part_id()<<" L1="<<l1<<" L2="<<l2;
 }
 
 void Plugin::ApplyPartIntrinsicForce(PartId const part_id,

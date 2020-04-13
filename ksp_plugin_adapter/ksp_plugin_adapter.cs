@@ -1082,6 +1082,7 @@ public partial class PrincipiaPluginAdapter
               (WXYZ)(UnityEngine.QuaternionD)part.rb.rotation,
               (XYZ)(Vector3d)part.rb.angularVelocity,
               Δt);
+          Log.Warning(part.name + " I=" + part.rb.inertiaTensor.ToString("R"));
           if (part_id_to_intrinsic_torque_.ContainsKey(part.flightID)) {
             plugin_.PartApplyIntrinsicTorque(
                 part.flightID,
@@ -1238,6 +1239,10 @@ public partial class PrincipiaPluginAdapter
                 (WXYZ)(UnityEngine.QuaternionD)part.rb.rotation,
                 (XYZ)(Vector3d)part.rb.angularVelocity,
                 main_body_degrees_of_freedom);
+          Log.Warning(part.name + " " + part.rb.angularVelocity.ToString("R") +
+                      " " + part.rb.rotation.ToString("R"));
+          Log.Warning(part.name + " " + part.rb.position.ToString("R") + " " +
+                      part.rb.velocity.ToString("R"));
         }
       }
     }

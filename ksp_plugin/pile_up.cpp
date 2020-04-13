@@ -5,12 +5,15 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <tuple>
 #include <utility>
 
+#include "base/file.hpp"
 #include "base/map_util.hpp"
 #include "geometry/identity.hpp"
 #include "ksp_plugin/integrators.hpp"
 #include "ksp_plugin/part.hpp"
+#include "mathematica/mathematica.hpp"
 
 namespace principia {
 namespace ksp_plugin {
@@ -79,6 +82,10 @@ PileUp::PileUp(
 
 PileUp::~PileUp() {
   LOG(INFO) << "Destroying pile up at " << this;
+  if (!mma_trace_.empty()) {
+    base::OFStream file(TEMP_DIR / "pile_up.wl");
+    file << mathematica::Assign("pileUp", mma_trace_);
+  }
   if (deletion_callback_ != nullptr) {
     deletion_callback_();
   }
@@ -430,6 +437,14 @@ void PileUp::DeformPileUpIfNeeded(Instant const& t) {
       angular_momentum_ /
       Identity<ApparentPileUp, NonRotatingPileUp>()(inertia_tensor);
 
+  if (!conserve_angular_momentum) {
+    mma_trace_.push_back(
+        mathematica::ToMathematica<Instant,
+                                   decltype(angular_momentum_),
+                                   decltype(apparent_angular_momentum)>(
+            {t, angular_momentum_, apparent_angular_momentum}));
+  }
+
   // In the |EquivalentRigidPileUp| reference frame, a rigid body with the same
   // inertia and angular momentum as the pile up would be immobile.  We use this
   // intermediate frame to apply a rigid rotational correction to the motions of
@@ -443,7 +458,8 @@ void PileUp::DeformPileUpIfNeeded(Instant const& t) {
               ApparentPileUp::origin,
               EquivalentRigidPileUp::origin,
               OrthogonalMap<ApparentPileUp, EquivalentRigidPileUp>::Identity()),
-          apparent_equivalent_angular_velocity,
+          conserve_angular_momentum ? apparent_equivalent_angular_velocity
+                                    : ApparentPileUp::nonrotating,
           ApparentPileUp::unmoving);
   RigidMotion<NonRotatingPileUp, EquivalentRigidPileUp> const
       actual_pile_up_equivalent_rotation(
@@ -452,7 +468,8 @@ void PileUp::DeformPileUpIfNeeded(Instant const& t) {
               EquivalentRigidPileUp::origin,
               OrthogonalMap<NonRotatingPileUp,
                             EquivalentRigidPileUp>::Identity()),
-          actual_equivalent_angular_velocity,
+          conserve_angular_momentum ? actual_equivalent_angular_velocity
+                                    : NonRotatingPileUp::nonrotating,
           NonRotatingPileUp::unmoving);
   RigidMotion<ApparentBubble, NonRotatingPileUp> const
       apparent_bubble_to_pile_up_motion =
@@ -469,6 +486,17 @@ void PileUp::DeformPileUpIfNeeded(Instant const& t) {
         part, apparent_bubble_to_pile_up_motion * apparent_part_rigid_motion);
   }
   apparent_part_rigid_motion_.clear();
+
+ std::stringstream s;
+  s << "Apparent: " << apparent_angular_momentum << "\n"
+    << "norm: " << apparent_angular_momentum.Norm() << "\n"
+    << "Actual: " << angular_momentum_ << "\n"
+    << "norm: " << angular_momentum_.Norm() << "\n"
+    << u8"Δ: "
+    << (angular_momentum_ - Identity<ApparentPileUp, NonRotatingPileUp>()(
+                                apparent_angular_momentum))
+           .Norm();
+  trace = s.str();
 
   MakeEulerSolver(Identity<ApparentPileUp, NonRotatingPileUp>()(inertia_tensor),
                   t);
@@ -595,6 +623,8 @@ PileUpFuture::PileUpFuture(not_null<PileUp const*> const pile_up,
                            std::future<Status> future)
     : pile_up(pile_up),
       future(std::move(future)) {}
+
+bool PileUp::conserve_angular_momentum = true;
 
 }  // namespace internal_pile_up
 }  // namespace ksp_plugin

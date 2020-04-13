@@ -9,6 +9,7 @@
 #include "journal/profiles.hpp"
 #include "ksp_plugin/identification.hpp"
 #include "ksp_plugin/iterators.hpp"
+#include "mathematica/mathematica.hpp"
 #include "quantities/named_quantities.hpp"
 #include "quantities/quantities.hpp"
 #include "quantities/si.hpp"
@@ -126,6 +127,17 @@ void __cdecl principia__PartSetApparentRigidMotion(
       part_id,
       MakePartRigidMotion(degrees_of_freedom, rotation, angular_velocity),
       FromQP<DegreesOfFreedom<World>>(main_body_degrees_of_freedom));
+
+  if (!PileUp::conserve_angular_momentum) {
+    plugin->mma_trace_.push_back(
+        mathematica::
+            ToMathematica<PartId, Instant, AngularVelocity<World>, Quaternion>(
+                {part_id,
+                 plugin->CurrentTime(),
+                 FromXYZ<AngularVelocity<World>>(angular_velocity),
+                 FromWXYZ(rotation)}));
+  }
+
   return m.Return();
 }
 

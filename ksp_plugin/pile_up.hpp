@@ -94,6 +94,9 @@ class PileUp {
 
   virtual ~PileUp();
 
+  std::string trace;
+  static bool conserve_angular_momentum;
+
   // This class is moveable.
   PileUp(PileUp&& pile_up) = default;
   PileUp& operator=(PileUp&& pile_up) = default;
@@ -227,6 +230,8 @@ class PileUp {
   PartTo<RigidTransformation<RigidPart, PileUpPrincipalAxes>> rigid_pile_up_;
   std::optional<EulerSolver<NonRotatingPileUp, PileUpPrincipalAxes>>
       euler_solver_;
+
+  std::vector<std::string> mma_trace_;
 
   // Called in the destructor.
   std::function<void()> deletion_callback_;

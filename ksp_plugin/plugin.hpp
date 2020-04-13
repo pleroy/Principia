@@ -95,6 +95,8 @@ using Index = int;
 
 class Plugin {
  public:
+  std::vector<std::string> mma_trace_;
+
   Plugin() = delete;
   Plugin(Plugin const&) = delete;
   Plugin(Plugin&&) = delete;
