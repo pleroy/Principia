@@ -59,8 +59,7 @@ static constexpr int number_of_frequencies = 10;
 class AnalyticalSeriesTest : public ::testing::Test {
  protected:
   AnalyticalSeriesTest()
-      : logger_(TEMP_DIR / "analytical_series.wl",
-               /*make_unique=*/false) {
+      : logger_(TEMP_DIR / "analytical_series.wl", /*make_unique=*/false) {
     google::LogToStderr();
   }
 
@@ -72,6 +71,9 @@ class AnalyticalSeriesTest : public ::testing::Test {
     Instant const t_max = trajectory.t_max();
     auto const piecewise_poisson_series =
         trajectory.ToPiecewisePoissonSeries<degree>(t_min, t_max);
+    logger_.Set(absl::StrCat("trajectory", celestial),
+                piecewise_poisson_series,
+                mathematica::ExpressIn(Metre, Second, Radian));
 
     int step = 0;
 
@@ -122,7 +124,9 @@ class AnalyticalSeriesTest : public ::testing::Test {
         angular_frequency_calculator,
         apodization::Dirichlet<EstrinEvaluator>(t_min, t_max),
         t_min,
-        t_max);
+        t_max,
+        celestial,
+        logger_);
   }
 
   mathematica::Logger logger_;
@@ -156,7 +160,10 @@ TEST_F(AnalyticalSeriesTest, CompactRepresentation) {
           /*step=*/10 * Minute));
   ephemeris->Prolong(solar_system_at_j2000.epoch() + 0.25 * JulianYear);
 
-  for (auto const& celestial : {"Io", "Jupiter", "Phobos", "Pluto"}) {
+  logger_.Set("tMin", ephemeris->t_min(), mathematica::ExpressIn(Second));
+  logger_.Set("tMax", ephemeris->t_max(), mathematica::ExpressIn(Second));
+
+  for (auto const& celestial : {"Moon"}) {
     auto const start = std::chrono::system_clock::now();
     auto const& trajectory =
         solar_system_at_j2000.trajectory(*ephemeris, celestial);

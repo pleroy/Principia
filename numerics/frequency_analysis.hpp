@@ -1,10 +1,12 @@
 ﻿
 #pragma once
 
+#include <string_view>
 #include <type_traits>
 
 #include "geometry/interval.hpp"
 #include "geometry/named_quantities.hpp"
+#include "mathematica/mathematica.hpp"
 #include "numerics/poisson_series.hpp"
 #include "quantities/named_quantities.hpp"
 
@@ -75,7 +77,9 @@ IncrementalProjection(Function const& function,
                       AngularFrequencyCalculator const& calculator,
                       PoissonSeries<double, wdegree_, Evaluator> const& weight,
                       Instant const& t_min,
-                      Instant const& t_max);
+                      Instant const& t_max,
+                      std::string_view celestial,
+                      mathematica::Logger& logger);
 
 }  // namespace internal_frequency_analysis
 
