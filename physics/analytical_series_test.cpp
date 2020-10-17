@@ -103,7 +103,6 @@ class AnalyticalSeriesTest : public ::testing::Test {
                                                   1 << log2_number_of_samples>>(
                 residuals, Δt);
         auto const mode = fft->Mode();
-        LOG(ERROR)<<"mode="<<mode;
         Interval<Time> const period{2 * π * Radian / mode.max,
                                     2 * π * Radian / mode.min};
         LOG(INFO) << "period=" << period;
@@ -120,7 +119,8 @@ class AnalyticalSeriesTest : public ::testing::Test {
           max_residual =
               std::max(max_residual, residual(t_min + i * Δt).Norm());
         }
-        LOG(INFO) << "max_residual=" << max_residual;
+        LOG(INFO) << "max_residual=" << max_residual
+                  << (max_residual > acceptable_residual ? " ***" : "");
         return std::nullopt;
       }
     };
@@ -164,7 +164,7 @@ TEST_F(AnalyticalSeriesTest, CompactRepresentation) {
           /*step=*/10 * Minute));
   ephemeris->Prolong(solar_system_at_j2000.epoch() + 0.25 * JulianYear);
 
-  for (auto const& celestial : {"Io", "Moon", "Pluto"}) {
+  for (auto const& celestial : solar_system_at_j2000.names()) {
     LOG(INFO) << "---------- " << celestial;
     auto const& celestial_trajectory =
         solar_system_at_j2000.trajectory(*ephemeris, celestial);
