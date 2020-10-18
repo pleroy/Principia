@@ -130,8 +130,15 @@ IncrementalProjection(Function const& function,
   // This is logically Q in the QR decomposition of basis.
   std::vector<PoissonSeries<Normalized, degree_, Evaluator>> q;
 
+#define USE_INTEGRATE 0
   auto const a₀ = basis[0];
+#if USE_INTEGRATE
+  auto const r₀₀ = Sqrt((PointwiseInnerProduct(a₀, a₀) * weight)
+                         .Integrate(t_min, t_max) /
+                     (t_max - t_min));
+#else
   auto const r₀₀ = a₀.Norm(weight, t_min, t_max);
+#endif
   q.push_back(a₀ / r₀₀);
 
   logger.Append(absl::StrCat("basis[", iter, "]"),
@@ -144,7 +151,7 @@ IncrementalProjection(Function const& function,
                 PointwiseInnerProduct(a₀, a₀) * weight,
                 mathematica::ExpressIn(Metre, Second, Radian));
   logger.Append(absl::StrCat("norm[", iter, "]"),
-                r₀₀,
+                a₀.Norm(weight, t_min, t_max),
                 mathematica::ExpressIn(Metre, Second, Radian));
   logger.Append(absl::StrCat("normIntegrate[", iter, "]"),
                 Sqrt((PointwiseInnerProduct(a₀, a₀) * weight)
@@ -165,9 +172,14 @@ IncrementalProjection(Function const& function,
     for (int m = m_begin; m < basis_size; ++m) {
       auto aₘ⁽ᵏ⁾ = basis[m];
       for (int k = 0; k < m; ++k) {
+#if USE_INTEGRATE
+        auto const rₖₘ = (PointwiseInnerProduct(q[k], aₘ⁽ᵏ⁾) * weight)
+                          .Integrate(t_min, t_max) / (t_max - t_min);
+#else
         auto const rₖₘ = InnerProduct(q[k], aₘ⁽ᵏ⁾, weight, t_min, t_max);
+#endif
         logger.Append(absl::StrCat("innerProduct[", iter, "]"),
-                      rₖₘ,
+                      InnerProduct(q[k], aₘ⁽ᵏ⁾, weight, t_min, t_max),
                       mathematica::ExpressIn(Metre, Second, Radian));
         logger.Append(absl::StrCat("innerProductIntegrate[", iter, "]"),
                       (PointwiseInnerProduct(q[k], aₘ⁽ᵏ⁾) * weight)
@@ -176,7 +188,13 @@ IncrementalProjection(Function const& function,
         aₘ⁽ᵏ⁾ -= rₖₘ * q[k];
       }
 
+#if USE_INTEGRATE
+      auto const rₘₘ = Sqrt((PointwiseInnerProduct(aₘ⁽ᵏ⁾, aₘ⁽ᵏ⁾) * weight)
+                             .Integrate(t_min, t_max) /
+                         (t_max - t_min));
+#else
       auto const rₘₘ = aₘ⁽ᵏ⁾.Norm(weight, t_min, t_max);
+#endif
       logger.Append(absl::StrCat("normFn[", iter, "]"),
                     aₘ⁽ᵏ⁾,
                     mathematica::ExpressIn(Metre, Second, Radian));
@@ -184,7 +202,7 @@ IncrementalProjection(Function const& function,
                     PointwiseInnerProduct(aₘ⁽ᵏ⁾, aₘ⁽ᵏ⁾) * weight,
                     mathematica::ExpressIn(Metre, Second, Radian));
       logger.Append(absl::StrCat("norm[", iter, "]"),
-                    rₘₘ,
+                    aₘ⁽ᵏ⁾.Norm(weight, t_min, t_max),
                     mathematica::ExpressIn(Metre, Second, Radian));
       logger.Append(absl::StrCat("normIntegrate[", iter, "]"),
                     Sqrt((PointwiseInnerProduct(aₘ⁽ᵏ⁾, aₘ⁽ᵏ⁾) * weight)
