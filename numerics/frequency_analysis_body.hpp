@@ -7,13 +7,16 @@
 #include <functional>
 #include <vector>
 
+#include "absl/strings/str_cat.h"
 #include "base/tags.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/hilbert.hpp"
+#include "mathematica/mathematica.hpp"
 #include "numerics/poisson_series_basis.hpp"
 #include "numerics/root_finders.hpp"
 #include "numerics/unbounded_arrays.hpp"
 #include "quantities/elementary_functions.hpp"
+#include "quantities/si.hpp"
 
 namespace principia {
 namespace numerics {
@@ -27,6 +30,9 @@ using quantities::Inverse;
 using quantities::Sqrt;
 using quantities::Square;
 using quantities::SquareRoot;
+using quantities::si::Metre;
+using quantities::si::Radian;
+using quantities::si::Second;
 
 template<typename Function,
          int wdegree_,
@@ -74,6 +80,10 @@ Projection(Function const& function,
                                         t_min, t_max);
 }
 
+int iter = 0;
+mathematica::Logger logger(TEMP_DIR / "frequency_analysis.wl",
+                           /*make_unique=*/false);
+
 template<int degree_,
          typename Function,
          typename AngularFrequencyCalculator, int wdegree_,
@@ -84,6 +94,9 @@ IncrementalProjection(Function const& function,
                       PoissonSeries<double, wdegree_, Evaluator> const& weight,
                       Instant const& t_min,
                       Instant const& t_max) {
+  logger.Set("tMin", t_min, mathematica::ExpressIn(Metre, Second, Radian));
+  logger.Set("tMax", t_max, mathematica::ExpressIn(Metre, Second, Radian));
+
   using Value = std::invoke_result_t<Function, Instant>;
   using Norm = typename Hilbert<Value>::NormType;
   using Normalized = typename Hilbert<Value>::NormalizedType;
@@ -121,6 +134,27 @@ IncrementalProjection(Function const& function,
   auto const r₀₀ = a₀.Norm(weight, t_min, t_max);
   q.push_back(a₀ / r₀₀);
 
+  logger.Append(absl::StrCat("basis[", iter, "]"),
+                basis[0],
+                mathematica::ExpressIn(Metre, Second, Radian));
+  logger.Append(absl::StrCat("normFn[", iter, "]"),
+                a₀,
+                mathematica::ExpressIn(Metre, Second, Radian));
+  logger.Append(absl::StrCat("normIntegrand[", iter, "]"),
+                PointwiseInnerProduct(a₀, a₀) * weight,
+                mathematica::ExpressIn(Metre, Second, Radian));
+  logger.Append(absl::StrCat("norm[", iter, "]"),
+                r₀₀,
+                mathematica::ExpressIn(Metre, Second, Radian));
+  logger.Append(absl::StrCat("normIntegrate[", iter, "]"),
+                Sqrt((PointwiseInnerProduct(a₀, a₀) * weight)
+                         .Integrate(t_min, t_max) /
+                     (t_max - t_min)),
+                mathematica::ExpressIn(Metre, Second, Radian));
+  logger.Append(absl::StrCat("q[", iter, "]"),
+                q[0],
+                mathematica::ExpressIn(Metre, Second, Radian));
+
   auto const A₀ = InnerProduct(function, q[0], weight, t_min, t_max);
 
   PoissonSeries<Value, degree_, Evaluator> F = A₀ * q[0];
@@ -132,11 +166,35 @@ IncrementalProjection(Function const& function,
       auto aₘ⁽ᵏ⁾ = basis[m];
       for (int k = 0; k < m; ++k) {
         auto const rₖₘ = InnerProduct(q[k], aₘ⁽ᵏ⁾, weight, t_min, t_max);
+        logger.Append(absl::StrCat("innerProduct[", iter, "]"),
+                      rₖₘ,
+                      mathematica::ExpressIn(Metre, Second, Radian));
+        logger.Append(absl::StrCat("innerProductIntegrate[", iter, "]"),
+                      (PointwiseInnerProduct(q[k], aₘ⁽ᵏ⁾) * weight)
+                          .Integrate(t_min, t_max) / (t_max - t_min),
+                      mathematica::ExpressIn(Metre, Second, Radian));
         aₘ⁽ᵏ⁾ -= rₖₘ * q[k];
       }
 
       auto const rₘₘ = aₘ⁽ᵏ⁾.Norm(weight, t_min, t_max);
+      logger.Append(absl::StrCat("normFn[", iter, "]"),
+                    aₘ⁽ᵏ⁾,
+                    mathematica::ExpressIn(Metre, Second, Radian));
+      logger.Append(absl::StrCat("normIntegrand[", iter, "]"),
+                    PointwiseInnerProduct(aₘ⁽ᵏ⁾, aₘ⁽ᵏ⁾) * weight,
+                    mathematica::ExpressIn(Metre, Second, Radian));
+      logger.Append(absl::StrCat("norm[", iter, "]"),
+                    rₘₘ,
+                    mathematica::ExpressIn(Metre, Second, Radian));
+      logger.Append(absl::StrCat("normIntegrate[", iter, "]"),
+                    Sqrt((PointwiseInnerProduct(aₘ⁽ᵏ⁾, aₘ⁽ᵏ⁾) * weight)
+                             .Integrate(t_min, t_max) /
+                         (t_max - t_min)),
+                    mathematica::ExpressIn(Metre, Second, Radian));
       q.push_back(aₘ⁽ᵏ⁾ / rₘₘ);
+      logger.Append(absl::StrCat("q[", iter, "]"),
+                    q.back(),
+                    mathematica::ExpressIn(Metre, Second, Radian));
       DCHECK_EQ(m + 1, q.size());
 
       Norm const Aₘ = InnerProduct(f, q[m], weight, t_min, t_max);
@@ -147,6 +205,7 @@ IncrementalProjection(Function const& function,
 
     ω = calculator(f);
     if (!ω.has_value()) {
+      ++iter;
       return F;
     }
 

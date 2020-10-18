@@ -164,7 +164,7 @@ TEST_F(AnalyticalSeriesTest, CompactRepresentation) {
           /*step=*/10 * Minute));
   ephemeris->Prolong(solar_system_at_j2000.epoch() + 0.25 * JulianYear);
 
-  for (auto const& celestial : solar_system_at_j2000.names()) {
+  for (auto const& celestial : {"Io", "Moon", "Phobos"}/*solar_system_at_j2000.names()*/) {
     LOG(INFO) << "---------- " << celestial;
     auto const& celestial_trajectory =
         solar_system_at_j2000.trajectory(*ephemeris, celestial);
