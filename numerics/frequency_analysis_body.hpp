@@ -126,6 +126,9 @@ IncrementalProjection(Function const& function,
     basis_size = std::tuple_size_v<decltype(ω_basis)>;
     std::move(ω_basis.begin(), ω_basis.end(), std::back_inserter(basis));
   }
+  logger.Append(absl::StrCat("frequency[", iter, "]"),
+                ω.value(),
+                mathematica::ExpressIn(Metre, Second, Radian));
 
   // This is logically Q in the QR decomposition of basis.
   std::vector<PoissonSeries<Normalized, degree_, Evaluator>> q;
@@ -226,6 +229,9 @@ IncrementalProjection(Function const& function,
       ++iter;
       return F;
     }
+    logger.Append(absl::StrCat("frequency[", iter, "]"),
+                  ω.value(),
+                  mathematica::ExpressIn(Metre, Second, Radian));
 
     int ω_basis_size;
     if (ω.value() == AngularFrequency{}) {
