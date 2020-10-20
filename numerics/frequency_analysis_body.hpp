@@ -129,6 +129,9 @@ IncrementalProjection(Function const& function,
   logger.Append(absl::StrCat("frequency[", iter, "]"),
                 ω.value(),
                 mathematica::ExpressIn(Metre, Second, Radian));
+  logger.Append(absl::StrCat("trajectory[", iter, "]"),
+                function,
+                mathematica::ExpressIn(Metre, Second, Radian));
 
   // This is logically Q in the QR decomposition of basis.
   std::vector<PoissonSeries<Normalized, degree_, Evaluator>> q;
@@ -224,6 +227,9 @@ IncrementalProjection(Function const& function,
       F += Aₘ * q[m];
     }
 
+    logger.Append(absl::StrCat("solution[", iter, "]"),
+                  F,
+                  mathematica::ExpressIn(Metre, Second, Radian));
     ω = calculator(f);
     if (!ω.has_value()) {
       ++iter;
