@@ -136,7 +136,7 @@ IncrementalProjection(Function const& function,
   // This is logically Q in the QR decomposition of basis.
   std::vector<PoissonSeries<Normalized, degree_, Evaluator>> q;
 
-#define USE_INTEGRATE 0
+#define USE_INTEGRATE 1
   auto const a₀ = basis[0];
 #if USE_INTEGRATE
   auto const r₀₀ = Sqrt((PointwiseInnerProduct(a₀, a₀) * weight)
@@ -198,6 +198,15 @@ IncrementalProjection(Function const& function,
       auto const rₘₘ = Sqrt((PointwiseInnerProduct(aₘ⁽ᵏ⁾, aₘ⁽ᵏ⁾) * weight)
                              .Integrate(t_min, t_max) /
                          (t_max - t_min));
+      if (rₘₘ != rₘₘ) {
+        LOG(ERROR) << "m = " << m;
+        logger.Append(absl::StrCat("badNormFn[", iter, "]"),
+                      aₘ⁽ᵏ⁾,
+                      mathematica::ExpressIn(Metre, Second, Radian));
+        logger.Append(absl::StrCat("badNormIntegrand[", iter, "]"),
+                      PointwiseInnerProduct(aₘ⁽ᵏ⁾, aₘ⁽ᵏ⁾) * weight,
+                      mathematica::ExpressIn(Metre, Second, Radian));
+      }
 #else
       auto const rₘₘ = aₘ⁽ᵏ⁾.Norm(weight, t_min, t_max);
 #endif
