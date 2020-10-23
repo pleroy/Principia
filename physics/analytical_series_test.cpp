@@ -51,7 +51,8 @@ using quantities::si::Second;
 namespace apodization = numerics::apodization;
 namespace frequency_analysis = numerics::frequency_analysis;
 
-static constexpr int approximation_degree = 5;
+static constexpr int aperiodic_approximation_degree = 5;
+static constexpr int periodic_approximation_degree = 3;
 static constexpr int log2_number_of_samples = 14;
 static constexpr int number_of_frequencies = 10;
 static constexpr Length acceptable_residual = 1 * Metre;
@@ -65,7 +66,10 @@ class AnalyticalSeriesTest : public ::testing::Test {
   }
 
   template<int degree>
-  PoissonSeries<Displacement<ICRS>, approximation_degree, EstrinEvaluator>
+  PoissonSeries<Displacement<ICRS>,
+                std::max(aperiodic_approximation_degree,
+                         periodic_approximation_degree),
+                EstrinEvaluator>
   ComputeCompactRepresentation(ContinuousTrajectory<ICRS> const& trajectory) {
     Instant const t_min = trajectory.t_min();
     Instant const t_max = trajectory.t_max();
@@ -125,25 +129,27 @@ class AnalyticalSeriesTest : public ::testing::Test {
       }
     };
 
-    return frequency_analysis::IncrementalProjection<approximation_degree>(
+    return frequency_analysis::IncrementalProjection<
+        aperiodic_approximation_degree, periodic_approximation_degree>(
         piecewise_poisson_series,
         angular_frequency_calculator,
         apodization::Dirichlet<EstrinEvaluator>(t_min, t_max),
-        t_min,
-        t_max);
+        t_min, t_max);
   }
 
   mathematica::Logger logger_;
 };
 
-#define PRINCIPIA_COMPUTE_COMPACT_REPRESENTATION_CASE(                   \
-    degree, approximation, trajectory)                                   \
-  case degree: {                                                         \
-    approximation = std::make_unique<PoissonSeries<Displacement<ICRS>,   \
-                                                   approximation_degree, \
-                                                   EstrinEvaluator>>(    \
-        ComputeCompactRepresentation<(degree)>(trajectory));             \
-    break;                                                               \
+#define PRINCIPIA_COMPUTE_COMPACT_REPRESENTATION_CASE(         \
+    degree, approximation, trajectory)                         \
+  case degree: {                                               \
+    approximation = std::make_unique<                          \
+        PoissonSeries<Displacement<ICRS>,                      \
+                      std::max(aperiodic_approximation_degree, \
+                               periodic_approximation_degree), \
+                      EstrinEvaluator>>(                       \
+        ComputeCompactRepresentation<(degree)>(trajectory));   \
+    break;                                                     \
   }
 
 #if !_DEBUG
@@ -172,7 +178,8 @@ TEST_F(AnalyticalSeriesTest, CompactRepresentation) {
         celestial_trajectory.PiecewisePoissonSeriesDegree(
             celestial_trajectory.t_min(), celestial_trajectory.t_max());
     std::unique_ptr<PoissonSeries<Displacement<ICRS>,
-                                  approximation_degree,
+                                  std::max(aperiodic_approximation_degree,
+                                           periodic_approximation_degree),
                                   EstrinEvaluator>>
         celestial_approximation;
 
