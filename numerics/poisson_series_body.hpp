@@ -32,6 +32,8 @@ using quantities::Variation;
 using quantities::si::Radian;
 namespace si = quantities::si;
 
+#define USE_FAST_SLOW 1
+
 // These parameters have been tuned for approximation of the Moon over 3 months
 // with 10 periods.
 constexpr int clenshaw_curtis_max_periods_overall = 40;
@@ -420,7 +422,7 @@ PoissonSeries<Value, degree_, Evaluator>::Norm(
     PoissonSeries<double, wdegree_, Evaluator> const& weight,
     Instant const& t_min,
     Instant const& t_max) const {
-#if 1
+#if USE_FAST_SLOW
   auto const split = Split(
       2 * π * Radian * clenshaw_curtis_max_periods_overall /
                  (t_max - t_min));
@@ -775,6 +777,7 @@ typename Hilbert<LValue, RValue>::InnerProductType InnerProduct(
     PoissonSeries<double, wdegree_, Evaluator> const& weight,
     Instant const& t_min,
     Instant const& t_max) {
+#if USE_FAST_SLOW
   AngularFrequency const ω_cutoff =
       2 * π * Radian * clenshaw_curtis_max_periods_overall / (t_max - t_min);
   auto const left_split = left.Split(ω_cutoff);
@@ -816,6 +819,32 @@ typename Hilbert<LValue, RValue>::InnerProductType InnerProduct(
   auto const fast_quadrature = fast_integrand.Integrate(t_min, t_max);
 
   return (slow_quadrature + fast_quadrature) / (t_max - t_min);
+#else
+  AngularFrequency const max_ω =
+      (left.periodic_.empty() ? AngularFrequency{}
+                              : left.periodic_.back().first) +
+      (right.periodic_.empty() ? AngularFrequency{}
+                               : right.periodic_.back().first) +
+      (weight.periodic_.empty() ? AngularFrequency{}
+                                : weight.periodic_.back().first);
+  std::optional<int> max_points =
+      max_ω == AngularFrequency()
+          ? std::optional<int>{}
+          : std::max(
+                clenshaw_curtis_min_points_overall,
+                static_cast<int>(clenshaw_curtis_point_per_period *
+                                 (t_max - t_min) * max_ω / (2 * π * Radian)));
+
+  auto integrand = [&left, &right, &weight](Instant const& t) {
+    return Hilbert<LValue, RValue>::InnerProduct(left(t), right(t)) * weight(t);
+  };
+  return quadrature::AutomaticClenshawCurtis(
+             integrand,
+             t_min, t_max,
+             /*max_relative_error=*/clenshaw_curtis_relative_error,
+             /*max_points=*/max_points) /
+         (t_max - t_min);
+#endif
 }
 
 template<typename Value, int degree_,
