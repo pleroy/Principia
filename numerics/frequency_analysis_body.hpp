@@ -84,6 +84,7 @@ int iter = 0;
 mathematica::Logger logger(TEMP_DIR / "frequency_analysis.wl",
                            /*make_unique=*/false);
 #define DO_THE_LOGGING 0
+#define USE_CGS 1
 #define USE_INTEGRATE 0
 
 template<int aperiodic_degree, int periodic_degree,
@@ -184,21 +185,53 @@ IncrementalProjection(Function const& function,
 
   auto const A₀ = InnerProduct(function, q[0], weight, t_min, t_max);
 
-  PoissonSeries<Value, degree, Evaluator> F = A₀ * q[0];
+  Series F = A₀ * q[0];
   auto f = function - F;
 
   int m_begin = 1;
   for (;;) {
+    // [Hig02], algorithm 19.11, p. 369.
     for (int m = m_begin; m < basis_size; ++m) {
+#if USE_CGS
+      auto const& aₘ = basis[m];
+# if USE_INTEGRATE
+      auto const r₀ₘ =
+          (PointwiseInnerProduct(q[0], aₘ) * weight).Integrate(t_min, t_max) /
+          (t_max - t_min);
+# else
+      auto const r₀ₘ = InnerProduct(q[0], aₘ, weight, t_min, t_max);
+# endif
+      Series Σrᵢₘqᵢ = r₀ₘ * q[0];
+      for (int i = 1; i < m; ++i) {
+# if USE_INTEGRATE
+        auto const rᵢₘ =
+            (PointwiseInnerProduct(q[i], aₘ) * weight).Integrate(t_min, t_max) /
+            (t_max - t_min);
+# else
+        auto const rᵢₘ = InnerProduct(q[i], aₘ, weight, t_min, t_max);
+# endif
+        Σrᵢₘqᵢ += rᵢₘ * q[i];
+      }
+
+      auto const qʹₘ = aₘ - Σrᵢₘqᵢ;
+# if USE_INTEGRATE
+      auto rₘₘ = Sqrt((PointwiseInnerProduct(qʹₘ, qʹₘ) * weight)
+                          .Integrate(t_min, t_max) /
+                      (t_max - t_min));
+# else
+      auto rₘₘ = qʹₘ.Norm(weight, t_min, t_max);
+# endif
+      q.push_back(qʹₘ / rₘₘ);
+#else
       auto aₘ⁽ᵏ⁾ = basis[m];
       for (int k = 0; k < m; ++k) {
-#if USE_INTEGRATE
+# if USE_INTEGRATE
         auto const rₖₘ = (PointwiseInnerProduct(q[k], aₘ⁽ᵏ⁾) * weight)
                           .Integrate(t_min, t_max) / (t_max - t_min);
-#else
+# else
         auto const rₖₘ = InnerProduct(q[k], aₘ⁽ᵏ⁾, weight, t_min, t_max);
-#endif
-#if DO_THE_LOGGING
+# endif
+# if DO_THE_LOGGING
         logger.Append(absl::StrCat("innerProduct[", iter, "]"),
                       InnerProduct(q[k], aₘ⁽ᵏ⁾, weight, t_min, t_max),
                       mathematica::ExpressIn(Metre, Second, Radian));
@@ -210,7 +243,7 @@ IncrementalProjection(Function const& function,
         aₘ⁽ᵏ⁾ -= rₖₘ * q[k];
       }
 
-#if USE_INTEGRATE
+# if USE_INTEGRATE
       auto rₘₘ = Sqrt((PointwiseInnerProduct(aₘ⁽ᵏ⁾, aₘ⁽ᵏ⁾) * weight)
                           .Integrate(t_min, t_max) /
                       (t_max - t_min));
@@ -227,10 +260,11 @@ IncrementalProjection(Function const& function,
         // Fall back on Clenshaw-Curtis.
         rₘₘ = aₘ⁽ᵏ⁾.Norm(weight, t_min, t_max);
       }
-#else
+# else
       auto const rₘₘ = aₘ⁽ᵏ⁾.Norm(weight, t_min, t_max);
-#endif
+# endif
       q.push_back(aₘ⁽ᵏ⁾ / rₘₘ);
+#endif
       DCHECK_EQ(m + 1, q.size());
 #if DO_THE_LOGGING
       logger.Append(absl::StrCat("normFn[", iter, "]"),
