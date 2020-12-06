@@ -167,6 +167,8 @@ IncrementalProjection(Function const& function,
       for (int k = 0; k < m; ++k) {
         if (!PoissonSeriesSubspace::orthogonal(basis_subspaces[k],
                                                basis_subspaces[m])) {
+          // TODO(phl): We end up evaluating the same inner products along the
+          // dimensions x, y and z.  This could be optimized.
           auto const rₖₘ = InnerProduct(q[k], aₘ⁽ᵏ⁾, weight, t_min, t_max);
           aₘ⁽ᵏ⁾ -= rₖₘ * q[k];
         }
