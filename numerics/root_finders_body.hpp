@@ -276,6 +276,7 @@ Argument Brent(Function f,
       Difference<Argument> const t2 = 2 * tol;
       // Check stopping criterion.
       if (Abs(x - m) <= t2 - 0.5 * (b - a)) {
+    LOG(ERROR)<<x<<" "<<f(x);
         return x;
       }
       // p = q = r = 0;

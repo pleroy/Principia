@@ -339,6 +339,8 @@ Integrate(Instant const& t1,
   auto const aperiodic_primitive = aperiodic_.Primitive();
   quantities::Primitive<Value, Time> result =
       aperiodic_primitive(t2) - aperiodic_primitive(t1);
+
+  //LOG(ERROR)<<"APP: "<<result;
   for (auto const& [ω, polynomials] : periodic_) {
     // This implementation follows [HO09], Theorem 1 and [INO06] equation 4.
     // The trigonometric functions are computed only once as we iterate through
@@ -352,7 +354,13 @@ Integrate(Instant const& t1,
                                         t1, t2,
                                         sin_ωt1, cos_ωt1,
                                         sin_ωt2, cos_ωt2);
+    //LOG(ERROR)<<"AFI: "<<AngularFrequencyIntegrate(ω,
+    //                                    polynomials.sin, polynomials.cos,
+    //                                    t1, t2,
+    //                                    sin_ωt1, cos_ωt1,
+    //                                    sin_ωt2, cos_ωt2)<< " "<<ω;
   }
+  //LOG(ERROR)<<"RES: "<<result;
   return result;
 }
 
@@ -392,6 +400,10 @@ Norm(PoissonSeries<double,
       PointwiseInnerProduct(split.fast, split.fast + 2 * split.slow) *
       weight;
   auto const fast_quadrature = fast_integrand.Integrate(t_min, t_max);
+
+  //using T = quantities::Primitive<typename Hilbert<Value>::Norm²Type, Time>;
+  //LOG_IF(ERROR, slow_quadrature + fast_quadrature < T{})
+  //    << slow_quadrature << " " << fast_quadrature;
 
   return Sqrt((slow_quadrature + fast_quadrature) / (t_max - t_min));
 }

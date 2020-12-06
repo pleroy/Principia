@@ -60,8 +60,8 @@ static constexpr int periodic_approximation_degree = 3;
 static constexpr int log2_number_of_samples = 14;
 static constexpr int number_of_frequencies = 10;
 static constexpr Length acceptable_residual = 1 * Metre;
-static constexpr Time min_projection_duration = 4 * Day;
-static constexpr Time max_projection_duration = 0.25 * JulianYear;
+static constexpr Time min_projection_duration = 64 * Day;//0.25 * JulianYear;
+static constexpr Time max_projection_duration = 64 * Day;//0.25 * JulianYear;
 
 class AnalyticalSeriesTest : public ::testing::Test {
  protected:
@@ -195,6 +195,8 @@ TEST_F(AnalyticalSeriesTest, CompactRepresentation) {
       SOLUTION_DIR / "astronomy" / "sol_gravity_model.proto.txt",
       SOLUTION_DIR / "astronomy" /
           "sol_initial_state_jd_2451545_000000000.proto.txt");
+  solar_system_at_j2000.LimitOblatenessToZonal("Mars");
+  solar_system_at_j2000.LimitOblatenessToDegree("Mars", 0);
 
   for (Time projection_duration = min_projection_duration;
        projection_duration <= max_projection_duration;
