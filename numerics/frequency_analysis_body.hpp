@@ -26,41 +26,46 @@ using geometry::Vector;
 using quantities::Inverse;
 using quantities::IsFinite;
 using quantities::Pow;
+using quantities::Quotient;
 using quantities::Sqrt;
 using quantities::Square;
 using quantities::SquareRoot;
 
 //TODO(phl): Make all this incremental.
 template<typename Scalar>
-UnboundedUpperTriangularMatrix<Scalar> CholeskyFactorization(
+UnboundedUpperTriangularMatrix<SquareRoot<Scalar>> CholeskyFactorization(
     UnboundedUpperTriangularMatrix<Scalar> const& a) {
-  UnboundedUpperTriangularMatrix<Scalar> r(a.columns(), uninitialized{});
+  UnboundedUpperTriangularMatrix<SquareRoot<Scalar>> r(a.columns(),
+                                                       uninitialized);
   for (int j = 0; j < a.columns(); ++j) {
     for (int i = 0; i < j; ++i) {
-      Square<Scalar> Σrkirkj;  //TODO(phl):Unicode.
+      Scalar Σrkirkj;  //TODO(phl):Unicode.
       for (int k = 0; k < i; ++k) {
         Σrkirkj += r[k][i] * r[k][j];
       }
-      r[i][j] = (a[i][j] - Σrkirkj) / r[i][i];
+      //r[i][j] = (a[i][j] - Σrkirkj) / r[i][i];
+      auto yyy = a[i][j];
+      auto xxx = (a[i][j] - Σrkirkj) / r[i][i];
+      r[i][j] = xxx;
     }
-    Square<Scalar> Σrkj2;  //TODO(phl):Unicode.
+    Scalar Σrkj2;  //TODO(phl):Unicode.
     for (int k = 0; k < j; ++k) {
-      Σrkirkj += Pow<2>(r[k][j]);
+      Σrkj2 += Pow<2>(r[k][j]);
     }
     r[j][j] = Sqrt(a[j][j] - Σrkj2);  //TODO(phl):NaN?
   }
   return r;
 }
 
-template<typename Scalar>
-UnboundedVector<Scalar> BackSubstitution(
-    UnboundedUpperTriangularMatrix<Scalar> const& u,
-    UnboundedVector<Scalar> const& b) {
-  UnboundedVector<Scalar> x(b.size(), uninitialized{});
+template<typename LScalar, typename RScalar>
+UnboundedVector<Quotient<RScalar, LScalar>> BackSubstitution(
+    UnboundedUpperTriangularMatrix<LScalar> const& u,
+    UnboundedVector<RScalar> const& b) {
+  UnboundedVector<Quotient<RScalar, LScalar>> x(b.size(), uninitialized);
   int const n = b.size() - 1;
   x[n] = b[n] / u[n][n];
   for (int i = n - 1; i >= 0; --i) {
-    auto const s = b[i];
+    auto s = b[i];
     for (int j = i + 1; j <= n; ++j) {
       s -= u[i][j] * x[j];
     }
@@ -69,14 +74,14 @@ UnboundedVector<Scalar> BackSubstitution(
   return x;
 }
 
-template<typename Scalar>
-UnboundedVector<Scalar> ForwardSubstitution(
-    UnboundedLowerTriangularMatrix<Scalar> const& l,
-    UnboundedVector<Scalar> const& b) {
-  UnboundedVector<Scalar> x(b.size(), uninitialized{});
-  x[0] = b[0] / u[0][0];
+template<typename LScalar, typename RScalar>
+UnboundedVector<Quotient<RScalar, LScalar>> ForwardSubstitution(
+    UnboundedLowerTriangularMatrix<LScalar> const& l,
+    UnboundedVector<RScalar> const& b) {
+  UnboundedVector<Quotient<RScalar, LScalar>> x(b.size(), uninitialized);
+  x[0] = b[0] / l[0][0];
   for (int i = 1; i < b.size(); ++i) {
-    auto const s = b[i];
+    auto s = b[i];
     for (int j = 1; j < i; ++j) {
       s -= l[i][j] * x[j];
     }
@@ -203,7 +208,7 @@ IncrementalProjection(Function const& function,
   }
 
   UnboundedUpperTriangularMatrix<Norm²> C(basis_size);  // Zero-initialized.
-  UnboundedVector<Norm²> c(basis_size, uninitialized{});
+  UnboundedVector<Norm²> c(basis_size, uninitialized);
 
   int m_begin = 0;
   for (;;) {
@@ -217,13 +222,14 @@ IncrementalProjection(Function const& function,
       }
       c[m] = InnerProduct(function, aₘ, weight, t_min, t_max);
     }
-    auto const R = CholeskyFactorization(C);
-    auto const y = ForwardSubstitution(R.Transpose(), c);  //TODO(phl): Costly?
+    UnboundedUpperTriangularMatrix<Norm> const R = CholeskyFactorization(C);
+    UnboundedVector<Norm> const y =
+        ForwardSubstitution(R.Transpose(), c);  //TODO(phl): Costly?
     auto const x = BackSubstitution(R, y);
 
-    auto f = function;
-    Series F;
-    for (int m = 0; m < x.size(); ++m) {
+    auto f = function - x[0] * basis[0];
+    Series F = x[0] * basis[0];
+    for (int m = 1; m < x.size(); ++m) {
       //TODO(phl):factor
       f -= x[m] * basis[m];
       F += x[m] * basis[m];
