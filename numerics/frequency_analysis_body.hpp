@@ -82,7 +82,7 @@ UnboundedVector<Quotient<RScalar, LScalar>> ForwardSubstitution(
   x[0] = b[0] / l[0][0];
   for (int i = 1; i < b.size(); ++i) {
     auto s = b[i];
-    for (int j = 1; j < i; ++j) {
+    for (int j = 0; j < i; ++j) {
       s -= l[i][j] * x[j];
     }
     x[i] = s / l[i][i];
