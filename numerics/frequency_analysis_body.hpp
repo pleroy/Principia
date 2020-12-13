@@ -54,6 +54,7 @@ UnboundedUpperTriangularMatrix<SquareRoot<Scalar>> CholeskyFactorization(
   return r;
 }
 
+//TODO(phl): Krishnamoorthy
 template<typename Scalar>
 void RDRDecomposition(  // TODO(phl):Unicode.
     UnboundedUpperTriangularMatrix<Scalar> const& a,
@@ -93,6 +94,7 @@ UnboundedVector<Quotient<RScalar, LScalar>> BackSubstitution(
   return x;
 }
 
+//TODO(phl): https://en.wikipedia.org/wiki/Triangular_matrix#Forward_substitution
 template<typename LScalar, typename RScalar>
 UnboundedVector<Quotient<RScalar, LScalar>> ForwardSubstitution(
     UnboundedLowerTriangularMatrix<LScalar> const& l,
@@ -236,9 +238,10 @@ IncrementalProjection(Function const& function,
       for (int k = 0; k <= m; ++k) {
         if (!PoissonSeriesSubspace::orthogonal(basis_subspaces[k],
                                                basis_subspaces[m])) {
-          C[k][m] = (PointwiseInnerProduct(basis[k], aₘ) * weight)
-                        .Integrate(t_min, t_max) /
-                    (t_max - t_min);
+          C[k][m] = InnerProduct(basis[k], aₘ, weight, t_min, t_max);
+          //C[k][m] = (PointwiseInnerProduct(basis[k], aₘ) * weight)
+          //              .Integrate(t_min, t_max) /
+          //          (t_max - t_min);
         }
       }
       c[m] = InnerProduct(function, aₘ, weight, t_min, t_max);
@@ -258,6 +261,7 @@ IncrementalProjection(Function const& function,
     UnboundedVector<double> yDminus1(basis_size,
                                      uninitialized);  // TODO(phl): Unicode.
     for (int m = 0; m < y.size(); ++m) {
+      LOG_IF(ERROR, D[m] < Norm²{})<<"D["<<m<<"]: "<<D[m];
       yDminus1[m] = y[m] / D[m];
     }
     auto const x = BackSubstitution(R, yDminus1);
