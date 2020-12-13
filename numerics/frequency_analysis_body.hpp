@@ -25,9 +25,31 @@ using geometry::Hilbert;
 using geometry::Vector;
 using quantities::Inverse;
 using quantities::IsFinite;
+using quantities::Pow;
 using quantities::Sqrt;
 using quantities::Square;
 using quantities::SquareRoot;
+
+template<typename Scalar>
+UnboundedUpperTriangularMatrix<Scalar> CholeskyFactorization(
+    UnboundedUpperTriangularMatrix<Scalar> const& a) {
+  UnboundedUpperTriangularMatrix<Scalar> r(a.columns(), uninitialized{});
+  for (int j = 0; j < a.columns(); ++j) {
+    for (int i = 0; i < j; ++i) {
+      Square<Scalar> Σrkirkj;  //TODO(phl):Unicode.
+      for (int k = 0; k < i; ++k) {
+        Σrkirkj += r[k][i] * r[k][j];
+      }
+      r[i][j] = (a[i][j] - Σrkirkj) / r[i][i];
+    }
+    Square<Scalar> Σrkj2;  //TODO(phl):Unicode.
+    for (int k = 0; k < j; ++k) {
+      Σrkirkj += Pow<2>(r[k][j]);
+    }
+    r[j][j] = Sqrt(a[j][j] - Σrkj2);  //TODO(phl):NaN?
+  }
+  return r;
+}
 
 template<typename Function,
          int aperiodic_wdegree, int periodic_wdegree,
@@ -99,6 +121,7 @@ IncrementalProjection(Function const& function,
                       Instant const& t_max) {
   using Value = std::invoke_result_t<Function, Instant>;
   using Norm = typename Hilbert<Value>::NormType;
+  using Norm² = typename Hilbert<Value>::Norm²Type;
   using Normalized = typename Hilbert<Value>::NormalizedType;
   using Series = PoissonSeries<Value,
                                aperiodic_degree, periodic_degree,
@@ -145,48 +168,20 @@ IncrementalProjection(Function const& function,
               std::back_inserter(basis_subspaces));
   }
 
-  // This is logically Q in the QR decomposition of basis.
-  std::vector<PoissonSeries<Normalized,
-                            aperiodic_degree, periodic_degree,
-                            Evaluator>> q;
-
-  auto const& a₀ = basis[0];
-  auto const r₀₀ = a₀.Norm(weight, t_min, t_max);
-  CHECK(IsFinite(r₀₀)) << a₀;
-  q.push_back(a₀ / r₀₀);
-
-  auto const A₀ = InnerProduct(function, q[0], weight, t_min, t_max);
-
-  Series F = A₀ * q[0];
-  auto f = function - F;
+  UnboundedUpperTriangularMatrix<Norm²> C(basis_size);  // Zero-initialized.
+  UnboundedVector<Norm²> c(basis_size, uninitialized{});
 
   int m_begin = 1;
   for (;;) {
     for (int m = m_begin; m < basis_size; ++m) {
-      auto aₘ⁽ᵏ⁾ = basis[m];
-      for (int k = 0; k < m; ++k) {
+      auto const& aₘ = basis[m];
+      for (int k = 0; k <= m; ++k) {
         if (!PoissonSeriesSubspace::orthogonal(basis_subspaces[k],
                                                basis_subspaces[m])) {
-          auto const rₖₘ = InnerProduct(q[k], aₘ⁽ᵏ⁾, weight, t_min, t_max);
-          aₘ⁽ᵏ⁾ -= rₖₘ * q[k];
+          C[k][m] = InnerProduct(basis[k], aₘ, weight, t_min, t_max);
         }
       }
-
-      auto const rₘₘ = aₘ⁽ᵏ⁾.Norm(weight, t_min, t_max);
-      if (!IsFinite(rₘₘ)) {
-        // Call the calculator here just to evaluate how far we are from the
-        // truth.
-        calculator(f);
-        return F;
-      }
-      q.push_back(aₘ⁽ᵏ⁾ / rₘₘ);
-      DCHECK_EQ(m + 1, q.size());
-
-      Norm const Aₘ = InnerProduct(f, q[m], weight, t_min, t_max);
-
-      auto const Aₘqₘ = Aₘ * q[m];
-      f -= Aₘqₘ;
-      F += Aₘqₘ;
+      c[m] = InnerProduct(function, aₘ, weight, t_min, t_max);
     }
 
     ω = calculator(f);
