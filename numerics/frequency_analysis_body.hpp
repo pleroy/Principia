@@ -43,10 +43,7 @@ UnboundedUpperTriangularMatrix<SquareRoot<Scalar>> CholeskyFactorization(
       for (int k = 0; k < i; ++k) {
         Σrkirkj += r[k][i] * r[k][j];
       }
-      //r[i][j] = (a[i][j] - Σrkirkj) / r[i][i];
-      auto yyy = a[i][j];
-      auto xxx = (a[i][j] - Σrkirkj) / r[i][i];
-      r[i][j] = xxx;
+      r[i][j] = (a[i][j] - Σrkirkj) / r[i][i];
     }
     Scalar Σrkj2;  //TODO(phl):Unicode.
     for (int k = 0; k < j; ++k) {
@@ -217,7 +214,9 @@ IncrementalProjection(Function const& function,
       for (int k = 0; k <= m; ++k) {
         if (!PoissonSeriesSubspace::orthogonal(basis_subspaces[k],
                                                basis_subspaces[m])) {
-          C[k][m] = InnerProduct(basis[k], aₘ, weight, t_min, t_max);
+          C[k][m] = (PointwiseInnerProduct(basis[k], aₘ) * weight)
+                        .Integrate(t_min, t_max) /
+                    (t_max - t_min);
         }
       }
       c[m] = InnerProduct(function, aₘ, weight, t_min, t_max);
