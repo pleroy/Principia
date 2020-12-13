@@ -39,19 +39,41 @@ UnboundedUpperTriangularMatrix<SquareRoot<Scalar>> CholeskyFactorization(
                                                        uninitialized);
   for (int j = 0; j < a.columns(); ++j) {
     for (int i = 0; i < j; ++i) {
-      Scalar Σrkirkj;  //TODO(phl):Unicode.
+      Scalar Σrkirkj{};  //TODO(phl):Unicode.
       for (int k = 0; k < i; ++k) {
         Σrkirkj += r[k][i] * r[k][j];
       }
       r[i][j] = (a[i][j] - Σrkirkj) / r[i][i];
     }
-    Scalar Σrkj2;  //TODO(phl):Unicode.
+    Scalar Σrkj2{};  //TODO(phl):Unicode.
     for (int k = 0; k < j; ++k) {
       Σrkj2 += Pow<2>(r[k][j]);
     }
     r[j][j] = Sqrt(a[j][j] - Σrkj2);  //TODO(phl):NaN?
   }
   return r;
+}
+
+template<typename Scalar>
+void RDRDecomposition(  // TODO(phl):Unicode.
+    UnboundedUpperTriangularMatrix<Scalar> const& a,
+    UnboundedUpperTriangularMatrix<double>& r,
+    UnboundedVector<Scalar>& d) {
+  for (int i = 0; i < a.columns(); ++i) {
+    Scalar Σrki2dk{};  //TODO(phl):Unicode.
+    for (int k = 0; k < i; ++k) {
+      Σrki2dk += Pow<2>(r[k][i]) * d[k];
+    }
+    d[i] = a[i][i] - Σrki2dk;
+    for (int j = i + 1; j < a.columns(); ++j) {
+      Scalar Σrkirkjdk{};  //TODO(phl):Unicode.
+      for (int k = 0; k < i; ++k) {
+        Σrkirkjdk += r[k][i] * r[k][j] * d[k];
+      }
+      r[i][j] = (a[i][j] - Σrkirkjdk) / d[i];
+    }
+    r[i][i] = 1;
+  }
 }
 
 template<typename LScalar, typename RScalar>
@@ -221,10 +243,26 @@ IncrementalProjection(Function const& function,
       }
       c[m] = InnerProduct(function, aₘ, weight, t_min, t_max);
     }
+#define PRINCIPIA_USE_CHOLESKY 0
+#if PRINCIPIA_USE_CHOLESKY
     UnboundedUpperTriangularMatrix<Norm> const R = CholeskyFactorization(C);
     UnboundedVector<Norm> const y =
         ForwardSubstitution(R.Transpose(), c);  //TODO(phl): Costly?
     auto const x = BackSubstitution(R, y);
+#else
+    UnboundedUpperTriangularMatrix<double> R(basis_size, uninitialized);
+    UnboundedVector<Norm²> D(basis_size, uninitialized);
+    RDRDecomposition(C, R, D);
+    UnboundedVector<Norm²> y =
+        ForwardSubstitution(R.Transpose(), c);  //TODO(phl): Costly?
+    UnboundedVector<double> yDminus1(basis_size,
+                                     uninitialized);  // TODO(phl): Unicode.
+    for (int m = 0; m < y.size(); ++m) {
+      yDminus1[m] = y[m] / D[m];
+    }
+    auto const x = BackSubstitution(R, yDminus1);
+#endif
+#undef PRINCIPIA_USE_CHOLESKY
 
     auto f = function - x[0] * basis[0];
     Series F = x[0] * basis[0];
