@@ -205,7 +205,7 @@ IncrementalProjection(Function const& function,
   UnboundedUpperTriangularMatrix<Norm²> C(basis_size);  // Zero-initialized.
   UnboundedVector<Norm²> c(basis_size, uninitialized{});
 
-  int m_begin = 1;
+  int m_begin = 0;
   for (;;) {
     for (int m = m_begin; m < basis_size; ++m) {
       auto const& aₘ = basis[m];
@@ -220,6 +220,14 @@ IncrementalProjection(Function const& function,
     auto const R = CholeskyFactorization(C);
     auto const y = ForwardSubstitution(R.Transpose(), c);  //TODO(phl): Costly?
     auto const x = BackSubstitution(R, y);
+
+    auto f = function;
+    Series F;
+    for (int m = 0; m < x.size(); ++m) {
+      //TODO(phl):factor
+      f -= x[m] * basis[m];
+      F += x[m] * basis[m];
+    }
 
     ω = calculator(f);
     if (!ω.has_value()) {
@@ -253,6 +261,8 @@ IncrementalProjection(Function const& function,
     }
     m_begin = basis_size;
     basis_size += ω_basis_size;
+    C.Extend(ω_basis_size);
+    c.Extend(ω_basis_size);
   }
 }
 
