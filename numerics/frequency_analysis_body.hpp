@@ -10,10 +10,12 @@
 #include "base/tags.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/hilbert.hpp"
+#include "mathematica/mathematica.hpp"
 #include "numerics/poisson_series_basis.hpp"
 #include "numerics/root_finders.hpp"
 #include "numerics/unbounded_arrays.hpp"
 #include "quantities/elementary_functions.hpp"
+#include "quantities/si.hpp"
 
 namespace principia {
 namespace numerics {
@@ -30,6 +32,9 @@ using quantities::Quotient;
 using quantities::Sqrt;
 using quantities::Square;
 using quantities::SquareRoot;
+using quantities::si::Metre;
+using quantities::si::Radian;
+using quantities::si::Second;
 
 //TODO(phl): Make all this incremental.
 template<typename Scalar>
@@ -260,11 +265,25 @@ IncrementalProjection(Function const& function,
         ForwardSubstitution(R.Transpose(), c);  //TODO(phl): Costly?
     UnboundedVector<double> yDminus1(basis_size,
                                      uninitialized);  // TODO(phl): Unicode.
+    bool anomaly = false;
     for (int m = 0; m < y.size(); ++m) {
-      LOG_IF(ERROR, D[m] < Norm²{})<<"D["<<m<<"]: "<<D[m];
+      if (D[m] < Norm²{}) {
+        anomaly = true;
+      }
       yDminus1[m] = y[m] / D[m];
     }
     auto const x = BackSubstitution(R, yDminus1);
+
+    if (anomaly) {
+      mathematica::Logger logger(TEMP_DIR / "normal_equations.wl");
+      logger.Set("basis", basis, mathematica::ExpressIn(Metre, Radian, Second));
+      logger.Set("matrixC", C, mathematica::ExpressIn(Metre, Radian, Second));
+      logger.Set("vectorC", c, mathematica::ExpressIn(Metre, Radian, Second));
+      logger.Set("matrixR", R, mathematica::ExpressIn(Metre, Radian, Second));
+      logger.Set("vectorD", D, mathematica::ExpressIn(Metre, Radian, Second));
+      logger.Set("vectorY", y, mathematica::ExpressIn(Metre, Radian, Second));
+      logger.Set("vectorX", x, mathematica::ExpressIn(Metre, Radian, Second));
+    }
 #endif
 #undef PRINCIPIA_USE_CHOLESKY
 
