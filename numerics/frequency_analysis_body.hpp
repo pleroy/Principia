@@ -188,12 +188,12 @@ IncrementalProjection(Function const& function,
   using Norm = typename Hilbert<Value>::NormType;
   using Norm² = typename Hilbert<Value>::Norm²Type;
   using Normalized = typename Hilbert<Value>::NormalizedType;
-  using Series = PoissonSeries<Value,
-                               aperiodic_degree, periodic_degree,
-                               Evaluator>;
-  using BasisElement = PoissonSeries<Normalized,
-                                     aperiodic_degree, periodic_degree,
-                                     Evaluator>;
+  using ResultSeries = PoissonSeries<Value,
+                                      aperiodic_degree, periodic_degree,
+                                      Evaluator>;
+  using BasisSeries = PoissonSeries<Normalized,
+                                    aperiodic_degree, periodic_degree,
+                                    Evaluator>;
 
   // This code follows [Kud07], section 2.  Our indices start at 0, unlike those
   // of Кудрявцев which start at 1.
@@ -203,7 +203,7 @@ IncrementalProjection(Function const& function,
   std::optional<AngularFrequency> ω = calculator(function);
   CHECK(ω.has_value());
 
-  std::vector<Series> basis;
+  std::vector<BasisSeries> basis;
   // The Poisson series basis[k] belongs to the subspace basis_subspaces[k];
   // this remains true after orthonormalization, i.e., q[k] belongs to the
   // subspace basis_subspaces[k] below.
@@ -212,9 +212,8 @@ IncrementalProjection(Function const& function,
   int basis_size;
   // TODO(phl): This is replicated below.
   if (ω.value() == AngularFrequency{}) {
-    using Generator = PoissonSeriesBasisGenerator<Normalized,
-                                                  aperiodic_degree,
-                                                  Evaluator>;
+    using Generator = PoissonSeriesBasisGenerator<BasisSeries,
+                                                  aperiodic_degree>;
     auto const ω_basis = Generator::Basis(t0);
     auto const ω_basis_subspaces = Generator::Subspaces(t0);
     basis_size = std::tuple_size_v<decltype(ω_basis)>;
@@ -223,9 +222,8 @@ IncrementalProjection(Function const& function,
               ω_basis_subspaces.end(),
               std::back_inserter(basis_subspaces));
   } else {
-    using Generator = PoissonSeriesBasisGenerator<Normalized,
-                                                  periodic_degree,
-                                                  Evaluator>;
+    using Generator = PoissonSeriesBasisGenerator<BasisSeries,
+                                                  periodic_degree>;
     auto const ω_basis = Generator::Basis(ω.value(), t0);
     auto const ω_basis_subspaces = Generator::Subspaces(ω.value(), t0);
     basis_size = std::tuple_size_v<decltype(ω_basis)>;
@@ -235,8 +233,8 @@ IncrementalProjection(Function const& function,
               std::back_inserter(basis_subspaces));
   }
 
-  UnboundedUpperTriangularMatrix<Norm²> C(basis_size);  // Zero-initialized.
-  UnboundedVector<Norm²> c(basis_size, uninitialized);
+  UnboundedUpperTriangularMatrix<double> C(basis_size);  // Zero-initialized.
+  UnboundedVector<Norm> c(basis_size, uninitialized);
 
   int m_begin = 0;
   for (;;) {
@@ -261,15 +259,15 @@ IncrementalProjection(Function const& function,
     auto const x = BackSubstitution(R, y);
 #else
     UnboundedUpperTriangularMatrix<double> R(basis_size, uninitialized);
-    UnboundedVector<Norm²> D(basis_size, uninitialized);
+    UnboundedVector<double> D(basis_size, uninitialized);
     RDRDecomposition(C, R, D);
-    UnboundedVector<Norm²> y =
+    UnboundedVector<Norm> y =
         ForwardSubstitution(R.Transpose(), c);  //TODO(phl): Costly?
-    UnboundedVector<double> yDminus1(basis_size,
-                                     uninitialized);  // TODO(phl): Unicode.
+    UnboundedVector<Norm> yDminus1(basis_size,
+                                   uninitialized);  // TODO(phl): Unicode.
     bool anomaly = false;
     for (int m = 0; m < y.size(); ++m) {
-      if (D[m] < Norm²{}) {
+      if (D[m] < 0) {
         anomaly = true;
       }
       yDminus1[m] = y[m] / D[m];
@@ -290,7 +288,7 @@ IncrementalProjection(Function const& function,
 #undef PRINCIPIA_USE_CHOLESKY
 
     auto f = function - x[0] * basis[0];
-    Series F = x[0] * basis[0];
+    ResultSeries F = x[0] * basis[0];
     for (int m = 1; m < x.size(); ++m) {
       //TODO(phl):factor
       f -= x[m] * basis[m];
@@ -304,9 +302,8 @@ IncrementalProjection(Function const& function,
 
     int ω_basis_size;
     if (ω.value() == AngularFrequency{}) {
-      using Generator = PoissonSeriesBasisGenerator<Normalized,
-                                                    aperiodic_degree,
-                                                    Evaluator>;
+      using Generator = PoissonSeriesBasisGenerator<BasisSeries,
+                                                    aperiodic_degree>;
       auto const ω_basis = Generator::Basis(t0);
       auto const ω_basis_subspaces = Generator::Subspaces(t0);
       ω_basis_size = std::tuple_size_v<decltype(ω_basis)>;
@@ -315,9 +312,8 @@ IncrementalProjection(Function const& function,
                 ω_basis_subspaces.end(),
                 std::back_inserter(basis_subspaces));
     } else {
-      using Generator = PoissonSeriesBasisGenerator<Normalized,
-                                                    periodic_degree,
-                                                    Evaluator>;
+      using Generator = PoissonSeriesBasisGenerator<BasisSeries,
+                                                    periodic_degree>;
       auto const ω_basis = Generator::Basis(ω.value(), t0);
       auto const ω_basis_subspaces = Generator::Subspaces(ω.value(), t0);
       ω_basis_size = std::tuple_size_v<decltype(ω_basis)>;
