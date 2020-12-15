@@ -214,8 +214,8 @@ IncrementalProjection(Function const& function,
   if (ω.value() == AngularFrequency{}) {
     using Generator = PoissonSeriesBasisGenerator<BasisSeries,
                                                   aperiodic_degree>;
-    auto const ω_basis = Generator::Basis(t0);
-    auto const ω_basis_subspaces = Generator::Subspaces(t0);
+    auto const ω_basis = Generator::Basis(t_min, t_max);
+    auto const ω_basis_subspaces = Generator::Subspaces();
     basis_size = std::tuple_size_v<decltype(ω_basis)>;
     std::move(ω_basis.begin(), ω_basis.end(), std::back_inserter(basis));
     std::move(ω_basis_subspaces.begin(),
@@ -224,8 +224,8 @@ IncrementalProjection(Function const& function,
   } else {
     using Generator = PoissonSeriesBasisGenerator<BasisSeries,
                                                   periodic_degree>;
-    auto const ω_basis = Generator::Basis(ω.value(), t0);
-    auto const ω_basis_subspaces = Generator::Subspaces(ω.value(), t0);
+    auto const ω_basis = Generator::Basis(ω.value(), t_min, t_max);
+    auto const ω_basis_subspaces = Generator::Subspaces(ω.value());
     basis_size = std::tuple_size_v<decltype(ω_basis)>;
     std::move(ω_basis.begin(), ω_basis.end(), std::back_inserter(basis));
     std::move(ω_basis_subspaces.begin(),
@@ -304,8 +304,8 @@ IncrementalProjection(Function const& function,
     if (ω.value() == AngularFrequency{}) {
       using Generator = PoissonSeriesBasisGenerator<BasisSeries,
                                                     aperiodic_degree>;
-      auto const ω_basis = Generator::Basis(t0);
-      auto const ω_basis_subspaces = Generator::Subspaces(t0);
+      auto const ω_basis = Generator::Basis(t_min, t_max);
+      auto const ω_basis_subspaces = Generator::Subspaces();
       ω_basis_size = std::tuple_size_v<decltype(ω_basis)>;
       std::move(ω_basis.begin(), ω_basis.end(), std::back_inserter(basis));
       std::move(ω_basis_subspaces.begin(),
@@ -314,8 +314,8 @@ IncrementalProjection(Function const& function,
     } else {
       using Generator = PoissonSeriesBasisGenerator<BasisSeries,
                                                     periodic_degree>;
-      auto const ω_basis = Generator::Basis(ω.value(), t0);
-      auto const ω_basis_subspaces = Generator::Subspaces(ω.value(), t0);
+      auto const ω_basis = Generator::Basis(ω.value(), t_min, t_max);
+      auto const ω_basis_subspaces = Generator::Subspaces(ω.value());
       ω_basis_size = std::tuple_size_v<decltype(ω_basis)>;
       std::move(ω_basis.begin(), ω_basis.end(), std::back_inserter(basis));
       std::move(ω_basis_subspaces.begin(),
