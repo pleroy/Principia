@@ -243,10 +243,10 @@ IncrementalProjection(Function const& function,
       for (int k = 0; k <= m; ++k) {
         if (!PoissonSeriesSubspace::orthogonal(basis_subspaces[k],
                                                basis_subspaces[m])) {
-          C[k][m] = InnerProduct(basis[k], aₘ, weight, t_min, t_max);
-          //C[k][m] = (PointwiseInnerProduct(basis[k], aₘ) * weight)
-          //              .Integrate(t_min, t_max) /
-          //          (t_max - t_min);
+          //C[k][m] = InnerProduct(basis[k], aₘ, weight, t_min, t_max);
+          C[k][m] = (PointwiseInnerProduct(basis[k], aₘ) * weight)
+                        .Integrate(t_min, t_max) /
+                    (t_max - t_min);
         }
       }
       c[m] = InnerProduct(function, aₘ, weight, t_min, t_max);
@@ -276,6 +276,8 @@ IncrementalProjection(Function const& function,
 
     if (anomaly) {
       mathematica::Logger logger(TEMP_DIR / "normal_equations.wl");
+      logger.Set("tMin", t_min, mathematica::ExpressIn(Metre, Radian, Second));
+      logger.Set("tMax", t_max, mathematica::ExpressIn(Metre, Radian, Second));
       logger.Set("basis", basis, mathematica::ExpressIn(Metre, Radian, Second));
       logger.Set("matrixC", C, mathematica::ExpressIn(Metre, Radian, Second));
       logger.Set("vectorC", c, mathematica::ExpressIn(Metre, Radian, Second));
