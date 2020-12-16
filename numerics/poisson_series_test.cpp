@@ -331,6 +331,58 @@ TEST_F(PoissonSeriesTest, PoorlyConditionedInnerProduct) {
                                 IsNear(0.19_⑴)));
 }
 
+TEST_F(PoissonSeriesTest, PoorlyConditionedInnerProduct2) {
+  using Degree4 = PoissonSeries<double, 4, 0, EstrinEvaluator>;
+  using Degree3 = PoissonSeries<double, 0, 3, EstrinEvaluator>;
+  Instant const t_min = t0_;
+  Instant const t_mid = t0_ + 3.9456e6 * Second;
+  Instant const t_max = t0_ + 7.8912e6 * Second;
+  AngularFrequency const ω = 0.00022803291107279178200 * Radian / Second;
+  Degree4 const d4(
+      Degree4::AperiodicPolynomial({0,
+                                    0 / Second,
+                                    0 / Pow<2>(Second),
+                                    0 / Pow<3>(Second),
+                                    4.1261763010686733500e-27 / Pow<4>(Second)},
+                                   t_mid),
+      {});
+  Degree3 const d3(Degree3::AperiodicPolynomial({}, t_mid),
+                   {{ω,
+                     {/*sin=*/Degree3::PeriodicPolynomial(
+                          {0,
+                           0 / Second,
+                           0 / Pow<2>(Second),
+                           1.6280241213496557600e-20 / Pow<3>(Second)},
+                          t_mid),
+                      /*cos=*/Degree3::PeriodicPolynomial({}, t_mid)}}});
+  double const expected_product = -0.00036210577923950242804;
+
+  // The relative errors below are due to the errors on the trigonometric
+  // functions.
+  {
+    auto const product =
+        PointwiseInnerProduct(d3, d4).Integrate(t_min, t_max) / (t_max - t_min);
+    LOG(ERROR)<<quantities::DebugString(product);
+    EXPECT_THAT(product,
+                RelativeErrorFrom(expected_product, IsNear(1.54e-13_⑴)));
+  }
+  {
+    auto const product =
+        InnerProduct(d3, d4,
+                     apodization::Dirichlet<EstrinEvaluator>(t_min, t_max),
+                     t_min, t_max);
+    EXPECT_THAT(product,
+                RelativeErrorFrom(expected_product, IsNear(1.54e-13_⑴)));
+  }
+  {
+    auto const primitive = PointwiseInnerProduct(d3, d4).Primitive();
+    auto const product =
+        (primitive(t_max) - primitive(t_min)) / (t_max - t_min);
+    EXPECT_THAT(product,
+                RelativeErrorFrom(expected_product, IsNear(1.54e-13_⑴)));
+  }
+}
+
 TEST_F(PoissonSeriesTest, Output) {
   LOG(ERROR) << *pa_;
 }

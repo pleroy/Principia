@@ -247,6 +247,8 @@ IncrementalProjection(Function const& function,
           C[k][m] = (PointwiseInnerProduct(basis[k], aₘ) * weight)
                         .Integrate(t_min, t_max) /
                     (t_max - t_min);
+          //auto p = (PointwiseInnerProduct(basis[k], aₘ) * weight).Primitive();
+          //C[k][m] = (p(t_max) - p(t_min)) / (t_max - t_min);
         }
       }
       c[m] = InnerProduct(function, aₘ, weight, t_min, t_max);
