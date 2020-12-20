@@ -98,6 +98,8 @@ class PolynomialInMonomialBasis : public Polynomial<Value_, Argument_> {
  public:
   using Argument = Argument_;
   using Value = Value_;
+  template<typename V, typename A, int d>
+  using Evaluator_ = Evaluator<V, A, d>;  //TODO(phl): fix the name.
 
   // Equivalent to:
   //   std::tuple<Value,
@@ -220,6 +222,8 @@ class PolynomialInMonomialBasis<Value_, Point<Argument_>, degree_, Evaluator>
  public:
   using Argument = Argument_;
   using Value = Value_;
+  template<typename V, typename A, int d>
+  using Evaluator_ = Evaluator<V, A, d>;  //TODO(phl): fix the name.
 
   // Equivalent to:
   //   std::tuple<Value,

@@ -6,6 +6,7 @@
 
 #include "geometry/barycentre_calculator.hpp"
 #include "geometry/hilbert.hpp"
+#include "numerics/legendre.hpp"
 #include "quantities/elementary_functions.hpp"
 #include "quantities/si.hpp"
 #include "quantities/traits.hpp"
@@ -79,6 +80,7 @@ double CoefficientGenerator<double,
 template<typename Polynomial, int dimension>
 struct PolynomialGenerator {
   // Returns a polynomial whose coordinate and degree are encoded in |index|.
+  //TODO(phl): Better name for these functions.
   template<int index>
   static Polynomial UnitPolynomial(Instant const& t_min,
                                    Instant const& t_mid,
@@ -105,14 +107,17 @@ Polynomial PolynomialGenerator<Polynomial, dimension>::UnitPolynomial(
   static constexpr int degree = index / dimension;
 
   using Coefficients = typename Polynomial::Coefficients;
+  using Evaluator = typename Polynomial::Evaluator_;
   using Coefficient = std::tuple_element_t<degree, Coefficients>;
   using NormalizedCoefficient = typename Hilbert<Coefficient>::NormalizedType;
-  Coefficients coefficients;
-  std::get<degree>(coefficients) =
+  PolynomialInMonomialBasis<double, Instant, /*degree=*/1, Evaluator>
+      instant_normalization({0, 2.0 / (t_max - t_min)}, t_mid);
+  NormalizedCoefficient const unit_coefficient =
       CoefficientGenerator<NormalizedCoefficient,
-                           dimension>::template Unit<coordinate>() /
-      Pow<degree>(0.5 * (t_max - t_min));
-  return Polynomial(coefficients, t_mid);
+                           dimension>::template Unit<coordinate>();
+  auto const legendre_polynomial_of_instant =
+      Compose(LegendrePolynomial<degree, Evaluator>(), instant_normalization);
+  return Polynomial(unit_coefficient * legendre_polynomial_of_instant);
 }
 
 template<typename Polynomial, int dimension>
