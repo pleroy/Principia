@@ -270,6 +270,7 @@ IncrementalProjection(Function const& function,
     bool anomaly = false;
     for (int m = 0; m < y.size(); ++m) {
       if (D[m] < 0) {
+        LOG(ERROR)<<"Anomaly: D["<<m<<"]: "<<D[m];
         anomaly = true;
       }
       yDminus1[m] = y[m] / D[m];
