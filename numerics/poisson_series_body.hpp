@@ -67,25 +67,27 @@ DoublePrecision<quantities::Primitive<Value, Time>> AngularFrequencyIntegrate(
     double const sin_ωt1,
     double const cos_ωt1,
     double const sin_ωt2,
-    double const cos_ωt2) {
+    double const cos_ωt2,
+  mathematica::Logger& logger) {
   static_assert(degree >= 0);
   DoublePrecision<Value> sum;
-  sum += q(t2) * sin_ωt2;
-  sum -= p(t2) * cos_ωt2;
-  sum -= q(t1) * sin_ωt1;
-  sum += p(t1) * cos_ωt1;
-  //LOG(ERROR)<<"fp: "<<sum;
+  sum += DoublePrecision(q(t2)) * DoublePrecision(sin_ωt2);
+  sum -= DoublePrecision(p(t2)) * DoublePrecision(cos_ωt2);
+  sum -= DoublePrecision(q(t1)) * DoublePrecision(sin_ωt1);
+  sum += DoublePrecision(p(t1)) * DoublePrecision(cos_ωt1);
+  LOG(ERROR)<<"fp: "<<sum;
+  logger.Append("fp", sum, mathematica::ExpressIn(Metre, Second, Radian));
   if constexpr (degree > 0) {
     auto const sp = AngularFrequencyIntegrate(ω,
                                      /*p=*/-q.template Derivative<1>(),
                                      /*q=*/p.template Derivative<1>(),
                                      t1, t2,
                                      sin_ωt1, cos_ωt1,
-                                     sin_ωt2, cos_ωt2);
-    //LOG(ERROR)<<"sp: "<<sp;
+                                     sin_ωt2, cos_ωt2, logger);
+    LOG(ERROR)<<"sp: "<<sp;
     sum += sp;
   }
-  //LOG(ERROR)<<"sfp: "<<sum<<" "<< sum / DoublePrecision<Inverse<Time>>(ω / Radian);
+  LOG(ERROR)<<"sfp: "<<sum<<" "<< sum / DoublePrecision<Inverse<Time>>(ω / Radian);
   return sum / DoublePrecision<Inverse<Time>>(ω / Radian);
 }
 
@@ -358,18 +360,25 @@ Integrate(Instant const& t1,
     auto const cos_ωt1 = Cos(Mod2π(DoublePrecision<Angle>(ω * (t1 - origin_))).value);
     auto const sin_ωt2 = Sin(Mod2π(DoublePrecision<Angle>(ω * (t2 - origin_))).value);
     auto const cos_ωt2 = Cos(Mod2π(DoublePrecision<Angle>(ω * (t2 - origin_))).value);
-  //  LOG(ERROR) << "omega: " << ω << " s1: " << quantities::DebugString(sin_ωt1)
-  //             << " s2: " << quantities::DebugString(sin_ωt2)
-  //             << " c1: " << quantities::DebugString(cos_ωt1)
-  //             << " c2: " << quantities::DebugString(cos_ωt2);
+    LOG(ERROR) << "omega: " << ω << " s1: " << quantities::DebugString(sin_ωt1)
+               << " s2: " << quantities::DebugString(sin_ωt2)
+               << " c1: " << quantities::DebugString(cos_ωt1)
+               << " c2: " << quantities::DebugString(cos_ωt2);
   //LOG(ERROR)<<polynomials.sin;
   //LOG(ERROR)<<polynomials.cos;
-    result += AngularFrequencyIntegrate(ω,
-                                        polynomials.sin, polynomials.cos,
-                                        t1, t2,
-                                        sin_ωt1, cos_ωt1,
-                                        sin_ωt2, cos_ωt2);
-    logger.Append("result", std::tuple(result.value, result.error), mathematica::ExpressIn(Metre, Second, Radian));
+    auto a =  AngularFrequencyIntegrate(ω,
+                                            polynomials.sin,
+                                            polynomials.cos,
+                                            t1,
+                                            t2,
+                                            sin_ωt1,
+                                            cos_ωt1,
+                                            sin_ωt2,
+                                            cos_ωt2,logger);
+    logger.Append(
+        "intActual", a, mathematica::ExpressIn(Metre, Second, Radian));
+    result += a;
+    logger.Append("resultActual", result, mathematica::ExpressIn(Metre, Second, Radian));
   }
   return result.value + result.error;
 }
