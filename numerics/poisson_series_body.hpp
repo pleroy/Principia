@@ -16,6 +16,7 @@
 #include "quantities/elementary_functions.hpp"
 #include "quantities/named_quantities.hpp"
 #include "quantities/si.hpp"
+#include "mathematica/mathematica.hpp"
 
 namespace principia {
 namespace numerics {
@@ -29,7 +30,9 @@ using quantities::Inverse;
 using quantities::Sin;
 using quantities::Sqrt;
 using quantities::Variation;
+using quantities::si::Metre;
 using quantities::si::Radian;
+using quantities::si::Second;
 namespace si = quantities::si;
 
 // These parameters have been tuned for approximation of the Moon over 3 months
@@ -341,17 +344,20 @@ quantities::Primitive<Value, Time>
 PoissonSeries<Value, aperiodic_degree_, periodic_degree_, Evaluator>::
 Integrate(Instant const& t1,
           Instant const& t2) const {
+  mathematica::Logger logger(TEMP_DIR / "integrate.wl");
+  logger.Set("fgw", *this, mathematica::ExpressIn(Metre, Second, Radian));
   auto const aperiodic_primitive = aperiodic_.Primitive();
   DoublePrecision<quantities::Primitive<Value, Time>> result(
       aperiodic_primitive(t2) - aperiodic_primitive(t1));
   for (auto const& [ω, polynomials] : periodic_) {
+    logger.Append("args", std::tuple(ω, polynomials.sin, polynomials.cos), mathematica::ExpressIn(Metre, Second, Radian));
     // This implementation follows [HO09], Theorem 1 and [INO06] equation 4.
     // The trigonometric functions are computed only once as we iterate through
     // the degree of the polynomials.
-    auto const sin_ωt1 = Sin(ω * (t1 - origin_));
-    auto const cos_ωt1 = Cos(ω * (t1 - origin_));
-    auto const sin_ωt2 = Sin(ω * (t2 - origin_));
-    auto const cos_ωt2 = Cos(ω * (t2 - origin_));
+    auto const sin_ωt1 = Sin(Mod2π(DoublePrecision<Angle>(ω * (t1 - origin_))).value);
+    auto const cos_ωt1 = Cos(Mod2π(DoublePrecision<Angle>(ω * (t1 - origin_))).value);
+    auto const sin_ωt2 = Sin(Mod2π(DoublePrecision<Angle>(ω * (t2 - origin_))).value);
+    auto const cos_ωt2 = Cos(Mod2π(DoublePrecision<Angle>(ω * (t2 - origin_))).value);
   //  LOG(ERROR) << "omega: " << ω << " s1: " << quantities::DebugString(sin_ωt1)
   //             << " s2: " << quantities::DebugString(sin_ωt2)
   //             << " c1: " << quantities::DebugString(cos_ωt1)
@@ -363,6 +369,7 @@ Integrate(Instant const& t1,
                                         t1, t2,
                                         sin_ωt1, cos_ωt1,
                                         sin_ωt2, cos_ωt2);
+    logger.Append("result", std::tuple(result.value, result.error), mathematica::ExpressIn(Metre, Second, Radian));
   }
   return result.value + result.error;
 }

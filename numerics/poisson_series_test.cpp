@@ -9,6 +9,7 @@
 #include "geometry/grassmann.hpp"
 #include "geometry/named_quantities.hpp"
 #include "gtest/gtest.h"
+#include "mathematica/mathematica.hpp"
 #include "numerics/apodization.hpp"
 #include "numerics/polynomial_evaluators.hpp"
 #include "numerics/quadrature.hpp"
@@ -383,14 +384,29 @@ TEST_F(PoissonSeriesTest, PoorlyConditionedInnerProduct2) {
                   {{ω3,
                     {/*sin=*/Degree0::PeriodicPolynomial({}, t_mid),
                      /*cos=*/Degree0::PeriodicPolynomial({1}, t_mid)}}});
+  mathematica::Logger logger(TEMP_DIR / "test.wl");
+  logger.Set("f", f, mathematica::ExpressIn(Radian, Second));
+  logger.Set("g", g, mathematica::ExpressIn(Radian, Second));
+  logger.Set("tMin", t_min, mathematica::ExpressIn(Radian, Second));
+  logger.Set("tMax", t_max, mathematica::ExpressIn(Radian, Second));
 
-  auto const product = (PointwiseInnerProduct(f, g) *
-                        apodization::Dirichlet<HornerEvaluator>(t_min, t_max))
-                           .Integrate(t_min, t_max) /
-                       (t_max - t_min);
-  EXPECT_THAT(
-      product,
-      RelativeErrorFrom(+2.50691820718715747e-11, IsNear(0.0000000000001_⑴)));
+  {
+    auto const product = InnerProduct(f, g,
+                     apodization::Dirichlet<HornerEvaluator>(t_min, t_max),
+                     t_min, t_max);
+    EXPECT_THAT(
+        product,
+        RelativeErrorFrom(+2.136878328290819e-11, IsNear(0.0000000000001_⑴)));
+  }
+  {
+    auto const product = (PointwiseInnerProduct(f, g) *
+                          apodization::Dirichlet<HornerEvaluator>(t_min, t_max))
+                             .Integrate(t_min, t_max) /
+                         (t_max - t_min);
+    EXPECT_THAT(
+        product,
+        RelativeErrorFrom(+2.136878328290819e-11, IsNear(0.0000000000001_⑴)));
+  }
 }
 
 TEST_F(PoissonSeriesTest, Output) {
