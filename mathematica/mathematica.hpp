@@ -231,8 +231,23 @@ std::string ToMathematica(R ref,
 template<typename V, typename A, int d,
          template<typename, typename, int> class E,
          typename OptionalExpressIn = std::nullopt_t>
+std::string ToMathematicaBody(
+    PolynomialInMonomialBasis<V, A, d, E> const& polynomial,
+    OptionalExpressIn express_in = std::nullopt);
+
+template<typename V, typename A, int d,
+         template<typename, typename, int> class E,
+         typename OptionalExpressIn = std::nullopt_t>
 std::string ToMathematica(
     PolynomialInMonomialBasis<V, A, d, E> const& polynomial,
+    OptionalExpressIn express_in = std::nullopt);
+
+
+template<typename V, int ad, int pd,
+         template<typename, typename, int> class E,
+         typename OptionalExpressIn = std::nullopt_t>
+std::string ToMathematicaBody(
+    PoissonSeries<V, ad, pd, E> const& series,
     OptionalExpressIn express_in = std::nullopt);
 
 template<typename V, int ad, int pd,
@@ -240,6 +255,13 @@ template<typename V, int ad, int pd,
          typename OptionalExpressIn = std::nullopt_t>
 std::string ToMathematica(PoissonSeries<V, ad, pd, E> const& series,
                           OptionalExpressIn express_in = std::nullopt);
+
+template<typename V, int ad, int pd,
+         template<typename, typename, int> class E,
+         typename OptionalExpressIn = std::nullopt_t>
+std::string ToMathematicaBody(
+    PiecewisePoissonSeries<V, ad, pd, E> const& series,
+    OptionalExpressIn express_in = std::nullopt);
 
 template<typename V, int ad, int pd,
          template<typename, typename, int> class E,
@@ -305,6 +327,7 @@ using internal_mathematica::Logger;
 using internal_mathematica::Option;
 using internal_mathematica::PlottableDataset;
 using internal_mathematica::ToMathematica;
+using internal_mathematica::ToMathematicaBody;
 
 }  // namespace mathematica
 }  // namespace principia
