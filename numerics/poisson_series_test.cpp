@@ -51,6 +51,7 @@ using testing_utilities::IsNear;
 using testing_utilities::VanishesBefore;
 using testing_utilities::RelativeErrorFrom;
 using testing_utilities::operator""_⑴;
+using ::testing::AnyOf;
 
 class PoissonSeriesTest : public ::testing::Test {
  protected:
@@ -390,14 +391,14 @@ mathematica::Logger logger(TEMP_DIR / "test.wl");
   logger.Set("tMin", t_min, mathematica::ExpressIn(Radian, Second));
   logger.Set("tMax", t_max, mathematica::ExpressIn(Radian, Second));
 
-
   {
     auto const product = InnerProduct(f, g,
                      apodization::Dirichlet<HornerEvaluator>(t_min, t_max),
                      t_min, t_max);
-    EXPECT_THAT(
-        product,
-        RelativeErrorFrom(+2.026745255082731e-11, IsNear(0.33_⑴)));
+    EXPECT_THAT(product,
+                RelativeErrorFrom(
+                    +2.0267451184776034270e-11,
+                    AnyOf(IsNear(0.26_⑴), IsNear(0.33_⑴), IsNear(0.38_⑴))));
   }
   {
     auto const product = (PointwiseInnerProduct(f, g) *
@@ -406,7 +407,7 @@ mathematica::Logger logger(TEMP_DIR / "test.wl");
                          (t_max - t_min);
     EXPECT_THAT(
         product,
-        RelativeErrorFrom(+2.026745255082731e-11, IsNear(4010_⑴)));
+        RelativeErrorFrom(+2.0267451184776034270e-11, IsNear(4010_⑴)));
   }
 }
 
