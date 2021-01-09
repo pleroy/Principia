@@ -16,7 +16,6 @@
 #include "quantities/elementary_functions.hpp"
 #include "quantities/named_quantities.hpp"
 #include "quantities/si.hpp"
-#include "mathematica/mathematica.hpp"
 
 namespace principia {
 namespace numerics {
@@ -26,13 +25,10 @@ using quantities::Abs;
 using quantities::Angle;
 using quantities::Cos;
 using quantities::Infinity;
-using quantities::Inverse;
 using quantities::Sin;
 using quantities::Sqrt;
 using quantities::Variation;
-using quantities::si::Metre;
 using quantities::si::Radian;
-using quantities::si::Second;
 namespace si = quantities::si;
 
 // These parameters have been tuned for approximation of the Moon over 3 months
@@ -58,7 +54,7 @@ constexpr double clenshaw_curtis_relative_error = 0x1p-32;
 template<typename Value,
          int degree,
          template<typename, typename, int> class Evaluator>
-DoublePrecision<quantities::Primitive<Value, Time>> AngularFrequencyIntegrate(
+quantities::Primitive<Value, Time> AngularFrequencyIntegrate(
     AngularFrequency const& ω,
     PolynomialInMonomialBasis<Value, Instant, degree, Evaluator> const& p,
     PolynomialInMonomialBasis<Value, Instant, degree, Evaluator> const& q,
@@ -67,28 +63,22 @@ DoublePrecision<quantities::Primitive<Value, Time>> AngularFrequencyIntegrate(
     double const sin_ωt1,
     double const cos_ωt1,
     double const sin_ωt2,
-    double const cos_ωt2,
-  mathematica::Logger& logger) {
+    double const cos_ωt2) {
   static_assert(degree >= 0);
   DoublePrecision<Value> sum;
-  sum += DoublePrecision(q(t2)) * DoublePrecision(sin_ωt2);
-  sum -= DoublePrecision(p(t2)) * DoublePrecision(cos_ωt2);
-  sum -= DoublePrecision(q(t1)) * DoublePrecision(sin_ωt1);
-  sum += DoublePrecision(p(t1)) * DoublePrecision(cos_ωt1);
-  LOG(ERROR)<<"fp: "<<sum;
-  logger.Append("fp", sum, mathematica::ExpressIn(Metre, Second, Radian));
+  sum += q(t2) * sin_ωt2;
+  sum -= p(t2) * cos_ωt2;
+  sum -= q(t1) * sin_ωt1;
+  sum += p(t1) * cos_ωt1;
   if constexpr (degree > 0) {
-    auto const sp = AngularFrequencyIntegrate(ω,
+    sum += AngularFrequencyIntegrate(ω,
                                      /*p=*/-q.template Derivative<1>(),
                                      /*q=*/p.template Derivative<1>(),
                                      t1, t2,
                                      sin_ωt1, cos_ωt1,
-                                     sin_ωt2, cos_ωt2, logger);
-    LOG(ERROR)<<"sp: "<<sp;
-    sum += sp;
+                                     sin_ωt2, cos_ωt2);
   }
-  LOG(ERROR)<<"sfp: "<<sum<<" "<< sum / DoublePrecision<Inverse<Time>>(ω / Radian);
-  return sum / DoublePrecision<Inverse<Time>>(ω / Radian);
+  return (sum.value + sum.error) / ω * Radian;
 }
 
 // This function computes ∫(p(t) sin ω t + q(t) cos ω t) dt where p and q are
@@ -346,41 +336,24 @@ quantities::Primitive<Value, Time>
 PoissonSeries<Value, aperiodic_degree_, periodic_degree_, Evaluator>::
 Integrate(Instant const& t1,
           Instant const& t2) const {
-  mathematica::Logger logger(TEMP_DIR / "integrate.wl");
-  logger.Set("fgw", *this, mathematica::ExpressIn(Metre, Second, Radian));
   auto const aperiodic_primitive = aperiodic_.Primitive();
-  DoublePrecision<quantities::Primitive<Value, Time>> result(
-      aperiodic_primitive(t2) - aperiodic_primitive(t1));
+  quantities::Primitive<Value, Time> result =
+      aperiodic_primitive(t2) - aperiodic_primitive(t1);
   for (auto const& [ω, polynomials] : periodic_) {
-    logger.Append("args", std::tuple(ω, polynomials.sin, polynomials.cos), mathematica::ExpressIn(Metre, Second, Radian));
     // This implementation follows [HO09], Theorem 1 and [INO06] equation 4.
     // The trigonometric functions are computed only once as we iterate through
     // the degree of the polynomials.
-    auto const sin_ωt1 = Sin(Mod2π(DoublePrecision<Angle>(ω * (t1 - origin_))).value);
-    auto const cos_ωt1 = Cos(Mod2π(DoublePrecision<Angle>(ω * (t1 - origin_))).value);
-    auto const sin_ωt2 = Sin(Mod2π(DoublePrecision<Angle>(ω * (t2 - origin_))).value);
-    auto const cos_ωt2 = Cos(Mod2π(DoublePrecision<Angle>(ω * (t2 - origin_))).value);
-    LOG(ERROR) << "omega: " << ω << " s1: " << quantities::DebugString(sin_ωt1)
-               << " s2: " << quantities::DebugString(sin_ωt2)
-               << " c1: " << quantities::DebugString(cos_ωt1)
-               << " c2: " << quantities::DebugString(cos_ωt2);
-  //LOG(ERROR)<<polynomials.sin;
-  //LOG(ERROR)<<polynomials.cos;
-    auto a =  AngularFrequencyIntegrate(ω,
-                                            polynomials.sin,
-                                            polynomials.cos,
-                                            t1,
-                                            t2,
-                                            sin_ωt1,
-                                            cos_ωt1,
-                                            sin_ωt2,
-                                            cos_ωt2,logger);
-    logger.Append(
-        "intActual", a, mathematica::ExpressIn(Metre, Second, Radian));
-    result += a;
-    logger.Append("resultActual", result, mathematica::ExpressIn(Metre, Second, Radian));
+    auto const sin_ωt1 = Sin(ω * (t1 - origin_));
+    auto const cos_ωt1 = Cos(ω * (t1 - origin_));
+    auto const sin_ωt2 = Sin(ω * (t2 - origin_));
+    auto const cos_ωt2 = Cos(ω * (t2 - origin_));
+    result += AngularFrequencyIntegrate(ω,
+                                        polynomials.sin, polynomials.cos,
+                                        t1, t2,
+                                        sin_ωt1, cos_ωt1,
+                                        sin_ωt2, cos_ωt2);
   }
-  return result.value + result.error;
+  return result;
 }
 
 template<typename Value,

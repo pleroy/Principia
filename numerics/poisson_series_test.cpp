@@ -385,11 +385,6 @@ TEST_F(PoissonSeriesTest, PoorlyConditionedInnerProduct2) {
                   {{ω3,
                     {/*sin=*/Degree0::PeriodicPolynomial({}, t_mid),
                      /*cos=*/Degree0::PeriodicPolynomial({1}, t_mid)}}});
-mathematica::Logger logger(TEMP_DIR / "test.wl");
-  logger.Set("f", f, mathematica::ExpressIn(Radian, Second));
-  logger.Set("g", g, mathematica::ExpressIn(Radian, Second));
-  logger.Set("tMin", t_min, mathematica::ExpressIn(Radian, Second));
-  logger.Set("tMax", t_max, mathematica::ExpressIn(Radian, Second));
 
   {
     auto const product = InnerProduct(f, g,

@@ -114,9 +114,8 @@ Projection(Function const& function,
       t_min, t_max);
 }
 
-#define DO_THE_LOGGING 0
+#define DO_THE_LOGGING 1
 #define USE_CGS 0
-#define USE_INTEGRATE1 1
 #define USE_INTEGRATE2 1
 #define USE_INTEGRATE3 0
 
@@ -238,15 +237,6 @@ IncrementalProjection(Function const& function,
 #else
            auto const sᵖₘ =
                 InnerProduct(q[i], previous_q̂ₘ, weight, t_min, t_max);
-#endif
-#if DO_THE_LOGGING
-            if (m == 25 && i == 23) {
-              LOG(ERROR)<<q[i];
-              LOG(ERROR)<<previous_q̂ₘ;
-              LOG(ERROR)<<sᵖₘ;
-              LOG(ERROR)<<t_min<<" "<<t_max;
-            }
-            LOG(ERROR)<<"i: "<<i<<" m: "<<m<<" s:"<<sᵖₘ;
 #endif
             q̂ₘ -= sᵖₘ * q[i];
           }
