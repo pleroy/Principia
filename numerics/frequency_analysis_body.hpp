@@ -10,10 +10,12 @@
 #include "base/tags.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/hilbert.hpp"
+#include "mathematica/mathematica.hpp"
 #include "numerics/poisson_series_basis.hpp"
 #include "numerics/root_finders.hpp"
 #include "numerics/unbounded_arrays.hpp"
 #include "quantities/elementary_functions.hpp"
+#include "testing_utilities/numerics.hpp"
 
 namespace principia {
 namespace numerics {
@@ -29,6 +31,9 @@ using quantities::IsFinite;
 using quantities::Sqrt;
 using quantities::Square;
 using quantities::SquareRoot;
+using quantities::si::Metre;
+using quantities::si::Radian;
+using quantities::si::Second;
 
 // Appends basis elements for |ω| to |basis| and |basis_subspaces|.  Returns the
 // number of elements that were appended.
@@ -114,9 +119,9 @@ Projection(Function const& function,
       t_min, t_max);
 }
 
-#define DO_THE_LOGGING 1
+#define DO_THE_LOGGING 0
 #define USE_CGS 0
-#define USE_INTEGRATE2 1
+#define USE_INTEGRATE2 0
 #define USE_INTEGRATE3 0
 
 template<int aperiodic_degree, int periodic_degree,
@@ -206,6 +211,15 @@ IncrementalProjection(Function const& function,
     LOG(ERROR) << "Max err: " << max << " at: " << i_max
                << " max orth err: " << max_orth << " at: " << i_max_orth;
   };
+
+  static double max_relative_error = 0;
+  static double max_absolute_error = 0;
+  static std::optional<BasisSeries> max_qi;
+  static std::optional<BasisSeries> max_qm;
+  mathematica::Logger logger(TEMP_DIR / "inner_product_error.wl");
+  logger.Set("tMin", t_min, mathematica::ExpressIn(Second));
+  logger.Set("tMax", t_max, mathematica::ExpressIn(Second));
+
   int m_begin = 1;
   for (;;) {
     for (int m = m_begin; m < basis_size; ++m) {
@@ -235,8 +249,52 @@ IncrementalProjection(Function const& function,
                                 .Integrate(t_min, t_max) /
                             (t_max - t_min);
 #else
+           auto const sᵖₘ_integrate =
+               (PointwiseInnerProduct(q[i], previous_q̂ₘ) * weight)
+                   .Integrate(t_min, t_max) /
+               (t_max - t_min);
            auto const sᵖₘ =
                 InnerProduct(q[i], previous_q̂ₘ, weight, t_min, t_max);
+           double const relative_error =
+               testing_utilities::RelativeError(sᵖₘ, sᵖₘ_integrate);
+           double const absolute_error =
+               testing_utilities::AbsoluteError(sᵖₘ, sᵖₘ_integrate);
+# if 0
+           if (relative_error > max_relative_error) {
+             max_relative_error = relative_error;
+             max_qi = q[i];
+             max_qm = previous_q̂ₘ;
+             LOG(ERROR) << "m: " << m << " i: " << i
+                        << " abserr: " << absolute_error
+                        << " relerr: " << relative_error;
+             LOG(ERROR) << "int: " << sᵖₘ_integrate << " ip: " << sᵖₘ;
+             LOG(ERROR) << " q[i]: " << q[i];
+             LOG(ERROR) << " previous q̂ₘ: " << previous_q̂ₘ;
+             //TODO(phl): std::pair
+             logger.Append(
+                 "relativeError",
+                 std::tuple(q[i], previous_q̂ₘ, relative_error),
+                 mathematica::ExpressIn(Metre, Radian, Second));
+           }
+# endif
+# if 1
+           if (absolute_error > max_absolute_error) {
+             max_absolute_error = absolute_error;
+             max_qi = q[i];
+             max_qm = previous_q̂ₘ;
+             LOG(ERROR) << "m: " << m << " i: " << i
+                        << " abserr: " << absolute_error
+                        << " relerr: " << relative_error;
+             LOG(ERROR) << "int: " << sᵖₘ_integrate << " ip: " << sᵖₘ;
+             LOG(ERROR) << " q[i]: " << q[i];
+             LOG(ERROR) << " previous q̂ₘ: " << previous_q̂ₘ;
+             //TODO(phl): std::pair
+             logger.Append(
+                 "absoluteError",
+                 std::tuple(q[i], previous_q̂ₘ, absolute_error),
+                 mathematica::ExpressIn(Metre, Radian, Second));
+           }
+# endif
 #endif
             q̂ₘ -= sᵖₘ * q[i];
           }
