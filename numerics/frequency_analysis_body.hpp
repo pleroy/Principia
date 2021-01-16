@@ -119,10 +119,13 @@ Projection(Function const& function,
       t_min, t_max);
 }
 
+#define COMPUTE_INNER_PRODUCT_ERRORS 0
 #define DO_THE_LOGGING 0
+#define DROP_LARGE_CANCELLATIONS 0
 #define USE_CGS 0
 #define USE_INTEGRATE2 0
 #define USE_INTEGRATE3 0
+#define USE_ORTHOGONALITY 1
 
 template<int aperiodic_degree, int periodic_degree,
          typename Function,
@@ -249,17 +252,19 @@ IncrementalProjection(Function const& function,
                                 .Integrate(t_min, t_max) /
                             (t_max - t_min);
 #else
+           auto const sᵖₘ =
+                InnerProduct(q[i], previous_q̂ₘ, weight, t_min, t_max);
+# if COMPUTE_INNER_PRODUCT_ERRORS
            auto const sᵖₘ_integrate =
                (PointwiseInnerProduct(q[i], previous_q̂ₘ) * weight)
                    .Integrate(t_min, t_max) /
                (t_max - t_min);
-           auto const sᵖₘ =
-                InnerProduct(q[i], previous_q̂ₘ, weight, t_min, t_max);
            double const relative_error =
                testing_utilities::RelativeError(sᵖₘ, sᵖₘ_integrate);
            double const absolute_error =
                testing_utilities::AbsoluteError(sᵖₘ, sᵖₘ_integrate);
-# if 0
+# endif
+# if COMPUTE_INNER_PRODUCT_ERRORS
            if (relative_error > max_relative_error) {
              max_relative_error = relative_error;
              max_qi = q[i];
@@ -277,7 +282,7 @@ IncrementalProjection(Function const& function,
                  mathematica::ExpressIn(Metre, Radian, Second));
            }
 # endif
-# if 1
+# if COMPUTE_INNER_PRODUCT_ERRORS
            if (absolute_error > max_absolute_error) {
              max_absolute_error = absolute_error;
              max_qi = q[i];
@@ -315,6 +320,19 @@ IncrementalProjection(Function const& function,
         if (!IsFinite(q̂ₘ_norm)) {
           return F;
         }
+#if DROP_LARGE_CANCELLATIONS
+        if (q̂ₘ_norm < 1.0e-4 * previous_q̂ₘ_norm) {
+          LOG(ERROR) << "Dropping m : " << m
+                     << " previous q̂ₘ: " << previous_q̂ₘ_norm
+                     << " q̂ₘ: " << q̂ₘ_norm;
+          LOG(ERROR) << aₘ;
+          basis.erase(basis.begin() + m);
+          basis_subspaces.erase(basis_subspaces.begin() + m);
+          --basis_size;
+          --m;
+          break;
+        }
+#endif
       } while (q̂ₘ_norm < α * previous_q̂ₘ_norm);
 
       q.push_back(q̂ₘ / q̂ₘ_norm);
@@ -335,7 +353,11 @@ IncrementalProjection(Function const& function,
 #endif
       DCHECK_EQ(m + 1, q.size());
 
+#if USE_ORTHOGONALITY
+      Norm const Aₘ = InnerProduct(function, q[m], weight, t_min, t_max);
+#else
       Norm const Aₘ = InnerProduct(f, q[m], weight, t_min, t_max);
+#endif
 
       auto const Aₘqₘ = Aₘ * q[m];
       f -= Aₘqₘ;
