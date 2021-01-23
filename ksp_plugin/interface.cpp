@@ -1183,7 +1183,11 @@ void __cdecl principia__UpdatePrediction(
   for (char const* const* c = vessel_guids;
        *c != nullptr;
        ++c) {
-    guids.push_back(std::string(*c));
+    if (std::string(*c) == "4") {
+      guids.push_back("46993d69-1c4d-425d-a257-0b2746d004f6");
+    } else {
+      guids.push_back(std::string(*c));
+    }
   }
   plugin->UpdatePrediction(guids);
   return m.Return();
