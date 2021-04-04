@@ -3,15 +3,19 @@
 
 #include <initializer_list>
 #include <memory>
+#include <type_traits>
 #include <vector>
 
 #include "base/tags.hpp"
+#include "quantities/named_quantities.hpp"
 
 namespace principia {
 namespace numerics {
 namespace internal_unbounded_arrays {
 
 using base::uninitialized_t;
+using quantities::Quotient;
+using quantities::SquareRoot;
 
 // An allocator that does not initialize the allocated objects.
 template<class T>
@@ -21,13 +25,16 @@ class uninitialized_allocator : public std::allocator<T> {
   void construct(U* p, Args&&... args);
 };
 
+template<typename Scalar>
+class UnboundedUpperTriangularMatrix;
+
 // The following classes are similar to those in fixed_arrays.hpp, but they have
 // an Extend method to add more entries to the arrays.
 
 template<typename Scalar>
 class UnboundedVector final {
  public:
-  explicit UnboundedVector(int size);
+  explicit UnboundedVector(int size);  // Zero-initialized.
   UnboundedVector(int size, uninitialized_t);
   UnboundedVector(std::initializer_list<Scalar> data);
 
@@ -69,6 +76,8 @@ class UnboundedLowerTriangularMatrix final {
 
   void EraseToEnd(int begin_row_index);
 
+  UnboundedUpperTriangularMatrix<Scalar> Transpose() const;
+
   int rows() const;
   int dimension() const;
 
@@ -107,6 +116,8 @@ class UnboundedUpperTriangularMatrix final {
 
   void EraseToEnd(int begin_column_index);
 
+  UnboundedLowerTriangularMatrix<Scalar> Transpose() const;
+
   int columns() const;
   int dimension() const;
 
@@ -122,7 +133,10 @@ class UnboundedUpperTriangularMatrix final {
    private:
     explicit Row(Matrix& matrix, int row);
 
-    Matrix& matrix_;
+    // We need to remove the const because, when this class is instantiated with
+    // 'UnboundedUpperTriangularMatrix const', the first operator[], not the
+    // second, is picked by overload resolution.
+    std::remove_const_t<Matrix>& matrix_;
     int row_;
 
     template<typename S>
@@ -157,6 +171,31 @@ class UnboundedUpperTriangularMatrix final {
   friend class Row;
 };
 
+// If A is the upper half of a symmetric positive definite matrix, returns R so
+// that A = ᵗR R.
+template<typename Scalar>
+UnboundedUpperTriangularMatrix<SquareRoot<Scalar>> CholeskyDecomposition(
+    UnboundedUpperTriangularMatrix<Scalar> const& A);
+
+// If A is the upper half of a symmetric matrix, returns R and D so that
+// that A = ᵗR D R.  The diagonal matrix is represented as a vector.
+template<typename Scalar>
+void ᵗRDRDecomposition(UnboundedUpperTriangularMatrix<Scalar> const& A,
+                       UnboundedUpperTriangularMatrix<double>& R,
+                       UnboundedVector<Scalar>& D);
+
+// Returns x such that U x = b.
+template<typename LScalar, typename RScalar>
+UnboundedVector<Quotient<RScalar, LScalar>> BackSubstitution(
+    UnboundedUpperTriangularMatrix<LScalar> const& U,
+    UnboundedVector<RScalar> const& b);
+
+// Return x such that L x = b.
+template<typename LScalar, typename RScalar>
+UnboundedVector<Quotient<RScalar, LScalar>> ForwardSubstitution(
+    UnboundedLowerTriangularMatrix<LScalar> const& L,
+    UnboundedVector<RScalar> const& b);
+
 template<typename Scalar>
 std::ostream& operator<<(std::ostream& out,
                          UnboundedVector<Scalar> const& vector);
@@ -171,6 +210,10 @@ std::ostream& operator<<(std::ostream& out,
 
 }  // namespace internal_unbounded_arrays
 
+using internal_unbounded_arrays::BackSubstitution;
+using internal_unbounded_arrays::CholeskyDecomposition;
+using internal_unbounded_arrays::ForwardSubstitution;
+using internal_unbounded_arrays::ᵗRDRDecomposition;
 using internal_unbounded_arrays::UnboundedLowerTriangularMatrix;
 using internal_unbounded_arrays::UnboundedUpperTriangularMatrix;
 using internal_unbounded_arrays::UnboundedVector;

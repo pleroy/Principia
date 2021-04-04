@@ -15,6 +15,7 @@
 #include "physics/degrees_of_freedom.hpp"
 #include "physics/discrete_trajectory.hpp"
 #include "physics/massive_body.hpp"
+#include "physics/rotating_body.hpp"
 #include "serialization/ksp_plugin.pb.h"
 #include "testing_utilities/almost_equals.hpp"
 #include "testing_utilities/approximate_quantity.hpp"
@@ -45,6 +46,7 @@ using physics::DegreesOfFreedom;
 using physics::DiscreteTrajectory;
 using physics::Frenet;
 using physics::MassiveBody;
+using physics::RotatingBody;
 using quantities::Force;
 using quantities::Pow;
 using quantities::SpecificImpulse;
@@ -54,6 +56,7 @@ using quantities::si::Metre;
 using quantities::si::Milli;
 using quantities::si::Minute;
 using quantities::si::Newton;
+using quantities::si::Radian;
 using quantities::si::Second;
 using testing_utilities::AbsoluteError;
 using testing_utilities::AlmostEquals;
@@ -74,8 +77,15 @@ class FlightPlanTest : public testing::Test {
 
   FlightPlanTest() {
     std::vector<not_null<std::unique_ptr<MassiveBody const>>> bodies;
-    bodies.emplace_back(
-        make_not_null_unique<MassiveBody>(1 * Pow<3>(Metre) / Pow<2>(Second)));
+    bodies.emplace_back(make_not_null_unique<RotatingBody<Barycentric>>(
+        1 * Pow<3>(Metre) / Pow<2>(Second),
+        RotatingBody<Barycentric>::Parameters(
+            /*mean_radius=*/1 * Metre,
+            /*reference_angle=*/0 * Radian,
+            /*reference_instant=*/J2000,
+            /*angular_frequency=*/1 * Radian / Second,
+            /*right_ascension_of_pole=*/0 * Radian,
+            /*declination_of_pole=*/0 * Radian)));
     std::vector<DegreesOfFreedom<Barycentric>> initial_state{
         {Barycentric::origin, Barycentric::unmoving}};
     ephemeris_ = std::make_unique<Ephemeris<Barycentric>>(
@@ -321,77 +331,6 @@ TEST_F(FlightPlanTest, Append) {
   EXPECT_EQ(1, flight_plan_->number_of_manœuvres());
   EXPECT_OK(flight_plan_->Insert(MakeSecondBurn(), 1));
   EXPECT_EQ(2, flight_plan_->number_of_manœuvres());
-}
-
-TEST_F(FlightPlanTest, ForgetBefore) {
-  flight_plan_->SetDesiredFinalTime(t0_ + 42 * Second);
-  EXPECT_OK(flight_plan_->Insert(MakeFirstBurn(), 0));
-  EXPECT_EQ(1, flight_plan_->number_of_manœuvres());
-  EXPECT_OK(flight_plan_->Insert(MakeSecondBurn(), 1));
-  EXPECT_EQ(2, flight_plan_->number_of_manœuvres());
-  EXPECT_EQ(5, flight_plan_->number_of_segments());
-
-  // Find the extremities of each segment.
-  std::vector<Instant> begin_times;
-  std::vector<Instant> last_times;
-  for (int i = 0; i < flight_plan_->number_of_segments(); ++i) {
-    DiscreteTrajectory<Barycentric>::Iterator begin;
-    DiscreteTrajectory<Barycentric>::Iterator end;
-    flight_plan_->GetSegment(i, begin, end);
-    --end;
-    begin_times.push_back(begin->time);
-    last_times.push_back(end->time);
-  }
-
-  // Do the forgetting.
-  MockFunction<void()> non_empty;
-  for (int i = 0; i < flight_plan_->number_of_segments(); ++i) {
-    flight_plan_->ForgetBefore(begin_times[i], non_empty.AsStdFunction());
-    EXPECT_EQ(begin_times[i], flight_plan_->initial_time());
-    if (i % 2 == 0) {
-      // A coast.
-      EXPECT_EQ(5 - i, flight_plan_->number_of_segments());
-      EXPECT_EQ((5 - i) / 2, flight_plan_->number_of_manœuvres());
-    } else {
-      // A burn.
-      EXPECT_EQ(6 - i, flight_plan_->number_of_segments());
-      EXPECT_EQ((6 - i) / 2, flight_plan_->number_of_manœuvres());
-    }
-
-    Instant const mid_time =
-        Barycentre<Instant, double>({begin_times[i], last_times[i]}, {1, 1});
-    flight_plan_->ForgetBefore(mid_time, non_empty.AsStdFunction());
-    if (i % 2 == 0) {
-      // A coast.
-      EXPECT_LE(mid_time, flight_plan_->initial_time());
-      EXPECT_EQ(5 - i, flight_plan_->number_of_segments());
-      EXPECT_EQ((5 - i) / 2, flight_plan_->number_of_manœuvres());
-    } else {
-      // A burn.
-      EXPECT_EQ(begin_times[i + 1], flight_plan_->initial_time());
-      EXPECT_EQ(4 - i, flight_plan_->number_of_segments());
-      EXPECT_EQ((4 - i) / 2, flight_plan_->number_of_manœuvres());
-    }
-
-    flight_plan_->ForgetBefore(last_times[i], non_empty.AsStdFunction());
-    if (i % 2 == 0) {
-      // A coast.
-      EXPECT_EQ(last_times[i], flight_plan_->initial_time());
-      EXPECT_EQ(5 - i, flight_plan_->number_of_segments());
-      EXPECT_EQ((5 - i) / 2, flight_plan_->number_of_manœuvres());
-    } else {
-      // A burn.
-      EXPECT_EQ(begin_times[i + 1], flight_plan_->initial_time());
-      EXPECT_EQ(4 - i, flight_plan_->number_of_segments());
-      EXPECT_EQ((4 - i) / 2, flight_plan_->number_of_manœuvres());
-    }
-  }
-
-  // Forget after the end.
-  MockFunction<void()> empty;
-  EXPECT_CALL(empty, Call()).Times(1);
-  flight_plan_->ForgetBefore(last_times.back() + 1 * Second,
-                             empty.AsStdFunction());
 }
 
 TEST_F(FlightPlanTest, RemoveLast) {

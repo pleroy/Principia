@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "absl/synchronization/mutex.h"
+#include "base/jthread.hpp"
 #include "base/not_null.hpp"
 #include "base/status.hpp"
 #include "geometry/grassmann.hpp"
@@ -32,6 +33,7 @@ namespace physics {
 namespace internal_ephemeris {
 
 using base::Error;
+using base::jthread;
 using base::not_null;
 using base::Status;
 using geometry::Instant;
@@ -156,13 +158,13 @@ class Ephemeris {
 
   // Constructs an Ephemeris that owns the |bodies|.  The elements of vectors
   // |bodies| and |initial_state| correspond to one another.
-  Ephemeris(std::vector<not_null<std::unique_ptr<MassiveBody const>>>&& bodies,
+  Ephemeris(std::vector<not_null<std::unique_ptr<MassiveBody const>>> bodies,
             std::vector<DegreesOfFreedom<Frame>> const& initial_state,
             Instant const& initial_time,
             AccuracyParameters const& accuracy_parameters,
             FixedStepParameters fixed_step_parameters);
 
-  virtual ~Ephemeris() = default;
+  virtual ~Ephemeris();
 
   // Returns the bodies in the order in which they were given at construction.
   virtual std::vector<not_null<MassiveBody const*>> const& bodies() const;
@@ -183,12 +185,6 @@ class Ephemeris {
   planetary_integrator() const;
 
   virtual Status last_severe_integration_status() const;
-
-  // If the time |t| is not protected by a |Guard|, calls |ForgetBefore| on all
-  // trajectories and returns true, after which |t_min() == t|.  If the time |t|
-  // is protected by a |Guard|, returns false; the actual action is delayed
-  // until the destruction of the |Guard|.
-  virtual bool EventuallyForgetBefore(Instant const& t) EXCLUDES(lock_);
 
   // Prolongs the ephemeris up to at least |t|.  After the call, |t_max() >= t|.
   virtual void Prolong(Instant const& t) EXCLUDES(lock_);
@@ -282,7 +278,7 @@ class Ephemeris {
       serialization::Ephemeris const& message) EXCLUDES(lock_);
 
   // A |Guard| is an RAII object that protects a critical section against
-  // changes to |t_min| due to calls to |EventuallyForgetBefore|.
+  // changes to |t_min|.
   class Guard final {
    public:
     explicit Guard(not_null<Ephemeris<Frame> const*> ephemeris);
@@ -307,22 +303,30 @@ class Ephemeris {
 
  private:
   // Checkpointing support.
-  void WriteToCheckpoint(not_null<serialization::Ephemeris*> message);
-  template<typename F = Frame,
-           typename = std::enable_if_t<base::is_serializable_v<F>>>
-  bool ReadFromCheckpoint(serialization::Ephemeris const& message);
-  void CreateCheckpointIfNeeded(Instant const& time) const
+  void WriteToCheckpointIfNeeded(Instant const& time) const
       SHARED_LOCKS_REQUIRED(lock_);
-  Checkpointer<serialization::Ephemeris>::Reader
-  static MakeCheckpointerReader(Ephemeris* ephemeris);
+  Checkpointer<serialization::Ephemeris>::Writer MakeCheckpointerWriter();
+  Checkpointer<serialization::Ephemeris>::Reader MakeCheckpointerReader();
+
+  // Called on a stoppable thread to reconstruct the past state of the ephemeris
+  // and its trajectories.
+  Status Reanimate();
 
   // Callbacks for the integrators.
   void AppendMassiveBodiesState(
       typename NewtonianMotionEquation::SystemState const& state)
       REQUIRES(lock_);
-  static void AppendMasslessBodiesState(
+  template<typename ContinuousTrajectoryPtr>
+  static std::vector<Status> AppendMassiveBodiesStateToTrajectories(
+      typename NewtonianMotionEquation::SystemState const& state,
+      std::vector<not_null<ContinuousTrajectoryPtr>> const& trajectories);
+  static void AppendMasslessBodiesStateToTrajectories(
       typename NewtonianMotionEquation::SystemState const& state,
       std::vector<not_null<DiscreteTrajectory<Frame>*>> const& trajectories);
+
+  // Returns an equation suitable for the massive bodies contained in this
+  // ephemeris.
+  NewtonianMotionEquation MakeMassiveBodiesNewtonianMotionEquation();
 
   // Note the return by copy: the returned value is usable even if the
   // |instance_| is being integrated.
@@ -427,10 +431,13 @@ class Ephemeris {
       std::unique_ptr<Checkpointer<serialization::Ephemeris>>> checkpointer_;
   not_null<std::unique_ptr<Protector>> protector_;
 
+  // The techniques and terminology follow [Lov22].
+  jthread reanimator_;
+
   // The fields above this line are fixed at construction and therefore not
   // protected.  Note that |ContinuousTrajectory| is thread-safe.  |lock_| is
   // also used to protect sections where the trajectories are not mutually
-  // consistent (e.g., during ForgetBefore, Prolong, etc.).
+  // consistent (e.g., during Prolong).
   mutable absl::Mutex lock_;
 
   std::unique_ptr<typename Integrator<NewtonianMotionEquation>::Instance>

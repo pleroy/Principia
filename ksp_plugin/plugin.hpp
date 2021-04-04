@@ -308,9 +308,6 @@ class Plugin {
   virtual void WaitForVesselToCatchUp(PileUpFuture& pile_up_future,
                                       VesselSet& collided_vessels);
 
-  // Forgets the histories of the |celestials_| and of the vessels before |t|.
-  virtual void ForgetAllHistoriesBefore(Instant const& t) const;
-
   // Returns the displacement and velocity of the vessel with GUID |vessel_guid|
   // relative to its parent at current time. For a KSP |Vessel| |v|, the
   // argument corresponds to  |v.id.ToString()|, the return value to
@@ -335,8 +332,8 @@ class Plugin {
       Ephemeris<Barycentric>::AdaptiveStepParameters const&
           prediction_adaptive_step_parameters) const;
 
-  // Updates the prediction for the vessel with guid |vessel_guid|.
-  void UpdatePrediction(GUID const& vessel_guid) const;
+  // Updates the prediction for the vessels with guids in |vessel_guids|.
+  void UpdatePrediction(std::vector<GUID> const& vessel_guids) const;
 
   virtual void CreateFlightPlan(GUID const& vessel_guid,
                                 Instant const& final_time,
@@ -493,6 +490,7 @@ class Plugin {
   serialization::InitialState initial_state_;
   std::map<std::string, Index> name_to_index_;
   std::map<Index, std::string> index_to_name_;
+  std::uint64_t system_fingerprint_ = 0;
   std::map<Index, std::optional<Index>> parents_;
   // The ephemeris is only constructed once, so this is an initialization
   // object.  The other parameters must be persisted to create new vessels.

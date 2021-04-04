@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <atomic>
 #include <optional>
@@ -98,9 +98,11 @@ class OrbitAnalyser {
                 Ephemeris<Barycentric>::FixedStepParameters
                     analysed_trajectory_parameters);
 
+  virtual ~OrbitAnalyser();
+
   // Cancel any computation in progress, causing the next call to
   // |RequestAnalysis| to be processed as fast as possible.
-  void Restart();
+  void Interrupt();
 
   // Sets the parameters that will be used for the computation of the next
   // analysis.
@@ -126,7 +128,7 @@ class OrbitAnalyser {
     Parameters parameters;
   };
 
-  Status RepeatedlyAnalyseOrbit();
+  Status AnalyseOrbit(GuardedParameters guarded_parameters);
 
   not_null<Ephemeris<Barycentric>*> const ephemeris_;
   Ephemeris<Barycentric>::FixedStepParameters const
@@ -138,9 +140,13 @@ class OrbitAnalyser {
 
   mutable absl::Mutex lock_;
   jthread analyser_;
-  // |parameters_| is set by the main thread; it is read and cleared by the
-  // |analyser_| thread.
-  std::optional<GuardedParameters> guarded_parameters_ GUARDED_BY(lock_);
+  // The |analyser_| is idle:
+  // — if it is not joinable, e.g. because it was stopped by |Interrupt()|, or
+  // — if it is done computing |next_analysis_| and has stopped or is about to
+  //   stop executing.
+  // If it is joined once idle (and joinable), it will not attempt to acquire
+  // |lock_|.
+  bool analyser_idle_ GUARDED_BY(lock_) = true;
   // |next_analysis_| is set by the |analyser_| thread; it is read and cleared
   // by the main thread.
   std::optional<Analysis> next_analysis_ GUARDED_BY(lock_);

@@ -218,7 +218,7 @@ message OrbitAnalysis {
 }
 
 message Method {
-  extensions 5000 to 5999;  // Last used: 5175.
+  extensions 5000 to 5999;  // Last used: 5177.
 }
 
 message AdvanceTime {
@@ -766,6 +766,26 @@ message FlightPlanGetActualFinalTime {
   optional Return return = 3;
 }
 
+message FlightPlanGetCoastAnalysis {
+  extend Method {
+    optional FlightPlanGetCoastAnalysis extension = 5177;
+  }
+  message In {
+    required fixed64 plugin = 1 [(pointer_to) = "Plugin const",
+                                 (is_subject) = true];
+    required string vessel_guid = 2;
+    optional int32 revolutions_per_cycle = 3;
+    optional int32 days_per_cycle = 4;
+    required int32 ground_track_revolution = 5;
+    required int32 index = 6;
+  }
+  message Return {
+    required OrbitAnalysis result = 1;
+  }
+  optional In in = 1;
+  optional Return return = 3;
+}
+
 message FlightPlanGetDesiredFinalTime {
   extend Method {
     optional FlightPlanGetDesiredFinalTime extension = 5076;
@@ -1095,17 +1115,6 @@ message FlightPlanSetDesiredFinalTime {
   }
   optional In in = 1;
   optional Return return = 3;
-}
-
-message ForgetAllHistoriesBefore {
-  extend Method {
-    optional ForgetAllHistoriesBefore extension = 5021;
-  }
-  message In {
-    required fixed64 plugin = 1 [(pointer_to) = "Plugin", (is_subject) = true];
-    required double t = 2;
-  }
-  optional In in = 1;
 }
 
 message FreeVesselsAndPartsAndCollectPileUps {
@@ -2181,7 +2190,7 @@ message UpdatePrediction {
   message In {
     required fixed64 plugin = 1 [(pointer_to) = "Plugin const",
                                  (is_subject) = true];
-    required string vessel_guid = 2;
+    repeated string vessel_guids = 2;
   }
   optional In in = 1;
 }
@@ -2219,6 +2228,26 @@ message VesselFromParent {
   optional Return return = 3;
 }
 
+message VesselGetAnalysis {
+  extend Method {
+    optional VesselGetAnalysis extension = 5176;
+  }
+  message In {
+    required fixed64 plugin = 1 [(pointer_to) = "Plugin",
+                                 (is_subject) = true];
+    required string vessel_guid = 2;
+    optional int32 revolutions_per_cycle = 5;
+    optional int32 days_per_cycle = 6;
+    required int32 ground_track_revolution = 7;
+  }
+  message Return {
+    required OrbitAnalysis result = 1 [(is_produced) = true];
+    required fixed64 address = 2 [(address_of) = "result"];
+  }
+  optional In in = 1;
+  optional Return return = 3;
+}
+
 message VesselGetPredictionAdaptiveStepParameters {
   extend Method {
     optional VesselGetPredictionAdaptiveStepParameters extension = 5090;
@@ -2251,25 +2280,17 @@ message VesselNormal {
   optional Return return = 3;
 }
 
-message VesselRefreshAnalysis {
+message VesselRequestAnalysis {
   extend Method {
-    optional VesselRefreshAnalysis extension = 5160;
+    optional VesselRequestAnalysis extension = 5160;
   }
   message In {
     required fixed64 plugin = 1 [(pointer_to) = "Plugin",
                                  (is_subject) = true];
     required string vessel_guid = 2;
     required double mission_duration = 4;
-    optional int32 revolutions_per_cycle = 5;
-    optional int32 days_per_cycle = 6;
-    required int32 ground_track_revolution = 7;
-  }
-  message Return {
-    required OrbitAnalysis result = 1 [(is_produced) = true];
-    required fixed64 address = 2 [(address_of) = "result"];
   }
   optional In in = 1;
-  optional Return return = 3;
 }
 
 message VesselSetPredictionAdaptiveStepParameters {
@@ -2350,7 +2371,8 @@ extend google.protobuf.FieldOptions {
   // the Dispose pattern and gives the name of the disposable class.
   optional string disposable = 50009;
 
-  //TODO(phl):comment
+  // For a produced field that is returned by reference, this option is attached
+  // to the field that contains the address of the returned field.
   optional string address_of = 50010;
 }
 

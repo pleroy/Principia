@@ -18,6 +18,7 @@
 #include <psapi.h>
 #endif
 
+#include "absl/strings/str_split.h"
 #include "astronomy/epoch.hpp"
 #include "astronomy/time_scales.hpp"
 #include "base/array.hpp"
@@ -582,14 +583,6 @@ void __cdecl principia__EndInitialization(Plugin* const plugin) {
   journal::Method<journal::EndInitialization> m({plugin});
   CHECK_NOTNULL(plugin);
   plugin->EndInitialization();
-  return m.Return();
-}
-
-void __cdecl principia__ForgetAllHistoriesBefore(Plugin* const plugin,
-                                                 double const t) {
-  journal::Method<journal::ForgetAllHistoriesBefore> m({plugin, t});
-  CHECK_NOTNULL(plugin);
-  plugin->ForgetAllHistoriesBefore(FromGameTime(*plugin, t));
   return m.Return();
 }
 
@@ -1173,11 +1166,18 @@ void __cdecl principia__UpdateCelestialHierarchy(Plugin const* const plugin,
   return m.Return();
 }
 
-void __cdecl principia__UpdatePrediction(Plugin const* const plugin,
-                                         char const* const vessel_guid) {
-  journal::Method<journal::UpdatePrediction> m({plugin, vessel_guid});
+void __cdecl principia__UpdatePrediction(
+    Plugin const* const plugin,
+    char const* const* const vessel_guids) {
+  journal::Method<journal::UpdatePrediction> m({plugin, vessel_guids});
   CHECK_NOTNULL(plugin);
-  plugin->UpdatePrediction(vessel_guid);
+  std::vector<ksp_plugin::GUID> guids;
+  for (char const* const* c = vessel_guids;
+       *c != nullptr;
+       ++c) {
+    guids.push_back(std::string(*c));
+  }
+  plugin->UpdatePrediction(guids);
   return m.Return();
 }
 

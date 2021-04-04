@@ -1,4 +1,4 @@
-
+﻿
 #pragma once
 
 #include "numerics/unbounded_arrays.hpp"
@@ -15,6 +15,7 @@ namespace numerics {
 namespace internal_unbounded_arrays {
 
 using base::uninitialized;
+using quantities::Pow;
 using quantities::Sqrt;
 
 template<class T>
@@ -130,6 +131,18 @@ void UnboundedLowerTriangularMatrix<Scalar>::EraseToEnd(
 }
 
 template<typename Scalar>
+UnboundedUpperTriangularMatrix<Scalar>
+UnboundedLowerTriangularMatrix<Scalar>::Transpose() const {
+  UnboundedUpperTriangularMatrix<Scalar> u(rows_, uninitialized);
+  for (int i = 0; i < rows_; ++i) {
+    for (int j = 0; j <= i; ++j) {
+      u[j][i] = (*this)[i][j];
+    }
+  }
+  return u;
+}
+
+template<typename Scalar>
 int UnboundedLowerTriangularMatrix<Scalar>::rows() const {
   return rows_;
 }
@@ -219,6 +232,18 @@ void UnboundedUpperTriangularMatrix<Scalar>::EraseToEnd(
 }
 
 template<typename Scalar>
+UnboundedLowerTriangularMatrix<Scalar>
+UnboundedUpperTriangularMatrix<Scalar>::Transpose() const {
+  UnboundedLowerTriangularMatrix<Scalar> l(columns_, uninitialized);
+  for (int i = 0; i < columns_; ++i) {
+    for (int j = i; j < columns_; ++j) {
+      l[j][i] = (*this)[i][j];
+    }
+  }
+  return l;
+}
+
+template<typename Scalar>
 int UnboundedUpperTriangularMatrix<Scalar>::columns() const {
   return columns_;
 }
@@ -255,7 +280,7 @@ template<typename Scalar>
 template<typename Matrix>
 UnboundedUpperTriangularMatrix<Scalar>::Row<Matrix>::Row(Matrix& matrix,
                                                          int const row)
-    : matrix_(matrix),
+    : matrix_(const_cast<std::remove_const_t<Matrix>&>(matrix)),
       row_(row) {}
 
 template<typename Scalar>
@@ -317,6 +342,89 @@ UnboundedUpperTriangularMatrix<Scalar>::Transpose(
   return result;
 }
 
+// [Hig02], Algorithm 10.2.
+template<typename Scalar>
+UnboundedUpperTriangularMatrix<SquareRoot<Scalar>> CholeskyDecomposition(
+    UnboundedUpperTriangularMatrix<Scalar> const& A) {
+  UnboundedUpperTriangularMatrix<SquareRoot<Scalar>> R(A.columns(),
+                                                       uninitialized);
+  for (int j = 0; j < A.columns(); ++j) {
+    for (int i = 0; i < j; ++i) {
+      Scalar Σrₖᵢrₖⱼ{};
+      for (int k = 0; k < i; ++k) {
+        Σrₖᵢrₖⱼ += R[k][i] * R[k][j];
+      }
+      R[i][j] = (A[i][j] - Σrₖᵢrₖⱼ) / R[i][i];
+    }
+    Scalar Σrₖⱼ²{};
+    for (int k = 0; k < j; ++k) {
+      Σrₖⱼ² += Pow<2>(R[k][j]);
+    }
+    // This will produce NaNs if the matrix is not positive definite.
+    R[j][j] = Sqrt(A[j][j] - Σrₖⱼ²);
+  }
+  return R;
+}
+
+// [KM13], formulæ (10) and (11).
+template<typename Scalar>
+void ᵗRDRDecomposition(UnboundedUpperTriangularMatrix<Scalar> const& A,
+                       UnboundedUpperTriangularMatrix<double>& R,
+                       UnboundedVector<Scalar>& D) {
+  for (int i = 0; i < A.columns(); ++i) {
+    Scalar Σrₖᵢ²dₖ{};
+    for (int k = 0; k < i; ++k) {
+      Σrₖᵢ²dₖ += Pow<2>(R[k][i]) * D[k];
+    }
+    D[i] = A[i][i] - Σrₖᵢ²dₖ;
+    for (int j = i + 1; j < A.columns(); ++j) {
+      Scalar Σrₖᵢrₖⱼdₖ{};
+      for (int k = 0; k < i; ++k) {
+        Σrₖᵢrₖⱼdₖ += R[k][i] * R[k][j] * D[k];
+      }
+      R[i][j] = (A[i][j] - Σrₖᵢrₖⱼdₖ) / D[i];
+    }
+    R[i][i] = 1;
+  }
+}
+
+// [Hig02], Algorithm 8.1.
+template<typename LScalar, typename RScalar>
+UnboundedVector<Quotient<RScalar, LScalar>> BackSubstitution(
+    UnboundedUpperTriangularMatrix<LScalar> const& U,
+    UnboundedVector<RScalar> const& b) {
+  UnboundedVector<Quotient<RScalar, LScalar>> x(b.size(), uninitialized);
+  int const n = b.size() - 1;
+  x[n] = b[n] / U[n][n];
+  for (int i = n - 1; i >= 0; --i) {
+    auto s = b[i];
+    for (int j = i + 1; j <= n; ++j) {
+      s -= U[i][j] * x[j];
+    }
+    x[i] = s / U[i][i];
+  }
+  return x;
+}
+
+// [Hig02] says: "We will not state the analogous algorithm for solving a lower
+// triangular system, forward substitution."  So we follow
+// https://en.wikipedia.org/wiki/Triangular_matrix#Forward_substitution.
+template<typename LScalar, typename RScalar>
+UnboundedVector<Quotient<RScalar, LScalar>> ForwardSubstitution(
+    UnboundedLowerTriangularMatrix<LScalar> const& L,
+    UnboundedVector<RScalar> const& b) {
+  UnboundedVector<Quotient<RScalar, LScalar>> x(b.size(), uninitialized);
+  x[0] = b[0] / L[0][0];
+  for (int i = 1; i < b.size(); ++i) {
+    auto s = b[i];
+    for (int j = 0; j < i; ++j) {
+      s -= L[i][j] * x[j];
+    }
+    x[i] = s / L[i][i];
+  }
+  return x;
+}
+
 template<typename Scalar>
 std::ostream& operator<<(std::ostream& out,
                          UnboundedVector<Scalar> const& vector) {
@@ -332,28 +440,34 @@ std::ostream& operator<<(std::ostream& out,
 template<typename Scalar>
 std::ostream& operator<<(std::ostream& out,
                          UnboundedLowerTriangularMatrix<Scalar> const& matrix) {
-  std::stringstream s;
-  // TODO(phl): Triangular printout.
-  s << "rows: " << matrix.rows_ << " ";
-  for (int i = 0; i < matrix.data_.size(); ++i) {
-    s << (i == 0 ? "{" : "") << matrix.data_[i]
-      << (i == matrix.data_.size() - 1 ? "}" : ", ");
+  out << "rows: " << matrix.rows() << "\n";
+  for (int i = 0; i < matrix.rows(); ++i) {
+    out << "{";
+    for (int j = 0; j <= i; ++j) {
+      out << matrix[i][j];
+      if (j < i) {
+        out << ", ";
+      }
+    }
+    out << "}\n";
   }
-  out << s.str();
   return out;
 }
 
 template<typename Scalar>
 std::ostream& operator<<(std::ostream& out,
                          UnboundedUpperTriangularMatrix<Scalar> const& matrix) {
-  std::stringstream s;
-  // TODO(phl): Triangular printout.
-  s << "columns: " << matrix.columns_ << " ";
-  for (int i = 0; i < matrix.data_.size(); ++i) {
-    s << (i == 0 ? "{" : "") << matrix.data_[i]
-      << (i == matrix.data_.size() - 1 ? "}" : ", ");
+  out << "columns: " << matrix.columns_ << "\n";
+  for (int i = 0; i < matrix.columns(); ++i) {
+    out << "{";
+    for (int j = i; j < matrix.columns(); ++j) {
+      if (j > i) {
+        out << ", ";
+      }
+      out << matrix[i][j];
+    }
+    out << "}\n";
   }
-  out << s.str();
   return out;
 }
 

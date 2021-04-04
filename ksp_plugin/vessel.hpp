@@ -135,10 +135,6 @@ class Vessel {
   // psychohistory.  Clears the parts' history and psychohistory.
   virtual void AdvanceTime();
 
-  // Forgets the trajectories and flight plan before |time|.  This may delete
-  // the flight plan.
-  virtual void ForgetBefore(Instant const& time);
-
   // Creates a |flight_plan_| at the end of history using the given parameters.
   virtual void CreateFlightPlan(
       Instant const& final_time,
@@ -171,6 +167,7 @@ class Vessel {
   // have a last time at or before |time|.
   virtual void RefreshPrediction(Instant const& time);
 
+  // Stop the asynchronous prognosticator as soon as convenient.
   void StopPrognosticator();
 
   // Returns "vessel_name (GUID)".
@@ -190,10 +187,11 @@ class Vessel {
       PileUp::PileUpForSerializationIndex const&
           pile_up_for_serialization_index);
 
-  void RefreshOrbitAnalysis(Time const& mission_duration);
+  void RequestOrbitAnalysis(Time const& mission_duration);
   void ClearOrbitAnalyser();
 
   double progress_of_orbit_analysis() const;
+  void RefreshOrbitAnalysis();
   OrbitAnalyser::Analysis* orbit_analysis();
 
   static void MakeAsynchronous();
@@ -209,7 +207,6 @@ class Vessel {
     Instant first_time;
     DegreesOfFreedom<Barycentric> first_degrees_of_freedom;
     Ephemeris<Barycentric>::AdaptiveStepParameters adaptive_step_parameters;
-    bool shutdown = false;
   };
   friend bool operator!=(PrognosticatorParameters const& left,
                          PrognosticatorParameters const& right);

@@ -31,12 +31,12 @@ FORWARD_DECLARE_FUNCTION_FROM(
     mathematica,
     TEMPLATE(typename Value, typename Argument, int degree_,
              template<typename, typename, int> typename Evaluator,
-             typename OptionalExpressIn = std::nullopt_t) std::string,
-    ToMathematicaExpression,
+             typename OptionalExpressIn) std::string,
+    ToMathematicaBody,
     (numerics::
          PolynomialInMonomialBasis<Value, Argument, degree_, Evaluator> const&
              polynomial,
-     OptionalExpressIn express_in = std::nullopt));
+     OptionalExpressIn express_in));
 }  // namespace mathematica
 
 namespace numerics {
@@ -132,9 +132,13 @@ class PolynomialInMonomialBasis : public Polynomial<Value_, Argument_> {
   // The constant term of the result is zero.
   template<typename V = Value,
            typename = std::enable_if_t<!base::is_instance_of_v<Point, V>>>
-  PolynomialInMonomialBasis<Primitive<Value, Argument>, Argument,
+  PolynomialInMonomialBasis<quantities::Primitive<Value, Argument>, Argument,
                             degree_ + 1, Evaluator>
   Primitive() const;
+
+  quantities::Primitive<Value, Argument> Integrate(
+      Argument const& argument1,
+      Argument const& argument2) const;
 
   PolynomialInMonomialBasis& operator+=(PolynomialInMonomialBasis const& right);
   PolynomialInMonomialBasis& operator-=(PolynomialInMonomialBasis const& right);
@@ -189,6 +193,12 @@ class PolynomialInMonomialBasis : public Polynomial<Value_, Argument_> {
   template<typename L, typename R, typename A,
            int l, int r,
            template<typename, typename, int> typename E>
+  constexpr PolynomialInMonomialBasis<L, A, l * r, E>
+  friend Compose(PolynomialInMonomialBasis<L, R, l, E> const& left,
+                 PolynomialInMonomialBasis<R, A, r, E> const& right);
+  template<typename L, typename R, typename A,
+           int l, int r,
+           template<typename, typename, int> typename E>
   constexpr PolynomialInMonomialBasis<
       typename Hilbert<L, R>::InnerProductType, A, l + r, E>
   friend PointwiseInnerProduct(
@@ -202,7 +212,7 @@ class PolynomialInMonomialBasis : public Polynomial<Value_, Argument_> {
   template<typename V, typename A, int d,
            template<typename, typename, int> class E,
            typename O>
-  friend std::string mathematica::internal_mathematica::ToMathematicaExpression(
+  friend std::string mathematica::internal_mathematica::ToMathematicaBody(
       PolynomialInMonomialBasis<V, A, d, E> const& polynomial,
       O express_in);
 };
@@ -255,9 +265,13 @@ class PolynomialInMonomialBasis<Value_, Point<Argument_>, degree_, Evaluator>
   // The constant term of the result is zero.
   template<typename V = Value,
            typename = std::enable_if_t<!base::is_instance_of_v<Point, V>>>
-  PolynomialInMonomialBasis<Primitive<Value, Argument>, Point<Argument>,
-                            degree_ + 1, Evaluator>
+  PolynomialInMonomialBasis<quantities::Primitive<Value, Argument>,
+                            Point<Argument>, degree_ + 1, Evaluator>
   Primitive() const;
+
+  quantities::Primitive<Value, Argument> Integrate(
+      Point<Argument> const& argument1,
+      Point<Argument> const& argument2) const;
 
   PolynomialInMonomialBasis& operator+=(const PolynomialInMonomialBasis& right);
   PolynomialInMonomialBasis& operator-=(const PolynomialInMonomialBasis& right);
@@ -313,6 +327,12 @@ class PolynomialInMonomialBasis<Value_, Point<Argument_>, degree_, Evaluator>
   template<typename L, typename R, typename A,
            int l, int r,
            template<typename, typename, int> typename E>
+  constexpr PolynomialInMonomialBasis<L, A, l * r, E>
+  friend Compose(PolynomialInMonomialBasis<L, R, l, E> const& left,
+                 PolynomialInMonomialBasis<R, A, r, E> const& right);
+  template<typename L, typename R, typename A,
+           int l, int r,
+           template<typename, typename, int> typename E>
   constexpr PolynomialInMonomialBasis<
       typename Hilbert<L, R>::InnerProductType, A, l + r, E>
   friend PointwiseInnerProduct(
@@ -326,7 +346,7 @@ class PolynomialInMonomialBasis<Value_, Point<Argument_>, degree_, Evaluator>
   template<typename V, typename A, int d,
            template<typename, typename, int> class E,
            typename O>
-  friend std::string mathematica::internal_mathematica::ToMathematicaExpression(
+  friend std::string mathematica::internal_mathematica::ToMathematicaBody(
       PolynomialInMonomialBasis<V, A, d, E> const& polynomial,
       O express_in);
 };
@@ -401,6 +421,19 @@ constexpr PolynomialInMonomialBasis<Product<LValue, RValue>, Argument,
                                     ldegree_ + rdegree_, Evaluator>
 operator*(
     PolynomialInMonomialBasis<LValue, Argument, ldegree_, Evaluator> const&
+        left,
+    PolynomialInMonomialBasis<RValue, Argument, rdegree_, Evaluator> const&
+        right);
+
+// Application monoid.
+
+template<typename LValue, typename RValue,
+         typename Argument, int ldegree_, int rdegree_,
+         template<typename, typename, int> typename Evaluator>
+constexpr PolynomialInMonomialBasis<LValue, Argument,
+                                    ldegree_ * rdegree_, Evaluator>
+Compose(
+    PolynomialInMonomialBasis<LValue, RValue, ldegree_, Evaluator> const&
         left,
     PolynomialInMonomialBasis<RValue, Argument, rdegree_, Evaluator> const&
         right);

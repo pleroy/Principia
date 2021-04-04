@@ -9,6 +9,7 @@
 #include "integrators/ordinary_differential_equations.hpp"
 #include "ksp_plugin/frames.hpp"
 #include "ksp_plugin/manœuvre.hpp"
+#include "ksp_plugin/orbit_analyser.hpp"
 #include "physics/degrees_of_freedom.hpp"
 #include "physics/discrete_trajectory.hpp"
 #include "physics/ephemeris.hpp"
@@ -80,14 +81,6 @@ class FlightPlan {
   // returns the integration status.
   virtual Status Insert(NavigationManœuvre::Burn const& burn, int index);
 
-  // Forgets the flight plan at least before |time|.  The actual cutoff time
-  // will be in a coast trajectory and may be after |time|.  |on_empty| is run
-  // if the flight plan would become empty (it is not modified before running
-  // |on_empty|).
-  virtual void ForgetBefore(Instant const& time,
-                            std::function<void()> const& on_empty);
-
-
   // Removes the manœuvre with the given |index|, which must be in
   // [0, number_of_manœuvres()[.
   virtual Status Remove(int index);
@@ -127,6 +120,10 @@ class FlightPlan {
   virtual void GetAllSegments(
       DiscreteTrajectory<Barycentric>::Iterator& begin,
       DiscreteTrajectory<Barycentric>::Iterator& end) const;
+
+  // |coast_index| must be in [0, number_of_manœuvres()].
+  virtual OrbitAnalyser::Analysis* analysis(int coast_index);
+  double progress_of_analysis(int coast_index) const;
 
   void WriteToMessage(not_null<serialization::FlightPlan*> message) const;
 
@@ -220,6 +217,7 @@ class FlightPlan {
   Status anomalous_status_;
 
   std::vector<NavigationManœuvre> manœuvres_;
+  std::vector<not_null<std::unique_ptr<OrbitAnalyser>>> coast_analysers_;
   not_null<Ephemeris<Barycentric>*> ephemeris_;
   Ephemeris<Barycentric>::AdaptiveStepParameters adaptive_step_parameters_;
   Ephemeris<Barycentric>::GeneralizedAdaptiveStepParameters

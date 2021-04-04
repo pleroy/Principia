@@ -22,6 +22,7 @@ using astronomy::InfiniteFuture;
 using base::Contains;
 using base::Error;
 using base::FindOrDie;
+using base::jthread;
 using base::make_not_null_unique;
 using base::MakeStoppableThread;
 using geometry::BarycentreCalculator;
@@ -30,9 +31,6 @@ using quantities::IsFinite;
 using quantities::Length;
 using quantities::Time;
 using quantities::si::Metre;
-
-constexpr std::int64_t max_dense_intervals = 10'000;
-constexpr Length downsampling_tolerance = 10 * Metre;
 
 bool operator!=(Vessel::PrognosticatorParameters const& left,
                 Vessel::PrognosticatorParameters const& right) {
@@ -45,8 +43,7 @@ bool operator!=(Vessel::PrognosticatorParameters const& left,
          left.adaptive_step_parameters.length_integration_tolerance() !=
              right.adaptive_step_parameters.length_integration_tolerance() ||
          left.adaptive_step_parameters.speed_integration_tolerance() !=
-             right.adaptive_step_parameters.speed_integration_tolerance() ||
-         left.shutdown != right.shutdown;
+             right.adaptive_step_parameters.speed_integration_tolerance();
 }
 
 Vessel::Vessel(GUID guid,
@@ -69,20 +66,8 @@ Vessel::Vessel(GUID guid,
 
 Vessel::~Vessel() {
   LOG(INFO) << "Destroying vessel " << ShortDebugString();
-  // Ask the prognosticator to shut down.  This may take a while.  Make sure
-  // that we handle the case where |PrepareHistory| was not called.
-  if (prognosticator_.joinable()) {
-    {
-      absl::MutexLock l(&prognosticator_lock_);
-      prognosticator_parameters_ =
-          PrognosticatorParameters{Ephemeris<Barycentric>::Guard(ephemeris_),
-                                   psychohistory_->back().time,
-                                   psychohistory_->back().degrees_of_freedom,
-                                   prediction_adaptive_step_parameters_,
-                                   /*shutdown=*/true};
-    }
-    prognosticator_.join();
-  }
+  // Ask the prognosticator to shut down.  This may take a while.
+  StopPrognosticator();
 }
 
 GUID const& Vessel::guid() const {
@@ -175,7 +160,7 @@ void Vessel::PrepareHistory(Instant const& t) {
           part.mass());
     });
     CHECK(psychohistory_ == nullptr);
-    history_->SetDownsampling(max_dense_intervals, downsampling_tolerance);
+    history_->SetDownsampling(MaxDenseIntervals, DownsamplingTolerance);
     history_->Append(t, calculator.Get());
     psychohistory_ = history_->NewForkAtLast();
     prediction_ = psychohistory_->NewForkAtLast();
@@ -275,16 +260,6 @@ void Vessel::AdvanceTime() {
   }
 }
 
-void Vessel::ForgetBefore(Instant const& time) {
-  // Make sure that the history keeps at least one point and don't change the
-  // psychohistory or prediction.  We cannot use the parts because they may have
-  // been moved to the future already.
-  history_->ForgetBefore(std::min(time, history_->back().time));
-  if (flight_plan_ != nullptr) {
-    flight_plan_->ForgetBefore(time, [this]() { flight_plan_.reset(); });
-  }
-}
-
 void Vessel::CreateFlightPlan(
     Instant const& final_time,
     Mass const& initial_mass,
@@ -351,16 +326,14 @@ void Vessel::RefreshPrediction() {
   // integrate.
   // The guard will be destroyed either when the next set of parameters is
   // created or when the prognostication has been computed.
-  // Note that we know that both |EventuallyForgetBefore| and
-  // |RefreshPrediction| are called on the main thread, therefore the ephemeris
-  // currently covers the last time of the psychohistory.  Were this to change,
-  // this code might have to change.
+  // Note that we know that |RefreshPrediction| is called on the main thread,
+  // therefore the ephemeris currently covers the last time of the
+  // psychohistory.  Were this to change, this code might have to change.
   prognosticator_parameters_ =
       PrognosticatorParameters{Ephemeris<Barycentric>::Guard(ephemeris_),
                                psychohistory_->back().time,
                                psychohistory_->back().degrees_of_freedom,
-                               prediction_adaptive_step_parameters_,
-                               /*shutdown=*/false};
+                               prediction_adaptive_step_parameters_};
   if (synchronous_) {
     std::unique_ptr<DiscreteTrajectory<Barycentric>> prognostication;
     std::optional<PrognosticatorParameters> prognosticator_parameters;
@@ -383,10 +356,7 @@ void Vessel::RefreshPrediction(Instant const& time) {
 }
 
 void Vessel::StopPrognosticator() {
-  if (prognosticator_.joinable()) {
-    prognosticator_.request_stop();
-    prognosticator_.join();
-  }
+  prognosticator_ = jthread();
 }
 
 std::string Vessel::ShortDebugString() const {
@@ -490,8 +460,8 @@ not_null<std::unique_ptr<Vessel>> Vessel::ReadFromMessage(
   }
 
   if (is_pre_陈景润) {
-    vessel->history_->SetDownsampling(max_dense_intervals,
-                                      downsampling_tolerance);
+    vessel->history_->SetDownsampling(MaxDenseIntervals,
+                                      DownsamplingTolerance);
   }
 
   if (message.has_flight_plan()) {
@@ -512,7 +482,7 @@ void Vessel::FillContainingPileUpsFromMessage(
   }
 }
 
-void Vessel::RefreshOrbitAnalysis(Time const& mission_duration) {
+void Vessel::RequestOrbitAnalysis(Time const& mission_duration) {
   if (!orbit_analyser_.has_value()) {
     // TODO(egg): perhaps we should get the history parameters from the plugin;
     // on the other hand, these are probably overkill for high orbits anyway,
@@ -524,13 +494,12 @@ void Vessel::RefreshOrbitAnalysis(Time const& mission_duration) {
   if (orbit_analyser_->last_parameters().has_value() &&
       orbit_analyser_->last_parameters()->mission_duration !=
           mission_duration) {
-    orbit_analyser_->Restart();
+    orbit_analyser_->Interrupt();
   }
   orbit_analyser_->RequestAnalysis(
       {.first_time = psychohistory_->back().time,
        .first_degrees_of_freedom = psychohistory_->back().degrees_of_freedom,
        .mission_duration = mission_duration});
-  orbit_analyser_->RefreshAnalysis();
 }
 
 void Vessel::ClearOrbitAnalyser() {
@@ -544,8 +513,14 @@ double Vessel::progress_of_orbit_analysis() const {
   return orbit_analyser_->progress_of_next_analysis();
 }
 
+void Vessel::RefreshOrbitAnalysis() {
+  if (orbit_analyser_.has_value()) {
+    orbit_analyser_->RefreshAnalysis();
+  }
+}
+
 OrbitAnalyser::Analysis* Vessel::orbit_analysis() {
-  return orbit_analyser_->analysis();
+  return orbit_analyser_.has_value() ? orbit_analyser_->analysis() : nullptr;
 }
 
 void Vessel::MakeAsynchronous() {
@@ -572,11 +547,11 @@ void Vessel::StartPrognosticatorIfNeeded() {
 }
 
 Status Vessel::RepeatedlyFlowPrognostication() {
-  for (;;) {
+  for (std::chrono::steady_clock::time_point wakeup_time;;
+       std::this_thread::sleep_until(wakeup_time)) {
     // No point in going faster than 50 Hz.
-    std::chrono::steady_clock::time_point const wakeup_time =
+    wakeup_time =
         std::chrono::steady_clock::now() + std::chrono::milliseconds(20);
-
     RETURN_IF_STOPPED;
 
     std::optional<PrognosticatorParameters> prognosticator_parameters;
@@ -588,10 +563,7 @@ Status Vessel::RepeatedlyFlowPrognostication() {
       }
       std::swap(prognosticator_parameters, prognosticator_parameters_);
     }
-
-    if (prognosticator_parameters->shutdown) {
-      break;
-    }
+    RETURN_IF_STOPPED;
 
     std::unique_ptr<DiscreteTrajectory<Barycentric>> prognostication;
     Status const status =
@@ -602,8 +574,6 @@ Status Vessel::RepeatedlyFlowPrognostication() {
       absl::MutexLock l(&prognosticator_lock_);
       SwapPrognostication(prognostication, status);
     }
-
-    std::this_thread::sleep_until(wakeup_time);
   }
   return Status::OK;
 }

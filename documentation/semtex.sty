@@ -37,7 +37,7 @@
 
 \RequirePackage{relsize}
 
-\RequirePackage[slash-delimiter=frac]{unicode-math}
+\RequirePackage[slash-delimiter=frac, mathrm=sym, mathit=sym, mathsf=sym, mathbf=sym, mathtt=sym]{unicode-math}
 \setmathfont[Scale=MatchLowercase, math-style=ISO]{Cambria Math}
 \setmathfont[Scale=MatchLowercase, range={\mathcal,\mathbfcal}]{TeX Gyre Pagella Math}
 
@@ -123,7 +123,7 @@
   \ifv@ \ht\tw@\ht\z@ \dp\tw@\dp\z@\fi
   \ifh@ \wd\tw@-\wd\z@\fi \box\tw@}
 
-% This is a well-known hack.
+% This is a well-known hack, see https://tex.stackexchange.com/a/2610.
 
 \newcommand\@delimiterWrapper[3]{\mathopen{}\mathclose\bgroup #1 #2\aftergroup\egroup #3}
 
@@ -140,52 +140,25 @@
 \fi
 }
 
-% The dance with \(n)phantoms typesets the content first,
-% then the left bracket and finally the right one. XeLaTeX
-% does weird stuff when mathmode starts with a delimiter
-% containing only a vphantom.
 \def\DeclareDelimiterX#1[#2]#3#4#5 {
   \DeclareRobustCommand{#1}[#2]{
     \if@delimsize
       #5
     \else
       \begingroup
-        \mathopen{}
         \@delimsizetrue
-        \hphantom{
-          \@delimiterWrapper{\left#3}{
-            \vphantom{#5}
-            {\kern-\nulldelimiterspace}
-          }{\right.}
-%          \kern-\nulldelimiterspace
-        }
-        \def\@delimcontent{#5}
-        \@delimsizefalse
-        {#5}
-        \nhphantom{#5}
-        \@delimsizetrue
-        \nhphantom{
-          \@delimiterWrapper{\left#3}{
-            \vphantom{#5}
-            {\kern-\nulldelimiterspace}
-          }{\right.}
-%          \kern-\nulldelimiterspace
-        }
         \@delimiterWrapper{\left#3}{
           \vphantom{#5}
           {\kern-\nulldelimiterspace}
         }{\right.}
-%        \kern-\nulldelimiterspace
+        \def\@delimcontent{#5}
         \@delimsizefalse
-        \hphantom{#5}
-        \mathclose{
+        {#5}
         \@delimsizetrue
-%        \kern-\nulldelimiterspace
         \@delimiterWrapper{\left.}{
           {\kern-\nulldelimiterspace}
           \vphantom{#5}
         }{\right#4}
-        }
       \endgroup
     \fi
   }
@@ -442,6 +415,8 @@
 \newcommand{\Closure}[1]{\overline{#1}}
 % f\der is a compact notation for the derivative of f.
 \newcommand{\der}{'}
+% f\dersecond is the second derivative.
+\newcommand{\dersecond}{''}
 %% Many-argument operators.
 % \deriv[n] x f is the nth derivative of f with respect to x.
 % Use \deriv x f for the first derivative, and
@@ -665,9 +640,12 @@
 \newcommand{\vx}{\VectorSymbol x}
 \newcommand{\vy}{\VectorSymbol y}
 \newcommand{\vz}{\VectorSymbol z}
+\newcommand{\vA}{\VectorSymbol A}
+\newcommand{\vB}{\VectorSymbol B}
 \newcommand{\vF}{\VectorSymbol F}
 \newcommand{\vQ}{\VectorSymbol Q}
 \newcommand{\vP}{\VectorSymbol P}
+\newcommand{\vX}{\VectorSymbol X}
 
 \newcommand{\miga}{{\MultiIndexSymbol \alpha}}
 \newcommand{\migb}{{\MultiIndexSymbol \beta}}
@@ -849,7 +827,7 @@
 \newcommand\Z\Integers
 \newcommand\Q\Rationals
 \newcommand\R\Reals
-\renewcommand\C\Complexes
+\newcommand\C\Complexes
 
 \newcommand{\FreeGroup}[1]{\operatorname{F}_{#1}}
 \newcommand{\GroupGeneratedBy}[1]{\angleBrackets{#1}}

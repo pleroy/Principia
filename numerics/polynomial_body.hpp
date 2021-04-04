@@ -16,6 +16,7 @@
 #include "geometry/cartesian_product.hpp"
 #include "geometry/serialization.hpp"
 #include "numerics/combinatorics.hpp"
+#include "numerics/quadrature.hpp"
 
 namespace principia {
 namespace numerics {
@@ -155,6 +156,39 @@ void TupleAssigner<LTuple, RTuple, std::index_sequence<indices...>>::Assign(
   // This fold expression effectively implements repeated assignments.
   ((std::get<indices>(left_tuple) = std::get<indices>(right_tuple)), ...);
 }
+
+
+// - 1 in the second type is ultimately to avoid evaluating Pow<0> as generating
+// a one is hard.
+template<typename LTuple, typename RTuple,
+         typename = std::make_index_sequence<std::tuple_size_v<LTuple> - 1>>
+struct TupleComposition;
+
+template<typename LTuple, typename RTuple, std::size_t... left_indices>
+struct TupleComposition<LTuple, RTuple, std::index_sequence<left_indices...>> {
+  static constexpr auto Compose(LTuple const& left_tuple,
+                                RTuple const& right_tuple);
+};
+
+template<typename LTuple, typename RTuple, std::size_t... left_indices>
+constexpr auto
+TupleComposition<LTuple, RTuple, std::index_sequence<left_indices...>>::Compose(
+    LTuple const& left_tuple,
+    RTuple const& right_tuple) {
+  auto const degree_0 = std::tuple(std::get<0>(left_tuple));
+  if constexpr (sizeof...(left_indices) == 0) {
+    return degree_0;
+  } else {
+    // The + 1 in the expressions below match the - 1 in the primary declaration
+    // of TupleComposition.
+    return degree_0 +
+           ((std::get<left_indices + 1>(left_tuple) *
+             geometry::polynomial_ring::Pow<left_indices + 1>(right_tuple)) +
+            ...);
+  }
+}
+
+
 
 template<typename Tuple, int order,
          typename = std::make_index_sequence<std::tuple_size_v<Tuple> - order>>
@@ -413,6 +447,17 @@ Primitive() const {
 
 template<typename Value_, typename Argument_, int degree_,
          template<typename, typename, int> typename Evaluator>
+quantities::Primitive<Value_, Argument_>
+PolynomialInMonomialBasis<Value_, Argument_, degree_, Evaluator>::Integrate(
+    Argument const& argument1,
+    Argument const& argument2) const {
+  // + 2 is to take into account the truncation resulting from integer division.
+  return quadrature::GaussLegendre<(degree_ + 2) / 2>(*this,
+                                                      argument1, argument2);
+}
+
+template<typename Value_, typename Argument_, int degree_,
+         template<typename, typename, int> typename Evaluator>
 PolynomialInMonomialBasis<Value_, Argument_, degree_, Evaluator>&
 PolynomialInMonomialBasis<Value_, Argument_, degree_, Evaluator>::operator+=(
     PolynomialInMonomialBasis const& right) {
@@ -562,6 +607,17 @@ Primitive() const {
              degree_ + 1, Evaluator>(
              TupleIntegration<Argument, Coefficients>::Integrate(coefficients_),
              origin_);
+}
+
+template<typename Value_, typename Argument_, int degree_,
+         template<typename, typename, int> typename Evaluator>
+quantities::Primitive<Value_, Argument_>
+PolynomialInMonomialBasis<Value_, Point<Argument_>, degree_, Evaluator>::
+Integrate(Point<Argument> const& argument1,
+          Point<Argument> const& argument2) const {
+  // + 2 is to take into account the truncation resulting from integer division.
+  return quadrature::GaussLegendre<(degree_ + 2) / 2>(*this,
+                                                      argument1, argument2);
 }
 
 template<typename Value_, typename Argument_, int degree_,
@@ -765,6 +821,37 @@ operator*(
     return PolynomialInMonomialBasis<Product<LValue, RValue>, Argument,
                                      ldegree_ + rdegree_, Evaluator>(
                left.coefficients_ * right.coefficients_);
+  }
+}
+
+template<typename LValue, typename RValue,
+         typename Argument, int ldegree_, int rdegree_,
+         template<typename, typename, int> typename Evaluator>
+constexpr PolynomialInMonomialBasis<LValue, Argument,
+                                    ldegree_ * rdegree_, Evaluator>
+Compose(
+    PolynomialInMonomialBasis<LValue, RValue, ldegree_, Evaluator> const&
+        left,
+    PolynomialInMonomialBasis<RValue, Argument, rdegree_, Evaluator> const&
+        right) {
+  using LCoefficients =
+      typename PolynomialInMonomialBasis<LValue, RValue, ldegree_,
+                                         Evaluator>::Coefficients;
+  using RCoefficients =
+      typename PolynomialInMonomialBasis<RValue, Argument, rdegree_,
+                                         Evaluator>::Coefficients;
+  if constexpr (is_instance_of_v<Point, Argument>) {
+    return PolynomialInMonomialBasis<LValue, Argument,
+                                     ldegree_ * rdegree_,
+                                     Evaluator>(
+        TupleComposition<LCoefficients, RCoefficients>::Compose(
+            left.coefficients_, right.coefficients_),
+        right.origin_);
+  } else {
+    return PolynomialInMonomialBasis<LValue, Argument,
+                                     ldegree_ * rdegree_, Evaluator>(
+        TupleComposition<LCoefficients, RCoefficients>::Compose(
+            left.coefficients_, right.coefficients_));
   }
 }
 
