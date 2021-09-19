@@ -185,8 +185,7 @@ void Vessel::DetectCollapsibilityChange() {
     }
     auto psychohistory = psychohistory_->DetachFork();
     backstory_ = history_->NewForkAtLast();
-    backstory_->SetDownsampling(MaxDenseIntervals,
-                                DownsamplingTolerance);
+    backstory_->SetDownsampling(DefaultDownsamplingParameters());
     backstory_->AttachFork(std::move(psychohistory));
     is_collapsible_ = becomes_collapsible;
   }
@@ -205,7 +204,7 @@ void Vessel::CreateHistoryIfNeeded(Instant const& t) {
           part.mass());
     });
     CHECK(psychohistory_ == nullptr);
-    history_->SetDownsampling(MaxDenseIntervals, DownsamplingTolerance);
+    history_->SetDownsampling(DefaultDownsamplingParameters());
     history_->Append(t, calculator.Get());
     backstory_ = history_.get();
     psychohistory_ = history_->NewForkAtLast();
@@ -574,8 +573,7 @@ not_null<std::unique_ptr<Vessel>> Vessel::ReadFromMessage(
   ephemeris->Prolong(vessel->prediction_->back().time);
 
   if (is_pre_陈景润) {
-    vessel->history_->SetDownsampling(MaxDenseIntervals,
-                                      DownsamplingTolerance);
+    vessel->history_->SetDownsampling(DefaultDownsamplingParameters());
   }
 
   if (message.has_flight_plan()) {
