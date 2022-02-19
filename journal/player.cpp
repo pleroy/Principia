@@ -13,7 +13,7 @@
 #include "journal/profiles.hpp"
 #include "glog/logging.h"
 
-#define PRINCIPIA_PLAYER_ALLOW_VERSION_MISMATCH 0
+#define PRINCIPIA_PLAYER_ALLOW_VERSION_MISMATCH 1
 
 namespace principia {
 
@@ -42,6 +42,7 @@ bool Player::Play(int const index) {
   std::unique_ptr<serialization::Method> method_out_return = Read();
   if (method_out_return == nullptr) {
     LOG(ERROR) << "Unpaired method:\n" << method_in->DebugString();
+  last_method_in_.swap(method_in);
     return false;
   }
 
@@ -54,7 +55,7 @@ bool Player::Play(int const index) {
         method_out_return->GetExtension(serialization::GetVersion::extension)
             .out();
     LOG_IF(FATAL,
-           !absl::StartsWith(Version, get_version_out.version())  &&
+           !absl::StartsWith(Version, get_version_out.version()) &&
                (PRINCIPIA_PLAYER_ALLOW_VERSION_MISMATCH == 0))
         << "Journal version is " << get_version_out.version()
         << ", running with a binary built at version " << Version
