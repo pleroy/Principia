@@ -121,6 +121,13 @@ message EmbeddedExplicitGeneralizedRungeKuttaNystromIntegratorInstance {
   }
 }
 
+message ExplicitLinearMultistepIntegratorInstance {
+  extend FixedStepSizeIntegratorInstance {
+    optional ExplicitLinearMultistepIntegratorInstance extension = 8002;
+  }
+  //TODO(phl)Add more
+}
+
 message FixedStepSizeIntegratorInstance {
   extend IntegratorInstance {
     optional FixedStepSizeIntegratorInstance extension = 7000;

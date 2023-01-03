@@ -59,6 +59,14 @@ struct EmbeddedExplicitRungeKutta : not_constructible {
   // static constexpr FixedVector<double, stages> b = ...;
 };
 
+struct ExplicitLinearMultistep : not_constructible {
+  //TODO(phl)commnt
+  // static constexpr int order = ...;
+  // static constexpr serialization::FixedStepSizeIntegrator::Kind kind = ...;
+  // static constexpr FixedVector<double, order> const b_numerator(...);
+  // static constexpr double b_denominator = ...;
+};
+
 struct SymmetricLinearMultistep : not_constructible {
   static constexpr int Half(int const order) {
     return order / 2 + 1;
