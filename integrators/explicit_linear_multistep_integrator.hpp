@@ -19,6 +19,8 @@
 #include "quantities/named_quantities.hpp"
 #include "serialization/integrators.pb.h"
 
+// TODO(phl): Unify the style of the various integrators, they have spurious
+// differences at the moment.
 namespace principia {
 namespace integrators {
 namespace internal_explicit_linear_multistep_integrator {
@@ -56,7 +58,6 @@ class ExplicitLinearMultistepIntegrator
       ExplicitFirstOrderOrdinaryDifferentialEquation<IndependentVariable,
                                                      StateElements...>;
   using typename Integrator<ODE>::AppendState;
-  using typename ODE::IndependentVariableDifference;
 
   class Instance : public FixedStepSizeIntegrator<ODE>::Instance {
    public:
@@ -80,6 +81,27 @@ class ExplicitLinearMultistepIntegrator
 #endif
 
    private:
+    using typename ODE::IndependentVariableDifference;
+    using typename ODE::State;
+    using typename ODE::StateVariation;
+    using typename ODE::SystemState;
+
+    //TODO(phl)should be common?
+    struct Step final {
+      std::vector<DoublePrecision<State>> states;
+      std::vector<StateVariation> state_variations;
+      DoublePrecision<IndependentVariable> s;
+
+      void WriteToMessage(
+          not_null<serialization::ExplicitLinearMultistepIntegratorInstance::
+                       Step*> message) const;
+      template<typename P = Position,
+               typename = std::enable_if_t<base::is_serializable_v<P>>>
+      static Step ReadFromMessage(
+          serialization::ExplicitLinearMultistepIntegratorInstance::Step const&
+              message);
+    };
+
     Instance(IntegrationProblem<ODE> const& problem,
              AppendState const& append_state,
              IndependentVariableDifference const& step,
@@ -91,15 +113,19 @@ class ExplicitLinearMultistepIntegrator
     // updated more frequently than once every |instance.step_|.
     void StartupSolve(IndependentVariable const& s_final);
 
+    static void FillStepFromSystemState(ODE const& equation,
+                                        SystemState const& state,
+                                        Step& step);
+
+    int startup_step_index_ = 0;
+    std::list<Step> previous_steps_;  // At most |order_| elements.
     ExplicitLinearMultistepIntegrator const& integrator_;
     friend class ExplicitLinearMultistepIntegrator;
   };
 
   not_null<std::unique_ptr<typename Integrator<ODE>::Instance>> NewInstance(
       IntegrationProblem<ODE> const& problem,
-      AppendState const& append_state,
-      ToleranceToErrorRatio const& tolerance_to_error_ratio,
-      Parameters const& parameters) const override;
+      AppendState const& append_state) const override;
 
   explicit ExplicitLinearMultistepIntegrator(
       FixedStepSizeIntegrator<ODE> const& startup_integrator);

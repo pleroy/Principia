@@ -26,33 +26,15 @@ using quantities::DebugString;
 using quantities::Difference;
 using quantities::Quotient;
 
-template<typename Method,
-         typename IndependentVariable,
-         typename... StateElements>
-ExplicitLinearMultistepIntegrator<Method,
-                                  IndependentVariable,
-                                  StateElements...>::
-ExplicitLinearMultistepIntegrator() {
-  // The first node is always 0 in an explicit method.
-  CHECK_EQ(0.0, c_[0]);
-  if (first_same_as_last) {
-    // Check that the conditions for the FSAL property are satisfied, see for
-    // instance [DEP87a], equation 3.1.
-    CHECK_EQ(1.0, c_[stages_ - 1]);
-    CHECK_EQ(0.0, b̂_[stages_ - 1]);
-    for (int j = 0; j < stages_ - 1; ++j) {
-      CHECK_EQ(b̂_[j], a_(stages_ - 1, j));
-    }
-  }
-}
+int const startup_step_divisor = 16;
 
 template<typename Method,
          typename IndependentVariable,
          typename... StateElements>
 absl::Status
 ExplicitLinearMultistepIntegrator<Method,
-                                     IndependentVariable,
-                                     StateElements...>::Instance::
+                                  IndependentVariable,
+                                  StateElements...>::Instance::
 Solve(IndependentVariable const& s_final) {
   using IndependentVariableDifference =
       typename ODE::IndependentVariableDifference;
@@ -60,248 +42,126 @@ Solve(IndependentVariable const& s_final) {
   using StateDifference = typename ODE::StateDifference;
   using StateVariation = typename ODE::StateVariation;
 
-  auto const& a = integrator_.a_;
-  auto const& b̂ = integrator_.b̂_;
-  auto const& b = integrator_.b_;
-  auto const& c = integrator_.c_;
+  auto const& b_numerator = integrator_.b_numerator_;
+  auto const& b_denominator = integrator_.b_denominator_;
 
-  auto& append_state = this->append_state_;
   auto& current_state = this->current_state_;
-  auto& first_use = this->first_use_;
-  auto& parameters = this->parameters_;
+  auto& append_state = this->append_state_;
+  auto const& step = this->step_;
   auto const& equation = this->equation_;
 
-  // |current_state| gets updated as the integration progresses to allow
-  // restartability.
+  if (previous_steps_.size() < order) {
+    StartupSolve(t_final);
 
-  // State before the last, truncated step.
-  std::optional<typename ODE::SystemState> final_state;
+    // If |s_final| is not large enough, we may not have generated enough
+    // points.  Bail out, we'll continue the next time |Solve| is called.
+    if (previous_steps_.size() < order) {
+      return absl::OkStatus();
+    }
+  }
+  CHECK_EQ(previous_steps_.size(), order);
 
   // Argument checks.
-  Sign const integration_direction = Sign(parameters.first_step);
-  if (integration_direction.is_positive()) {
-    // Integrating forward.
-    CHECK_LT(current_state.s.value, s_final);
-  } else {
-    // Integrating backward.
-    CHECK_GT(current_state.s.value, s_final);
-  }
-  CHECK(first_use || !parameters.last_step_is_exact)
-      << "Cannot reuse an instance where the last step is exact";
-  first_use = false;
+  int const dimension = previous_steps_.back().displacements.size();
 
-  // Step.  Updated as the integration progresses to allow restartability.
-  IndependentVariableDifference& h = this->step_;
-  // Current time.  This is a non-const reference whose purpose is to make the
-  // equations more readable.
-  DoublePrecision<IndependentVariable>& s = current_state.s;
-
-  // State increment (high-order).
-  StateDifference Δŷ;
-  // Current state.  This is a non-const reference whose purpose is to make
-  // the equations more readable.
-  auto& ŷ = current_state.y;
-
-  // Difference between the low- and high-order approximations.
-  typename ODE::SystemStateError error_estimate;
-
-  // Current Runge-Kutta stage.
-  State y_stage;
-
-  StateVariation f;
-  StateVariation last_f;
-  std::vector<StateDifference> k(stages_);
-  for (auto& k_stage : k) {
-    for_all_of(ŷ, Δŷ, k_stage).loop([](auto const& ŷ, auto& Δŷ, auto& k_stage) {
-      int const dimension = ŷ.size();
-      Δŷ.resize(dimension);
-      k_stage.resize(dimension);
-    });
-  }
-
-  for_all_of(ŷ, error_estimate, f, last_f, y_stage)
-      .loop([](auto const& ŷ,
-               auto& error_estimate,
-               auto& f,
-               auto& last_f,
-               auto& y_stage) {
-        int const dimension = ŷ.size();
-        error_estimate.resize(dimension);
-        f.resize(dimension);
-        last_f.resize(dimension);
-        for (auto const& ŷₗ : ŷ) {
-          y_stage.push_back(ŷₗ.value);
-        }
-      });
-
-  bool at_end = false;
-  double tolerance_to_error_ratio;
-
-  // The number of steps already performed.
-  std::int64_t step_count = 0;
+  // Independent variable step.
+  CHECK_LT(IndependentVariable(), step);
+  IndependentVariable const& h = step;
+  // Current independent variable.
+  DoublePrecision<IndependentVariable> s = previous_steps_.back().s;
+  // Order.
+  int const k = order;
 
   absl::Status status;
-  absl::Status step_status;
+  std::vector<Position> positions(dimension);
 
-  if (first_same_as_last) {
-    status = equation.compute_derivative(s.value, y_stage, last_f);
-  }
+  DoubleDisplacements Σⱼ_minus_αⱼ_qⱼ(dimension);
+  std::vector<Acceleration> Σⱼ_βⱼ_numerator_aⱼ(dimension);
+  while (h <= (t_final - t.value) - t.error) {
+    // We take advantage of the symmetry to iterate on the list of previous
+    // steps from both ends.
+    auto front_it = previous_steps_.begin();
+    auto back_it = previous_steps_.rbegin();
 
-  // No step size control on the first step.  If this instance is being
-  // restarted we already have a value of |h| suitable for the next step, based
-  // on the computation of |tolerance_to_error_ratio_| during the last
-  // invocation.
-  goto runge_kutta_step;
-
-  while (!at_end) {
-    // Compute the next step with decreasing step sizes until the error is
-    // tolerable.
-    do {
-      // Reset the status as any error returned by a force computation for a
-      // rejected step is now moot.
-      step_status = absl::OkStatus();
-
-      // Adapt step size.
-      // TODO(egg): find out whether there's a smarter way to compute that root,
-      // especially since we make the order compile-time.
-      h *= parameters.safety_factor *
-               std::pow(tolerance_to_error_ratio, 1.0 / (lower_order + 1));
-      // TODO(egg): should we check whether it vanishes in double precision
-      // instead?
-      if (s.value + (s.error + h) == s.value) {
-        return absl::Status(termination_condition::VanishingStepSize,
-                            "At time " + DebugString(s.value) +
-                                ", step size is effectively zero.  "
-                                "Singularity or stiff system suspected.");
+    // This block corresponds to j = 0.  We must not pair it with j = k.
+    {
+      DoubleDisplacements const& qⱼ = front_it->displacements;
+      std::vector<Acceleration> const& aⱼ = front_it->accelerations;
+      double const αⱼ = α[0];
+      double const βⱼ_numerator = β_numerator[0];
+      for (int d = 0; d < dimension; ++d) {
+        Σⱼ_minus_αⱼ_qⱼ[d] = Scale(-αⱼ, qⱼ[d]);
+        Σⱼ_βⱼ_numerator_aⱼ[d] = βⱼ_numerator * aⱼ[d];
       }
-
-    runge_kutta_step:
-      // Termination condition.
-      if (parameters.last_step_is_exact) {
-        IndependentVariableDifference const s_to_end =
-            (s_final - s.value) - s.error;
-        at_end = integration_direction * h >=
-                 integration_direction * s_to_end;
-        if (at_end) {
-          // The chosen step size will overshoot.  Clip it to just reach the
-          // end, and terminate if the step is accepted.  Note that while this
-          // step size is a good approximation, there is no guarantee that it
-          // won't over/undershoot, so we still need to special case the very
-          // last stage below.
-          h = s_to_end;
-          final_state = current_state;
-        }
+      ++front_it;
+    }
+    // The generic value of j, paired with k - j.
+    for (int j = 1; j < k / 2; ++j) {
+      DoubleDisplacements const& qⱼ = front_it->displacements;
+      DoubleDisplacements const& qₖ₋ⱼ = back_it->displacements;
+      std::vector<Acceleration> const& aⱼ = front_it->accelerations;
+      std::vector<Acceleration> const& aₖ₋ⱼ = back_it->accelerations;
+      double const αⱼ = α[j];
+      double const βⱼ_numerator = β_numerator[j];
+      for (int d = 0; d < dimension; ++d) {
+        Σⱼ_minus_αⱼ_qⱼ[d] -= Scale(αⱼ, qⱼ[d]);
+        Σⱼ_minus_αⱼ_qⱼ[d] -= Scale(αⱼ, qₖ₋ⱼ[d]);
+        Σⱼ_βⱼ_numerator_aⱼ[d] += βⱼ_numerator * (aⱼ[d] + aₖ₋ⱼ[d]);
       }
-
-      // Runge-Kutta iteration; fills |k|.
-      for (int i = 0; i < stages_; ++i) {
-        if (i == 0 && first_same_as_last) {
-          // TODO(phl): Use pointers to avoid copying big objects.
-          f = last_f;
-        } else {
-          IndependentVariable const s_stage =
-              (parameters.last_step_is_exact && at_end && c[i] == 1.0)
-                  ? s_final
-                  : s.value + (s.error + c[i] * h);
-
-          StateDifference Σⱼ_aᵢⱼ_kⱼ{};
-          for (int j = 0; j < i; ++j) {
-            for_all_of(k[j], ŷ, y_stage, Σⱼ_aᵢⱼ_kⱼ)
-                .loop([&a, i, j](auto const& kⱼ,
-                                 auto const& ŷ,
-                                 auto& y_stage,
-                                 auto& Σⱼ_aᵢⱼ_kⱼ) {
-                  int const dimension = ŷ.size();
-                  Σⱼ_aᵢⱼ_kⱼ.resize(dimension);
-                  for (int l = 0; l < dimension; ++l) {
-                    Σⱼ_aᵢⱼ_kⱼ[l] += a(i, j) * kⱼ[l];
-                  }
-                });
-          }
-          for_all_of(ŷ, Σⱼ_aᵢⱼ_kⱼ, y_stage)
-              .loop([](auto const& ŷ, auto const& Σⱼ_aᵢⱼ_kⱼ, auto& y_stage) {
-                int const dimension = ŷ.size();
-                for (int l = 0; l < dimension; ++l) {
-                  y_stage[l] = ŷ[l].value + Σⱼ_aᵢⱼ_kⱼ[l];
-                }
-              });
-
-          termination_condition::UpdateWithAbort(
-              equation.compute_derivative(s_stage, y_stage, f), step_status);
-        }
-        for_all_of(f, k[i]).loop([h](auto const& f, auto& kᵢ) {
-          int const dimension = f.size();
-          for (int l = 0; l < dimension; ++l) {
-            kᵢ[l] = h * f[l];
-          }
-        });
+      ++front_it;
+      ++back_it;
+    }
+    // This block corresponds to j = k / 2.  We must not pair it with j = k / 2.
+    {
+      DoubleDisplacements const& qⱼ = front_it->displacements;
+      std::vector<Acceleration> const& aⱼ = front_it->accelerations;
+      double const αⱼ = α[k / 2];
+      double const βⱼ_numerator = β_numerator[k / 2];
+      for (int d = 0; d < dimension; ++d) {
+        Σⱼ_minus_αⱼ_qⱼ[d] -= Scale(αⱼ, qⱼ[d]);
+        Σⱼ_βⱼ_numerator_aⱼ[d] += βⱼ_numerator * aⱼ[d];
       }
-
-      // Increment computation and step size control.
-      StateDifference Σᵢ_b̂ᵢ_kᵢ{};
-      StateDifference Σᵢ_bᵢ_kᵢ{};
-      for (int i = 0; i < stages_; ++i) {
-        for_all_of(k[i], ŷ, Δŷ, Σᵢ_b̂ᵢ_kᵢ, Σᵢ_bᵢ_kᵢ, error_estimate)
-            .loop([&a, &b, &b̂, i](auto const& kᵢ,
-                                  auto const& ŷ,
-                                  auto& Δŷ,
-                                  auto& Σᵢ_b̂ᵢ_kᵢ,
-                                  auto& Σᵢ_bᵢ_kᵢ,
-                                  auto& error_estimate) {
-              int const dimension = ŷ.size();
-              Σᵢ_b̂ᵢ_kᵢ.resize(dimension);
-              Σᵢ_bᵢ_kᵢ.resize(dimension);
-              for (int l = 0; l < dimension; ++l) {
-                Σᵢ_b̂ᵢ_kᵢ[l] += b̂[i] * kᵢ[l];
-                Σᵢ_bᵢ_kᵢ[l] += b[i] * kᵢ[l];
-                Δŷ[l] = Σᵢ_b̂ᵢ_kᵢ[l];
-                auto const Δyₗ = Σᵢ_bᵢ_kᵢ[l];
-                error_estimate[l] = Δyₗ - Δŷ[l];
-              }
-            });
-      }
-      tolerance_to_error_ratio =
-          this->tolerance_to_error_ratio_(h, current_state, error_estimate);
-    } while (tolerance_to_error_ratio < 1.0);
-
-    status.Update(step_status);
-
-    if (!parameters.last_step_is_exact && s.value + (s.error + h) > s_final) {
-      // We did overshoot.  Drop the point that we just computed and exit.
-      final_state = current_state;
-      break;
     }
 
-    if (first_same_as_last) {
-      last_f = f;
+    // Create a new step in the instance.
+    t.Increment(h);
+    previous_steps_.emplace_back();
+    Step& current_step = previous_steps_.back();
+    current_step.time = t;
+    current_step.accelerations.resize(dimension);
+    current_step.displacements.reserve(dimension);
+
+    // Fill the new step.  We skip the division by αₖ as it is equal to 1.0.
+    double const αₖ = α[0];
+    DCHECK_EQ(αₖ, 1.0);
+    for (int d = 0; d < dimension; ++d) {
+      DoubleDisplacement& current_displacement = Σⱼ_minus_αⱼ_qⱼ[d];
+      current_displacement.Increment(h * h *
+                                     Σⱼ_βⱼ_numerator_aⱼ[d] / β_denominator);
+      current_step.displacements.push_back(current_displacement);
+      DoublePosition const current_position =
+          DoublePosition() + current_displacement;
+      positions[d] = current_position.value;
+      current_state.positions[d] = current_position;
     }
+    termination_condition::UpdateWithAbort(
+        equation.compute_acceleration(t.value,
+                                      positions,
+                                      current_step.accelerations),
+        status);
+    previous_steps_.pop_front();
 
-    // Increment the solution with the high-order approximation.
-    s.Increment(h);
-    for_all_of(Δŷ, ŷ).loop([](auto const& Δŷ, auto& ŷ) {
-      int const dimension = ŷ.size();
-      for (int l = 0; l < dimension; ++l) {
-        ŷ[l].Increment(Δŷ[l]);
-      }
-    });
+    ComputeVelocityUsingCohenHubbardOesterwinter();
 
+    // Inform the caller of the new state.
     RETURN_IF_STOPPED;
+    current_state.time = t;
     append_state(current_state);
-    ++step_count;
-    if (absl::IsAborted(step_status)) {
-      return step_status;
-    } else if (step_count == parameters.max_steps && !at_end) {
-      return absl::Status(termination_condition::ReachedMaximalStepCount,
-                          "Reached maximum step count " +
-                              std::to_string(parameters.max_steps) +
-                              " at time " + DebugString(s.value) +
-                              "; requested s_final is " + DebugString(s_final) +
-                              ".");
+    if (absl::IsAborted(status)) {
+      return status;
     }
   }
-  // The resolution is restartable from the last non-truncated state.
-  CHECK(final_state);
-  current_state = *final_state;
+
   return status;
 }
 
@@ -309,8 +169,8 @@ template<typename Method,
          typename IndependentVariable,
          typename... StateElements>
 ExplicitLinearMultistepIntegrator<Method,
-                                     IndependentVariable,
-                                     StateElements...> const&
+                                  IndependentVariable,
+                                  StateElements...> const&
 ExplicitLinearMultistepIntegrator<Method,
                                      IndependentVariable,
                                      StateElements...>::Instance::
@@ -325,8 +185,8 @@ not_null<std::unique_ptr<
     typename Integrator<ExplicitFirstOrderOrdinaryDifferentialEquation<
         IndependentVariable, StateElements...>>::Instance>>
 ExplicitLinearMultistepIntegrator<Method,
-                                     IndependentVariable,
-                                     StateElements...>::Instance::
+                                  IndependentVariable,
+                                  StateElements...>::Instance::
 Clone() const {
   return std::unique_ptr<Instance>(new Instance(*this));
 }
@@ -335,18 +195,17 @@ template<typename Method,
          typename IndependentVariable,
          typename... StateElements>
 void ExplicitLinearMultistepIntegrator<Method,
-                                          IndependentVariable,
-                                          StateElements...>::Instance::
+                                      IndependentVariable,
+                                      StateElements...>::Instance::
 WriteToMessage(not_null<serialization::IntegratorInstance*> message) const {
-  AdaptiveStepSizeIntegrator<ODE>::Instance::WriteToMessage(message);
+  FixedStepSizeIntegrator<ODE>::Instance::WriteToMessage(message);
   [[maybe_unused]] auto* const extension =
       message
           ->MutableExtension(
-              serialization::AdaptiveStepSizeIntegratorInstance::extension)
+              serialization::FixedStepSizeIntegratorInstance::extension)
           ->MutableExtension(
               serialization::
-                  EmbeddedExplicitRungeKuttaNystromIntegratorInstance::
-                      extension);
+                  ExplicitLinearMultistepIntegratorInstance::extension);
 }
 
 #if 0
@@ -359,15 +218,13 @@ not_null<std::unique_ptr<
                                                   IndependentVariable,
                                                   StateElements...>::Instance>>
 ExplicitLinearMultistepIntegrator<Method,
-                                     IndependentVariable,
-                                     StateElements...>::Instance::
+                                  IndependentVariable,
+                                  StateElements...>::Instance::
 ReadFromMessage(serialization::
-                    EmbeddedExplicitRungeKuttaNystromIntegratorInstance const&
+                    ExplicitLinearMultistepIntegratorInstance const&
                         extension,
                 IntegrationProblem<ODE> const& problem,
                 AppendState const& append_state,
-                ToleranceToErrorRatio const& tolerance_to_error_ratio,
-                Parameters const& parameters,
                 Time const& time_step,
                 bool const first_use,
                 ExplicitLinearMultistepIntegrator const& integrator) {
@@ -375,8 +232,6 @@ ReadFromMessage(serialization::
   // private.
   return std::unique_ptr<Instance>(new Instance(problem,
                                                 append_state,
-                                                tolerance_to_error_ratio,
-                                                parameters,
                                                 time_step,
                                                 first_use,
                                                 integrator));
@@ -387,22 +242,92 @@ template<typename Method,
          typename IndependentVariable,
          typename... StateElements>
 ExplicitLinearMultistepIntegrator<Method,
-                                     IndependentVariable,
-                                     StateElements...>::Instance::
+                                  IndependentVariable,
+                                  StateElements...>::Instance::
 Instance(IntegrationProblem<ODE> const& problem,
          AppendState const& append_state,
-         ToleranceToErrorRatio const& tolerance_to_error_ratio,
-         Parameters const& parameters,
-         typename ODE::IndependentVariableDifference const& step,
-         bool const first_use,
+         IndependentVariableDifference const& step,
          ExplicitLinearMultistepIntegrator const& integrator)
-    : AdaptiveStepSizeIntegrator<ODE>::Instance(problem,
-                                                append_state,
-                                                tolerance_to_error_ratio,
-                                                parameters,
-                                                step,
-                                                first_use),
+    : FixedStepSizeIntegrator<ODE>::Instance(problem,
+                                             append_state,
+                                             step),
       integrator_(integrator) {}
+
+template<typename Method,
+         typename IndependentVariable,
+         typename... StateElements>
+void ExplicitLinearMultistepIntegrator<Method,
+                                       IndependentVariable,
+                                       StateElements...>::Instance::
+Instance::StartupSolve(IndependentVariable const& s_final) {
+  auto& current_state = this->current_state_;
+  auto const& step = this->step_;
+  auto const& equation = this->equation_;
+
+  IndependentVariable const startup_step = step / startup_step_divisor;
+
+  CHECK(!previous_steps_.empty());
+  CHECK_LT(previous_steps_.size(), order);
+
+  auto const startup_append_state =
+      [this](SystemState const& state) {
+        // Stop changing anything once we're done with the startup.  We may be
+        // called one more time by the |startup_integrator_|.
+        if (previous_steps_.size() < order) {
+          this->current_state_ = state;
+          // The startup integrator has a smaller step.  We do not record all
+          // the states it computes, but only those that are a multiple of the
+          // main integrator step.
+          if (++startup_step_index_ % startup_step_divisor == 0) {
+            CHECK_LT(previous_steps_.size(), order);
+            previous_steps_.emplace_back();
+            FillStepFromSystemState(this->equation_,
+                                    this->current_state_,
+                                    previous_steps_.back());
+            // This call must happen last for a subtle reason: the callback may
+            // want to |Clone| this instance (see |Ephemeris::Checkpoint|) in
+            // which cases it is necessary that all the member variables be
+            // filled for restartability to work.
+            this->append_state_(state);
+          }
+        }
+      };
+
+  auto const startup_instance =
+      integrator_.startup_integrator_.NewInstance({equation, current_state},
+                                                  startup_append_state,
+                                                  startup_step);
+
+  startup_instance->Solve(
+      std::min(current_state.time.value +
+                   (order - previous_steps_.size()) * step + step / 2.0,
+               t_final)).IgnoreError();
+
+  CHECK_LE(previous_steps_.size(), order);
+}
+
+template<typename Method,
+         typename IndependentVariable,
+         typename... StateElements>
+void ExplicitLinearMultistepIntegrator<Method,
+                                       IndependentVariable,
+                                       StateElements...>::
+Instance::FillStepFromSystemState(ODE const& equation,
+                                  SystemState const& state,
+                                  Step& step) {
+  std::vector<typename ODE::Position> positions;
+  step.time = state.time;
+  for (auto const& position : state.positions) {
+    step.displacements.push_back(position - DoublePrecision<Position>());
+    positions.push_back(position.value);
+  }
+  step.accelerations.resize(step.displacements.size());
+  // Ignore the status here.  We are merely computing the acceleration to store
+  // it, not to advance an integrator.
+  equation.compute_acceleration(step.time.value,
+                                positions,
+                                step.accelerations).IgnoreError();
+}
 
 template<typename Method,
          typename IndependentVariable,
@@ -411,22 +336,28 @@ not_null<std::unique_ptr<
     typename Integrator<ExplicitFirstOrderOrdinaryDifferentialEquation<
         IndependentVariable, StateElements...>>::Instance>>
 ExplicitLinearMultistepIntegrator<Method,
-                                     IndependentVariable,
-                                     StateElements...>::
+                                  IndependentVariable,
+                                  StateElements...>::
 NewInstance(IntegrationProblem<ODE> const& problem,
-            AppendState const& append_state,
-            ToleranceToErrorRatio const& tolerance_to_error_ratio,
-            Parameters const& parameters) const {
+            AppendState const& append_state) const {
   // Cannot use |make_not_null_unique| because the constructor of |Instance| is
   // private.
   return std::unique_ptr<Instance>(
       new Instance(problem,
                    append_state,
-                   tolerance_to_error_ratio,
-                   parameters,
                    /*step=*/parameters.first_step,
-                   /*first_use=*/true,
                    *this));
+}
+
+template<typename Method,
+         typename IndependentVariable,
+         typename... StateElements>
+ExplicitLinearMultistepIntegrator<Method,
+                                  IndependentVariable,
+                                  StateElements...>::
+ExplicitLinearMultistepIntegrator(
+    FixedStepSizeIntegrator<ODE> const& startup_integrator)
+    : startup_integrator_(startup_integrator) {
 }
 
 template<typename Method,
@@ -436,7 +367,7 @@ void ExplicitLinearMultistepIntegrator<Method,
                                        IndependentVariable,
                                        StateElements...>::
 WriteToMessage(
-    not_null<serialization::AdaptiveStepSizeIntegrator*> message) const {
+    not_null<serialization::FixedStepSizeIntegrator*> message) const {
   message->set_kind(Method::kind);
 }
 
@@ -447,17 +378,17 @@ template<typename Method,
          typename... StateElements>
 internal_explicit_linear_multistep_integrator::
     ExplicitLinearMultistepIntegrator<Method,
-                                         IndependentVariable,
-                                         StateElements...> const&
+                                      IndependentVariable,
+                                      StateElements...> const&
 ExplicitLinearMultistepIntegrator() {
   static_assert(
-      std::is_base_of<methods::EmbeddedExplicitRungeKutta,
+      std::is_base_of<methods::ExplicitLinearMultistep,
                       Method>::value,
-      "Method must be derived from EmbeddedExplicitRungeKutta");
+      "Method must be derived from ExplicitLinearMultistep");
   static internal_explicit_linear_multistep_integrator::
       ExplicitLinearMultistepIntegrator<Method,
-                                           IndependentVariable,
-                                           StateElements...> const integrator;
+                                        IndependentVariable,
+                                        StateElements...> const integrator;
   return integrator;
 }
 
