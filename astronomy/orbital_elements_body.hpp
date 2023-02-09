@@ -8,6 +8,7 @@
 #include "absl/strings/str_cat.h"
 #include "base/jthread.hpp"
 #include "base/status_utilities.hpp"
+#include "mathematica/logger.hpp"
 #include "numerics/quadrature.hpp"
 #include "integrators/explicit_runge_kutta_integrator.hpp"
 #include "integrators/methods.hpp"
@@ -27,8 +28,6 @@ using integrators::ExplicitFirstOrderOrdinaryDifferentialEquation;
 using integrators::ExplicitLinearMultistepIntegrator;
 using integrators::ExplicitRungeKuttaIntegrator;
 using integrators::InitialValueProblem;
-using integrators::methods::AdamsBashforthOrder4;
-using integrators::methods::AdamsBashforthOrder5;
 using integrators::methods::AdamsBashforthOrder6;
 using integrators::methods::DormandPrince1986RK547FC;
 using integrators::methods::Kutta1901Vσ1;
@@ -50,6 +49,7 @@ using quantities::si::Radian;
 
 constexpr double max_clenshaw_curtis_relative_error = 1.0e-6;
 constexpr int max_clenshaw_curtis_points = 2000;
+constexpr int elms_points_per_period = 800;//24;
 
 template<typename PrimaryCentred>
 absl::StatusOr<OrbitalElements> OrbitalElements::ForTrajectory(
@@ -301,7 +301,6 @@ OrbitalElements::MeanEquinoctialElements(
   // directly, we precompute the integrals from |t_min|.  The integral from
   // |t - period / 2| to |t + period / 2| is then computed by subtraction.
 
-  static constexpr int points_per_period = 24;
   using ODE =
       ExplicitFirstOrderOrdinaryDifferentialEquation<Instant,
                                                      Product<Length, Time>,
@@ -342,8 +341,11 @@ OrbitalElements::MeanEquinoctialElements(
     Time ʃ_qʹ_dt;
   };
 
+  mathematica::Logger logger(TEMP_DIR / "orbital_elements.wl");
+  int ppp = elms_points_per_period;
   std::vector<IntegratedEquinoctialElements> integrals;
-  auto const append_state = [&integrals](ODE::State const& state) {
+  auto const append_state = [&integrals, &logger, &ppp](
+                                ODE::State const& state) {
     Instant const& t = state.s.value;
     auto const& [ʃ_a_dt,
                  ʃ_h_dt,
@@ -363,25 +365,40 @@ OrbitalElements::MeanEquinoctialElements(
                                       .ʃ_q_dt = ʃ_q_dt.value,
                                       .ʃ_pʹ_dt = ʃ_pʹ_dt.value,
                                       .ʃ_qʹ_dt = ʃ_qʹ_dt.value});
+    logger.Append(mathematica::Apply("integral", ppp),
+                  std::tuple(t,
+                             ʃ_a_dt,
+                             ʃ_h_dt,
+                             ʃ_k_dt,
+                             ʃ_λ_dt,
+                             ʃ_p_dt,
+                             ʃ_q_dt,
+                             ʃ_pʹ_dt,
+                             ʃ_qʹ_dt),
+                  mathematica::ExpressInSIUnits);
   };
 
-  append_state(problem.initial_state);
-  auto const instance =
-      ExplicitLinearMultistepIntegrator<AdamsBashforthOrder6, ODE>()
-          .NewInstance(problem,
-                       append_state,
-                       /*step=*/period / points_per_period);
-  RETURN_IF_ERROR(instance->Solve(t_max));
+  for (int i = 0; i < 5; ++i) {
+    integrals.clear();
+    append_state(problem.initial_state);
+    auto const instance =
+        ExplicitLinearMultistepIntegrator<AdamsBashforthOrder6, ODE>()
+            .NewInstance(problem,
+                         append_state,
+                         /*step=*/period / ppp);
+    RETURN_IF_ERROR(instance->Solve(t_max));
+    ppp /= 2;
+  }
 
   // Now compute the averages.
   std::vector<EquinoctialElements> mean_elements;
   mean_elements.reserve(integrals.size());
   for (auto low_it = integrals.begin();
-       integrals.end() - low_it > points_per_period;
+       integrals.end() - low_it > elms_points_per_period;
        ++low_it) {
     RETURN_IF_STOPPED;
     auto const& low = *low_it;
-    auto const& high = *(low_it + points_per_period);
+    auto const& high = *(low_it + elms_points_per_period);
     mean_elements.emplace_back();
     mean_elements.back().t = low.t + period / 2;
     mean_elements.back().a = (high.ʃ_a_dt - low.ʃ_a_dt) / period;

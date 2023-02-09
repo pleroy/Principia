@@ -92,7 +92,7 @@ TEST_F(Лидов古在Test, MercuryOrbiter) {
       MercuryOrbiterInitialTime, MercuryOrbiterInitialDegreesOfFreedom<ICRS>));
   auto& icrs_segment = icrs_trajectory.segments().front();
   icrs_segment.SetDownsampling({.max_dense_intervals = 10'000,
-                                .tolerance = 0.1 * Metre});
+                                .tolerance = 1 * Metre});
   auto const instance =
       ephemeris_->NewInstance({&icrs_trajectory},
                               Ephemeris<ICRS>::NoIntrinsicAccelerations,
@@ -130,7 +130,7 @@ TEST_F(Лидов古在Test, MercuryOrbiter) {
 #endif
   }
 
-  EXPECT_EQ(259'023, mercury_centred_trajectory.size());
+  EXPECT_EQ(465'756, mercury_centred_trajectory.size());
   OrbitalElements const elements = OrbitalElements::ForTrajectory(
       mercury_centred_trajectory, mercury_, MasslessBody{}).value();
   // The constants c₁ and c₂ are defined in [Лид61], equations (58) and (59)
@@ -170,9 +170,9 @@ TEST_F(Лидов古在Test, MercuryOrbiter) {
   // is excellent: while the sun is nudging and deforming the orbit, it is not
   // pumping energy into nor out of it.
   EXPECT_THAT(elements.mean_semimajor_axis_interval().min,
-              IsNear(14'909.9_(1) * Kilo(Metre)));
+              IsNear(14'909.0_(1) * Kilo(Metre)));
   EXPECT_THAT(elements.mean_semimajor_axis_interval().max,
-              IsNear(14'910.3_(1) * Kilo(Metre)));
+              IsNear(14'910.0_(1) * Kilo(Metre)));
 
   // The integral c₁ is preserved quite well: we have an exchange between
   // inclination and eccentricity.
