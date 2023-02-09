@@ -341,11 +341,8 @@ OrbitalElements::MeanEquinoctialElements(
     Time ʃ_qʹ_dt;
   };
 
-  mathematica::Logger logger(TEMP_DIR / "orbital_elements.wl");
-  int ppp = elms_points_per_period;
   std::vector<IntegratedEquinoctialElements> integrals;
-  auto const append_state = [&integrals, &logger, &ppp](
-                                ODE::State const& state) {
+  auto const append_state = [&integrals](ODE::State const& state) {
     Instant const& t = state.s.value;
     auto const& [ʃ_a_dt,
                  ʃ_h_dt,
@@ -365,20 +362,12 @@ OrbitalElements::MeanEquinoctialElements(
                                       .ʃ_q_dt = ʃ_q_dt.value,
                                       .ʃ_pʹ_dt = ʃ_pʹ_dt.value,
                                       .ʃ_qʹ_dt = ʃ_qʹ_dt.value});
-    logger.Append(mathematica::Apply("integral", ppp),
-                  std::tuple(t,
-                             ʃ_a_dt,
-                             ʃ_h_dt,
-                             ʃ_k_dt,
-                             ʃ_λ_dt,
-                             ʃ_p_dt,
-                             ʃ_q_dt,
-                             ʃ_pʹ_dt,
-                             ʃ_qʹ_dt),
-                  mathematica::ExpressInSIUnits);
   };
 
-  for (int i = 0; i < 5; ++i) {
+  mathematica::Logger logger(TEMP_DIR / "orbital_elements.wl");
+  int ppp = elms_points_per_period;
+  for (int i = 0; i < 6; ++i) {
+    LOG(ERROR) << "ppp=" << ppp;
     integrals.clear();
     append_state(problem.initial_state);
     auto const instance =
@@ -387,6 +376,34 @@ OrbitalElements::MeanEquinoctialElements(
                          append_state,
                          /*step=*/period / ppp);
     RETURN_IF_ERROR(instance->Solve(t_max));
+    for (int j = 0; j < ppp; ++j) {
+      auto const& v = integrals[j];
+      logger.Append(absl::StrCat("first[", ppp, "]"),
+                    std::tuple(v.t,
+                               v.ʃ_a_dt,
+                               v.ʃ_h_dt,
+                               v.ʃ_k_dt,
+                               v.ʃ_λ_dt,
+                               v.ʃ_p_dt,
+                               v.ʃ_q_dt,
+                               v.ʃ_pʹ_dt,
+                               v.ʃ_qʹ_dt),
+                    mathematica::ExpressInSIUnits);
+    }
+    for (int j = integrals.size() - ppp; j < integrals.size(); ++j) {
+      auto const& v = integrals[j];
+      logger.Append(absl::StrCat("last[", ppp, "]"),
+                    std::tuple(v.t,
+                               v.ʃ_a_dt,
+                               v.ʃ_h_dt,
+                               v.ʃ_k_dt,
+                               v.ʃ_λ_dt,
+                               v.ʃ_p_dt,
+                               v.ʃ_q_dt,
+                               v.ʃ_pʹ_dt,
+                               v.ʃ_qʹ_dt),
+                    mathematica::ExpressInSIUnits);
+    }
     ppp /= 2;
   }
 

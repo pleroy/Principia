@@ -10,9 +10,9 @@
 #include "physics/body_centred_non_rotating_dynamic_frame.hpp"
 #include "physics/discrete_trajectory.hpp"
 #include "physics/solar_system.hpp"
-#if PRINCIPIA_LOG_TO_MATHEMATICA
+//#if PRINCIPIA_LOG_TO_MATHEMATICA
 #include "mathematica/logger.hpp"
-#endif
+//#endif
 #include "testing_utilities/matchers.hpp"
 #include "testing_utilities/is_near.hpp"
 
@@ -111,12 +111,12 @@ TEST_F(Лидов古在Test, MercuryOrbiter) {
       break;
     }
   }
-#if PRINCIPIA_LOG_TO_MATHEMATICA
+//#if PRINCIPIA_LOG_TO_MATHEMATICA
   mathematica::Logger logger(
       SOLUTION_DIR / "mathematica" /
           PRINCIPIA_UNICODE_PATH("лидов_古在.generated.wl"),
       /*make_unique=*/false);
-#endif
+//#endif
 
   DiscreteTrajectory<MercuryCentredInertial> mercury_centred_trajectory;
   for (auto const& [t, dof] : icrs_trajectory) {
@@ -128,6 +128,10 @@ TEST_F(Лидов古在Test, MercuryOrbiter) {
         mercury_centred_trajectory.back().degrees_of_freedom.position(),
         mathematica::ExpressIn(Metre));
 #endif
+    logger.Append(
+        "t",
+        mercury_centred_trajectory.back().time,
+        mathematica::ExpressIn(Second));
   }
 
   EXPECT_EQ(465'756, mercury_centred_trajectory.size());
