@@ -135,6 +135,7 @@ class RigidReferenceFrame : public ReferenceFrame<InertialFrame, ThisFrame> {
       Trihedron<Length, ArealSpeed, 1>& 𝛛orthogonal,
       Trihedron<double, double, 1>& 𝛛orthonormal);
 
+  // Computes the second derivative of the preceding trihedra.
   static void ComputeTrihedraDerivatives2(
       Displacement<InertialFrame> const& r,
       Velocity<InertialFrame> const& ṙ,
@@ -155,6 +156,12 @@ class RigidReferenceFrame : public ReferenceFrame<InertialFrame, ThisFrame> {
   static AngularVelocity<InertialFrame> ComputeAngularVelocity(
       Trihedron<double, double> const& orthonormal,
       Trihedron<double, double, 1>& 𝛛orthonormal);
+
+  // Computes the angular acceleration of |ThisFrame| in |InertialFrame|.
+  static AngularVelocity<InertialFrame> ComputeAngularAcceleration(
+      Trihedron<double, double> const& orthonormal,
+      Trihedron<double, double, 1> const& 𝛛orthonormal,
+      Trihedron<double, double, 2> const& 𝛛²orthonormal);
 
  private:
   void ComputeGeometricAccelerations(
