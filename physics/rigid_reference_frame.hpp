@@ -171,12 +171,6 @@ class RigidReferenceFrame : public ReferenceFrame<InertialFrame, ThisFrame> {
                              Trihedron<double, double, 1> const& 𝛛orthonormal,
                              Trihedron<double, double, 2> const& 𝛛²orthonormal);
 
-  // Computes the angular acceleration of |ThisFrame| in |InertialFrame|.
-  static AngularVelocity<InertialFrame> ComputeAngularAcceleration(
-      Trihedron<double, double> const& orthonormal,
-      Trihedron<double, double, 1> const& 𝛛orthonormal,
-      Trihedron<double, double, 2> const& 𝛛²orthonormal);
-
  private:
   void ComputeGeometricAccelerations(
       Instant const& t,
