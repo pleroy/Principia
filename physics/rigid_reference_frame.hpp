@@ -114,6 +114,17 @@ class RigidReferenceFrame : public ReferenceFrame<InertialFrame, ThisFrame> {
       Trihedron<double, double> const& orthonormal,
       Trihedron<double, double, 1> const& 𝛛orthonormal);
 
+  // Same as above, but computes the acceleration rigid motion.
+  static AcceleratedRigidMotion<InertialFrame, ThisFrame>
+  ComputeAcceleratedRigidMotion(
+      DegreesOfFreedom<InertialFrame> const& primary_degrees_of_freedom,
+      Vector<Acceleration, InertialFrame> const& primary_acceleration,
+      Trihedron<double, double> const& orthonormal,
+      Trihedron<double, double, 1> const& 𝛛orthonormal,
+      Trihedron<double, double, 2> const& 𝛛²orthonormal);
+
+  // TODO(phl): TeX and reference.
+
   // Computes the orthogonal and orthonormal trihedra associated with
   // |ThisFrame|.
   static void ComputeTrihedra(
@@ -155,10 +166,10 @@ class RigidReferenceFrame : public ReferenceFrame<InertialFrame, ThisFrame> {
       Trihedron<double, double, 1> const& 𝛛orthonormal);
 
   // Computes the angular acceleration of |ThisFrame| in |InertialFrame|.
-  static AngularVelocity<InertialFrame> ComputeAngularAcceleration(
-      Trihedron<double, double> const& orthonormal,
-      Trihedron<double, double, 1> const& 𝛛orthonormal,
-      Trihedron<double, double, 2> const& 𝛛²orthonormal);
+  static Bivector<AngularAcceleration, InertialFrame>
+  ComputeAngularAcceleration(Trihedron<double, double> const& orthonormal,
+                             Trihedron<double, double, 1> const& 𝛛orthonormal,
+                             Trihedron<double, double, 2> const& 𝛛²orthonormal);
 
  private:
   void ComputeGeometricAccelerations(
