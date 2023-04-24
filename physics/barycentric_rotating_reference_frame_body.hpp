@@ -74,31 +74,25 @@ BarycentricRotatingReferenceFrame<InertialFrame, ThisFrame>::ToThisFrameAtTime(
   Vector<Acceleration, InertialFrame> const secondary_acceleration =
       ephemeris_->ComputeGravitationalAccelerationOnMassiveBody(secondary_, t);
 
-  Rotation<InertialFrame, ThisFrame> rotation =
-          Rotation<InertialFrame, ThisFrame>::Identity();
-  AngularVelocity<InertialFrame> angular_velocity;
-  RigidReferenceFrame<InertialFrame, ThisFrame>::ComputeAngularDegreesOfFreedom(
-      primary_degrees_of_freedom,
-      secondary_degrees_of_freedom,
-      primary_acceleration,
-      secondary_acceleration,
-      rotation,
-      angular_velocity);
+  Displacement<InertialFrame> const r =
+      secondary_degrees_of_freedom.position() -
+      primary_degrees_of_freedom.position();
+  Velocity<InertialFrame> const ṙ =
+      secondary_degrees_of_freedom.velocity() -
+      primary_degrees_of_freedom.velocity();
+  Vector<Acceleration, InertialFrame> const r̈ =
+      secondary_acceleration - primary_acceleration;
 
-  DegreesOfFreedom<InertialFrame> const barycentre_degrees_of_freedom =
-      Barycentre<DegreesOfFreedom<InertialFrame>, GravitationalParameter>(
-          {primary_degrees_of_freedom,
-           secondary_degrees_of_freedom},
-          {primary_->gravitational_parameter(),
-           secondary_->gravitational_parameter()});
-  RigidTransformation<InertialFrame, ThisFrame> const
-      rigid_transformation(barycentre_degrees_of_freedom.position(),
-                           ThisFrame::origin,
-                           rotation.template Forget<OrthogonalMap>());
-  return RigidMotion<InertialFrame, ThisFrame>(
-             rigid_transformation,
-             angular_velocity,
-             barycentre_degrees_of_freedom.velocity());
+  Trihedron<Length, ArealSpeed> orthogonal;
+  Trihedron<double, double> orthonormal;
+  Trihedron<Length, ArealSpeed, 1> 𝛛orthogonal;
+  Trihedron<double, double, 1> 𝛛orthonormal;
+
+  Base::ComputeTrihedra(r, ṙ, orthogonal, orthonormal);
+  Base::ComputeTrihedraDerivatives(
+      r, ṙ, r̈, orthogonal, orthonormal, 𝛛orthogonal, 𝛛orthonormal);
+  return Base::ComputeRigidMotion(
+      primary_degrees_of_freedom, orthonormal, 𝛛orthonormal);
 }
 
 template<typename InertialFrame, typename ThisFrame>

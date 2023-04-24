@@ -2,6 +2,7 @@
 
 #include "physics/rigid_reference_frame.hpp"
 
+#include "geometry/orthogonal_map.hpp"
 #include "physics/barycentric_rotating_reference_frame.hpp"
 #include "physics/body_centred_body_direction_reference_frame.hpp"
 #include "physics/body_centred_non_rotating_reference_frame.hpp"
@@ -15,6 +16,7 @@ namespace _rigid_reference_frame {
 namespace internal {
 
 using namespace principia::geometry::_grassmann;
+using namespace principia::geometry::_orthogonal_map;
 using namespace principia::geometry::_r3x3_matrix;
 using namespace principia::physics::_barycentric_rotating_reference_frame;
 using namespace principia::physics::_body_centred_body_direction_reference_frame;  // NOLINT
@@ -186,32 +188,24 @@ RigidReferenceFrame<InertialFrame, ThisFrame>::ReadFromMessage(
 }
 
 template<typename InertialFrame, typename ThisFrame>
-void RigidReferenceFrame<InertialFrame, ThisFrame>::
-ComputeAngularDegreesOfFreedom(
+RigidMotion<InertialFrame, ThisFrame>
+RigidReferenceFrame<InertialFrame, ThisFrame>::ComputeRigidMotion(
     DegreesOfFreedom<InertialFrame> const& primary_degrees_of_freedom,
-    DegreesOfFreedom<InertialFrame> const& secondary_degrees_of_freedom,
-    Vector<Acceleration, InertialFrame> const& primary_acceleration,
-    Vector<Acceleration, InertialFrame> const& secondary_acceleration,
-    Rotation<InertialFrame, ThisFrame>& rotation,
-    AngularVelocity<InertialFrame>& angular_velocity) {
-  RelativeDegreesOfFreedom<InertialFrame> const reference =
-       secondary_degrees_of_freedom - primary_degrees_of_freedom;
+    Trihedron<double, double> const& orthonormal,
+    Trihedron<double, double, 1> const& 𝛛orthonormal) {
+  Rotation<InertialFrame, ThisFrame> const rotation =
+      ComputeRotation(orthonormal);
+  AngularVelocity<InertialFrame> const angular_velocity =
+      ComputeAngularVelocity(orthonormal, 𝛛orthonormal);
 
-  Displacement<InertialFrame> const& r = reference.displacement();
-  Velocity<InertialFrame> const ṙ = reference.velocity();
-  Vector<Acceleration, InertialFrame> const r̈ =
-      secondary_acceleration - primary_acceleration;
-
-  Trihedron<Length, ArealSpeed> orthogonal;
-  Trihedron<double, double> orthonormal;
-  Trihedron<Length, ArealSpeed, 1> 𝛛orthogonal;
-  Trihedron<double, double, 1> 𝛛orthonormal;
-
-  ComputeTrihedra(r, ṙ, orthogonal, orthonormal);
-  ComputeTrihedraDerivatives(
-      r, ṙ, r̈, orthogonal, orthonormal, 𝛛orthogonal, 𝛛orthonormal);
-  rotation = ComputeRotation(orthonormal);
-  angular_velocity = ComputeAngularVelocity(orthonormal, 𝛛orthonormal);
+  RigidTransformation<InertialFrame, ThisFrame> const
+      rigid_transformation(primary_degrees_of_freedom.position(),
+                           ThisFrame::origin,
+                           rotation.template Forget<OrthogonalMap>());
+  return RigidMotion<InertialFrame, ThisFrame>(
+             rigid_transformation,
+             angular_velocity,
+             primary_degrees_of_freedom.velocity());
 }
 
 template<typename InertialFrame, typename ThisFrame>
@@ -239,8 +233,8 @@ void RigidReferenceFrame<InertialFrame, ThisFrame>::ComputeTrihedraDerivatives(
     Displacement<InertialFrame> const& r,
     Velocity<InertialFrame> const& ṙ,
     Vector<Acceleration, InertialFrame> const& r̈,
-    Trihedron<Length, ArealSpeed>& orthogonal,
-    Trihedron<double, double>& orthonormal,
+    Trihedron<Length, ArealSpeed> const& orthogonal,
+    Trihedron<double, double> const& orthonormal,
     Trihedron<Length, ArealSpeed, 1>& 𝛛orthogonal,
     Trihedron<double, double, 1>& 𝛛orthonormal) {
   auto const& F = orthogonal.fore;
@@ -276,8 +270,8 @@ void RigidReferenceFrame<InertialFrame, ThisFrame>::ComputeTrihedraDerivatives2(
     Velocity<InertialFrame> const& ṙ,
     Vector<Acceleration, InertialFrame> const& r̈,
     Vector<Jerk, InertialFrame> const& r⁽³⁾,
-    Trihedron<Length, ArealSpeed>& orthogonal,
-    Trihedron<double, double>& orthonormal,
+    Trihedron<Length, ArealSpeed> const& orthogonal,
+    Trihedron<double, double> const& orthonormal,
     Trihedron<Length, ArealSpeed, 1> const& 𝛛orthogonal,
     Trihedron<double, double, 1> const& 𝛛orthonormal,
     Trihedron<Length, ArealSpeed, 2>& 𝛛²orthogonal,
@@ -327,7 +321,7 @@ template<typename InertialFrame, typename ThisFrame>
 AngularVelocity<InertialFrame>
 RigidReferenceFrame<InertialFrame, ThisFrame>::ComputeAngularVelocity(
     Trihedron<double, double> const& orthonormal,
-    Trihedron<double, double, 1>& 𝛛orthonormal) {
+    Trihedron<double, double, 1> const& 𝛛orthonormal) {
   auto const& f = orthonormal.fore;
   auto const& n = orthonormal.normal;
   auto const& b = orthonormal.binormal;

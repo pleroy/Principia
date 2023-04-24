@@ -97,26 +97,22 @@ class RigidReferenceFrame : public ReferenceFrame<InertialFrame, ThisFrame> {
                       not_null<Ephemeris<InertialFrame> const*> ephemeris);
 
  protected:
-  // A helper function for computing the rotational movement of a frame defined
-  // by two bodies.
-  static void ComputeAngularDegreesOfFreedom(
-      DegreesOfFreedom<InertialFrame> const& primary_degrees_of_freedom,
-      DegreesOfFreedom<InertialFrame> const& secondary_degrees_of_freedom,
-      Vector<Acceleration, InertialFrame> const& primary_acceleration,
-      Vector<Acceleration, InertialFrame> const& secondary_acceleration,
-      Rotation<InertialFrame, ThisFrame>& rotation,
-      AngularVelocity<InertialFrame>& angular_velocity);
-
- private:
   // The component names are somewhat notional.  This is not a Frenet frame and
   // anyway, the derivative trihedra are not even orthogonal.
-  template<typename ScalarT, typename ScalarB, int order = 0>
+  template<typename ScalarF, typename ScalarB, int order = 0>
   struct Trihedron {
-    Vector<Derivative<ScalarT, Time, order>, InertialFrame> fore;
-    Vector<Derivative<Product<ScalarT, ScalarB>, Time, order>,
+    Vector<Derivative<ScalarF, Time, order>, InertialFrame> fore;
+    Vector<Derivative<Product<ScalarF, ScalarB>, Time, order>,
            InertialFrame> normal;
     Bivector<Derivative<ScalarB, Time, order>, InertialFrame> binormal;
   };
+
+  // A helper function for computing the motion that maps the inertial frame to
+  // this frame, using trihedra that have computed by the caller.
+  static RigidMotion<InertialFrame, ThisFrame> ComputeRigidMotion(
+      DegreesOfFreedom<InertialFrame> const& primary_degrees_of_freedom,
+      Trihedron<double, double> const& orthonormal,
+      Trihedron<double, double, 1> const& 𝛛orthonormal);
 
   // Computes the orthogonal and orthonormal trihedra associated with
   // |ThisFrame|.
@@ -131,8 +127,8 @@ class RigidReferenceFrame : public ReferenceFrame<InertialFrame, ThisFrame> {
       Displacement<InertialFrame> const& r,
       Velocity<InertialFrame> const& ṙ,
       Vector<Acceleration, InertialFrame> const& r̈,
-      Trihedron<Length, ArealSpeed>& orthogonal,
-      Trihedron<double, double>& orthonormal,
+      Trihedron<Length, ArealSpeed> const& orthogonal,
+      Trihedron<double, double> const& orthonormal,
       Trihedron<Length, ArealSpeed, 1>& 𝛛orthogonal,
       Trihedron<double, double, 1>& 𝛛orthonormal);
 
@@ -142,8 +138,8 @@ class RigidReferenceFrame : public ReferenceFrame<InertialFrame, ThisFrame> {
       Velocity<InertialFrame> const& ṙ,
       Vector<Acceleration, InertialFrame> const& r̈,
       Vector<Jerk, InertialFrame> const& r⁽³⁾,
-      Trihedron<Length, ArealSpeed>& orthogonal,
-      Trihedron<double, double>& orthonormal,
+      Trihedron<Length, ArealSpeed> const& orthogonal,
+      Trihedron<double, double> const& orthonormal,
       Trihedron<Length, ArealSpeed, 1> const& 𝛛orthogonal,
       Trihedron<double, double, 1> const& 𝛛orthonormal,
       Trihedron<Length, ArealSpeed, 2>& 𝛛²orthogonal,
@@ -156,7 +152,7 @@ class RigidReferenceFrame : public ReferenceFrame<InertialFrame, ThisFrame> {
   // Computes the angular velocity of |ThisFrame| in |InertialFrame|.
   static AngularVelocity<InertialFrame> ComputeAngularVelocity(
       Trihedron<double, double> const& orthonormal,
-      Trihedron<double, double, 1>& 𝛛orthonormal);
+      Trihedron<double, double, 1> const& 𝛛orthonormal);
 
   // Computes the angular acceleration of |ThisFrame| in |InertialFrame|.
   static AngularVelocity<InertialFrame> ComputeAngularAcceleration(
@@ -164,6 +160,7 @@ class RigidReferenceFrame : public ReferenceFrame<InertialFrame, ThisFrame> {
       Trihedron<double, double, 1> const& 𝛛orthonormal,
       Trihedron<double, double, 2> const& 𝛛²orthonormal);
 
+ private:
   void ComputeGeometricAccelerations(
       Instant const& t,
       DegreesOfFreedom<ThisFrame> const& degrees_of_freedom,
