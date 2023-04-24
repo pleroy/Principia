@@ -75,8 +75,8 @@ class BarycentricRotatingReferenceFrame
  private:
   using Base = RigidReferenceFrame<InertialFrame, ThisFrame>;
 
-  template<typename SF, typename SB>
-  using Trihedron = typename Base:: template Trihedron<SF, SB>;
+  template<typename SF, typename SB, int o = 0>
+  using Trihedron = typename Base:: template Trihedron<SF, SB, o>;
 
   Vector<Acceleration, InertialFrame> GravitationalAcceleration(
       Instant const& t,
