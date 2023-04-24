@@ -102,6 +102,27 @@ ToThisFrameAtTime(Instant const& t) const {
   Vector<Acceleration, InertialFrame> const secondary_acceleration =
       ephemeris_->ComputeGravitationalAccelerationOnMassiveBody(secondary_, t);
 
+  Rotation<InertialFrame, ThisFrame> rotation =
+      Rotation<InertialFrame, ThisFrame>::Identity();
+  AngularVelocity<InertialFrame> angular_velocity;
+  RigidReferenceFrame<InertialFrame, ThisFrame>::ComputeAngularDegreesOfFreedom(
+      primary_degrees_of_freedom,
+      secondary_degrees_of_freedom,
+      primary_acceleration,
+      secondary_acceleration,
+      rotation,
+      angular_velocity);
+
+  RigidTransformation<InertialFrame, ThisFrame> const rigid_transformation(
+      primary_degrees_of_freedom.position(),
+      ThisFrame::origin,
+      rotation.template Forget<OrthogonalMap>());
+  return RigidMotion<InertialFrame, ThisFrame>(
+      rigid_transformation,
+      angular_velocity,
+      primary_degrees_of_freedom.velocity());
+
+#if 0
   Displacement<InertialFrame> const r =
       secondary_degrees_of_freedom.position() -
       primary_degrees_of_freedom.position();
@@ -121,6 +142,7 @@ ToThisFrameAtTime(Instant const& t) const {
       r, ṙ, r̈, orthogonal, orthonormal, 𝛛orthogonal, 𝛛orthonormal);
   return Base::ComputeRigidMotion(
       primary_degrees_of_freedom, orthonormal, 𝛛orthonormal);
+#endif
 }
 
 template<typename InertialFrame, typename ThisFrame>

@@ -107,6 +107,16 @@ class RigidReferenceFrame : public ReferenceFrame<InertialFrame, ThisFrame> {
     Bivector<Derivative<ScalarB, Time, order>, InertialFrame> binormal;
   };
 
+  // A helper function for computing the rotational movement of a frame defined
+  // by two bodies.
+  static void ComputeAngularDegreesOfFreedom(
+      DegreesOfFreedom<InertialFrame> const& primary_degrees_of_freedom,
+      DegreesOfFreedom<InertialFrame> const& secondary_degrees_of_freedom,
+      Vector<Acceleration, InertialFrame> const& primary_acceleration,
+      Vector<Acceleration, InertialFrame> const& secondary_acceleration,
+      Rotation<InertialFrame, ThisFrame>& rotation,
+      AngularVelocity<InertialFrame>& angular_velocity);
+
   // A helper function for computing the motion that maps the inertial frame to
   // this frame, using trihedra that have computed by the caller.
   static RigidMotion<InertialFrame, ThisFrame> ComputeRigidMotion(

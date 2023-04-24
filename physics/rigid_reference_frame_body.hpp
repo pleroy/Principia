@@ -188,6 +188,35 @@ RigidReferenceFrame<InertialFrame, ThisFrame>::ReadFromMessage(
 }
 
 template<typename InertialFrame, typename ThisFrame>
+void RigidReferenceFrame<InertialFrame, ThisFrame>::
+ComputeAngularDegreesOfFreedom(
+    DegreesOfFreedom<InertialFrame> const& primary_degrees_of_freedom,
+    DegreesOfFreedom<InertialFrame> const& secondary_degrees_of_freedom,
+    Vector<Acceleration, InertialFrame> const& primary_acceleration,
+    Vector<Acceleration, InertialFrame> const& secondary_acceleration,
+    Rotation<InertialFrame, ThisFrame>& rotation,
+    AngularVelocity<InertialFrame>& angular_velocity) {
+  RelativeDegreesOfFreedom<InertialFrame> const reference =
+       secondary_degrees_of_freedom - primary_degrees_of_freedom;
+
+  Displacement<InertialFrame> const& r = reference.displacement();
+  Velocity<InertialFrame> const ṙ = reference.velocity();
+  Vector<Acceleration, InertialFrame> const r̈ =
+      secondary_acceleration - primary_acceleration;
+
+  Trihedron<Length, ArealSpeed> orthogonal;
+  Trihedron<double, double> orthonormal;
+  Trihedron<Length, ArealSpeed, 1> 𝛛orthogonal;
+  Trihedron<double, double, 1> 𝛛orthonormal;
+
+  ComputeTrihedra(r, ṙ, orthogonal, orthonormal);
+  ComputeTrihedraDerivatives(
+      r, ṙ, r̈, orthogonal, orthonormal, 𝛛orthogonal, 𝛛orthonormal);
+  rotation = ComputeRotation(orthonormal);
+  angular_velocity = ComputeAngularVelocity(orthonormal, 𝛛orthonormal);
+}
+
+template<typename InertialFrame, typename ThisFrame>
 RigidMotion<InertialFrame, ThisFrame>
 RigidReferenceFrame<InertialFrame, ThisFrame>::ComputeRigidMotion(
     DegreesOfFreedom<InertialFrame> const& primary_degrees_of_freedom,
