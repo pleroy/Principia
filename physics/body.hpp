@@ -18,7 +18,7 @@ class Body {
  public:
   virtual ~Body() = default;
 
-  // Returns true iff this body is massless.
+  //Returns true iff this body is massless.
   virtual bool is_massless() const = 0;
 
   // Returns true iff this body is oblate (which implies massive).
