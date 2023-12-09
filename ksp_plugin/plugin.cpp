@@ -998,20 +998,26 @@ void Plugin::ComputeAndRenderApsides(
                     PlanetariumRotation());
 }
 
-DegreesOfFreedom<World> Plugin::ComputeAndRenderCollision(
+std::optional<typename DiscreteTrajectory<World>::value_type>
+Plugin::ComputeAndRenderCollision(
     Index const celestial_index,
     Trajectory<Barycentric> const& trajectory,
-    Instant const& first_time,
-    Instant const& last_time,
+    typename DiscreteTrajectory<Barycentric>::iterator const begin,
+    typename DiscreteTrajectory<Barycentric>::iterator const end,
     Position<World> const& sun_world_position,
     std::function<Length(Angle const& latitude,
                          Angle const& longitude)> const& radius) const {
   auto const& celestial = FindOrDie(celestials_, celestial_index);
-  auto const collision = ComputeCollision<Barycentric>(*celestial->body(),
-                                                       celestial->trajectory(),
-                                                       trajectory,
-                                                       first_time, last_time,
-                                                       radius);
+  auto const maybe_collision =
+      ComputeCollision<Barycentric>(*celestial->body(),
+                                    celestial->trajectory(),
+                                    trajectory,
+                                    begin, end,
+                                    radius);
+  if (!maybe_collision.has_value()) {
+    return std::nullopt;
+  }
+  auto const& collision = maybe_collision.value();
 
   // We create a trajectory with a single point to simplify rendering.
   DiscreteTrajectory<Barycentric> trajectory_to_render;
@@ -1025,7 +1031,7 @@ DegreesOfFreedom<World> Plugin::ComputeAndRenderCollision(
           sun_world_position,
           PlanetariumRotation());
 
-  return rendered_trajectory.front().degrees_of_freedom;
+  return rendered_trajectory.front();
 }
 
 void Plugin::ComputeAndRenderClosestApproaches(

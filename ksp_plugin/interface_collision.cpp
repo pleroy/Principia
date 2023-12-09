@@ -23,22 +23,15 @@ using namespace principia::quantities::_si;
 
 namespace {
 
-template<typename TrajectoryLike>
-not_null<std::unique_ptr<
-    PushPullExecutor<DegreesOfFreedom<World>, Length, Angle, Angle>>>
+template<typename DiscreteTrajectoryLike>
+not_null<std::unique_ptr<PushPullExecutor<Collision, Length, Angle, Angle>>>
 NewExecutor(Plugin const* const plugin,
             int const celestial_index,
             XYZ const sun_world_position,
-            TrajectoryLike const& vessel_trajectory,
-            double const apoapside_time,
-            double const periapside_time) {
+            DiscreteTrajectoryLike const& vessel_trajectory) {
   CHECK_NOTNULL(plugin);
-  Instant const first_time = FromGameTime(*plugin, apoapside_time);
-  Instant const last_time = FromGameTime(*plugin, periapside_time);
 
   auto task = [celestial_index,
-               first_time,
-               last_time,
                plugin,
                sun_world_position =
                    FromXYZ<Position<World>>(sun_world_position),
@@ -47,34 +40,51 @@ NewExecutor(Plugin const* const plugin,
                                        Angle const& longitude)> const& radius) {
     return plugin->ComputeAndRenderCollision(celestial_index,
                                              vessel_trajectory,
-                                             first_time, last_time,
+                                             vessel_trajectory.begin(),
+                                             vessel_trajectory.end(),
                                              sun_world_position,
                                              radius);
   };
 
-  return make_not_null_unique<
-      PushPullExecutor<DegreesOfFreedom<World>, Length, Angle, Angle>>(
-      std::move(task));
+  return make_not_null_unique<PushPullExecutor<
+      Collision,
+      Length, Angle, Angle>>(std::move(task));
 }
 
 
 }  // namespace
 
-QP __cdecl principia__CollisionDeleteExecutor(
-    PushPullExecutor<DegreesOfFreedom<World>, Length, Angle, Angle>** const
-        executor) {
-  journal::Method<journal::CollisionDeleteExecutor> m{{executor}, {executor}};
+void __cdecl principia__CollisionDeleteExecutor(
+    PushPullExecutor<Collision, Length, Angle, Angle>** const executor,
+    Plugin const* const plugin,
+    bool* const collided,
+    double* const time,
+    QP* const qp) {
+  journal::Method<journal::CollisionDeleteExecutor> m{
+      {executor,
+       plugin},
+      {executor,
+       collided,
+       time,
+       qp}};
   CHECK_NOTNULL(executor);
-  auto const collision_degrees_of_freedom = (*executor)->get();
+  auto const maybe_collision = (*executor)->get();
   {
     TakeOwnership(executor);
   }
-  return m.Return(ToQP(collision_degrees_of_freedom));
+  if (maybe_collision.has_value()) {
+    auto const& collision = maybe_collision.value();
+    *collided = true;
+    *time = ToGameTime(*plugin, collision.time);
+    *qp = ToQP(collision.degrees_of_freedom);
+  } else {
+    *collided = false;
+  }
+  return m.Return();
 }
 
 bool __cdecl principia__CollisionGetLatitudeLongitude(
-    PushPullExecutor<DegreesOfFreedom<World>, Length, Angle, Angle>* const
-        executor,
+    PushPullExecutor<Collision, Length, Angle, Angle>* const executor,
     double* const latitude_in_degrees,
     double* const longitude_in_degrees) {
   journal::Method<journal::CollisionGetLatitudeLongitude> m{
@@ -92,61 +102,48 @@ bool __cdecl principia__CollisionGetLatitudeLongitude(
   return m.Return(more);
 }
 
-PushPullExecutor<DegreesOfFreedom<World>, Length, Angle, Angle>*
+PushPullExecutor<Collision, Length, Angle, Angle>*
 __cdecl principia__CollisionNewFlightPlanExecutor(
     Plugin const* const plugin,
     int const celestial_index,
     XYZ const sun_world_position,
-    char const* const vessel_guid,
-    double const apoapside_time,
-    double const periapside_time) {
+    char const* const vessel_guid) {
   journal::Method<journal::CollisionNewFlightPlanExecutor> m{
       {plugin,
        celestial_index,
        sun_world_position,
-       vessel_guid,
-       apoapside_time,
-       periapside_time}};
+       vessel_guid}};
   CHECK_NOTNULL(plugin);
   auto& flight_plan = GetFlightPlan(*plugin, vessel_guid);
   return m.Return(NewExecutor(plugin,
                               celestial_index,
                               sun_world_position,
-                              flight_plan.GetAllSegments(),
-                              apoapside_time,
-                              periapside_time)
+                              flight_plan.GetAllSegments())
                       .release());
 }
 
-PushPullExecutor<DegreesOfFreedom<World>, Length, Angle, Angle>*
+PushPullExecutor<Collision, Length, Angle, Angle>*
 __cdecl principia__CollisionNewPredictionExecutor(
     Plugin const* const plugin,
     int const celestial_index,
     XYZ const sun_world_position,
-    char const* const vessel_guid,
-    double const apoapside_time,
-    double const periapside_time) {
+    char const* const vessel_guid) {
   journal::Method<journal::CollisionNewPredictionExecutor> m{
       {plugin,
        celestial_index,
        sun_world_position,
-       vessel_guid,
-       apoapside_time,
-       periapside_time}};
+       vessel_guid}};
   CHECK_NOTNULL(plugin);
   not_null<Vessel*> const vessel = plugin->GetVessel(vessel_guid);
   return m.Return(NewExecutor(plugin,
                               celestial_index,
                               sun_world_position,
-                              *vessel->prediction(),
-                              apoapside_time,
-                              periapside_time)
+                              *vessel->prediction())
                       .release());
 }
 
 void __cdecl principia__CollisionSetRadius(
-    PushPullExecutor<DegreesOfFreedom<World>, Length, Angle, Angle>* const
-        executor,
+    PushPullExecutor<Collision, Length, Angle, Angle>* const executor,
     double const radius) {
   journal::Method<journal::CollisionSetRadius> m{
       {executor,

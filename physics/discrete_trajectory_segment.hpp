@@ -185,7 +185,7 @@ class DiscreteTrajectorySegment : public Trajectory<Frame> {
   // timeline.  Used for compatibility deserialization.
   void SetStartOfDenseTimeline(Instant const& t);
 
-  // Inserts the given point at the beggining of the timeline.  Used for
+  // Inserts the given point at the beginning of the timeline.  Used for
   // compatibility deserialization.
   void SetForkPoint(value_type const& point);
 

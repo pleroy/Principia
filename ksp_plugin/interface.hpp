@@ -59,12 +59,15 @@ using namespace principia::ksp_plugin::_planetarium;
 using namespace principia::ksp_plugin::_plugin;
 using namespace principia::ksp_plugin::_vessel;
 using namespace principia::physics::_degrees_of_freedom;
+using namespace principia::physics::_discrete_trajectory;
 using namespace principia::physics::_ephemeris;
 using namespace principia::physics::_kepler_orbit;
 using namespace principia::physics::_reference_frame;
 using namespace principia::physics::_rigid_reference_frame;
 using namespace principia::quantities::_named_quantities;
 using namespace principia::quantities::_quantities;
+
+using Collision = std::optional<typename DiscreteTrajectory<World>::value_type>;
 
 // Takes ownership of |**pointer| and returns it to the caller.  Nulls
 // |*pointer|.  |pointer| must not be null.  No transfer of ownership of
