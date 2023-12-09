@@ -22,6 +22,7 @@ namespace internal {
 
 using namespace principia::base::_array;
 using namespace principia::geometry::_barycentre_calculator;
+using namespace principia::geometry::_instant;
 using namespace principia::geometry::_r3_element;
 using namespace principia::geometry::_sign;
 using namespace principia::geometry::_space;
@@ -136,58 +137,65 @@ void ComputeApsides(Trajectory<Frame> const& reference,
 }
 
 template<typename Frame>
-typename DiscreteTrajectory<Frame>::value_type ComputeCollision(
+std::optional<typename DiscreteTrajectory<Frame>::value_type> ComputeCollision(
     RotatingBody<Frame> const& reference_body,
     Trajectory<Frame> const& reference,
     Trajectory<Frame> const& trajectory,
-    Instant const& first_time,
-    Instant const& last_time,
+    typename DiscreteTrajectory<Frame>::iterator begin,
+    typename DiscreteTrajectory<Frame>::iterator end,
     std::function<Length(Angle const& latitude,
                          Angle const& longitude)> const& radius) {
   // The frame of the surface of the celestial.
   using SurfaceFrame = geometry::_frame::Frame<struct SurfaceFrameTag>;
 
-  auto squared_distance_from_centre = [&reference,
-                                       &trajectory](Instant const& time) {
-    Position<Frame> const body_position =
-        reference.EvaluatePosition(time);
-    Position<Frame> const trajectory_position =
-        trajectory.EvaluatePosition(time);
-    Displacement<Frame> const displacement =
-        trajectory_position - body_position;
-    return displacement.Norm²();
-  };
+  auto squared_distance_from_centre =
+      [&reference](
+          typename DiscreteTrajectory<Frame>::iterator const it) {
+        Position<Frame> const body_position =
+            reference.EvaluatePosition(it->time);
+        Position<Frame> const trajectory_position =
+            it->degrees_of_freedom.position();
+        Displacement<Frame> const displacement =
+            trajectory_position - body_position;
+        return displacement.Norm²();
+      };
 
   auto const max_radius² = Pow<2>(reference_body.max_radius());
   auto const min_radius² = Pow<2>(reference_body.min_radius());
 
-  // Find the time at which the |trajectory| crosses |max_radius|, if any.
-  // We'll start the search from there.  This is cheap because it doesn't call
-  // C#.
-  Instant max_radius_time;
-  if (squared_distance_from_centre(first_time) > max_radius²) {
-    max_radius_time = Brent(
-        [max_radius², &squared_distance_from_centre](Instant const& time) {
-          return squared_distance_from_centre(time) - max_radius²;
-        },
-        first_time,
-        last_time);
-  } else {
-    max_radius_time = first_time;
+  //TODO(phl): Loop over all the segments.
+
+  // Determine if the |trajectory| crosses below |max_radius|, and if so find
+  // the first segment where it is below |max_radius|.  This is local to C++.
+  typename DiscreteTrajectory<Frame>::iterator below_max_radius_begin = begin;
+  typename DiscreteTrajectory<Frame>::iterator below_max_radius_end = end;
+  bool has_point_below_max_radius = false;
+  Instant const t_min = reference.t_min();
+  Instant const t_max = reference.t_max();
+  for (auto it = begin; it != end; ++it) {
+    auto const& [time, _] = *it;
+    if (time < t_min) {
+      below_max_radius_begin = it;
+      continue;
+    }
+    if (time > t_max) {
+      below_max_radius_end = it;
+      break;
+    }
+    if (squared_distance_from_centre(it) <= max_radius²) {
+      if (!has_point_below_max_radius) {
+        below_max_radius_begin = it;
+        has_point_below_max_radius = true;
+      }
+    } else if (has_point_below_max_radius) {
+      below_max_radius_end = it;
+      break;
+    }
   }
 
-  // Similarly, find the time at which the |trajectory| crosses |min_radius|, if
-  // any.
-  Instant min_radius_time;
-  if (squared_distance_from_centre(last_time) < min_radius²) {
-    min_radius_time = Brent(
-        [min_radius², &squared_distance_from_centre](Instant const& time) {
-          return squared_distance_from_centre(time) - min_radius²;
-        },
-        max_radius_time,
-        last_time);
-  } else {
-    min_radius_time = last_time;
+  // If there is no point below max_radius surely there is no collision.
+  if (!has_point_below_max_radius) {
+    return std::nullopt;
   }
 
   auto height_above_terrain_at_time = [&radius,
@@ -212,16 +220,24 @@ typename DiscreteTrajectory<Frame>::value_type ComputeCollision(
                   spherical_coordinates.longitude);
   };
 
-  CHECK_LE(Length{}, height_above_terrain_at_time(max_radius_time));
-  CHECK_LE(height_above_terrain_at_time(min_radius_time), Length{});
+  // Determine if there is a point where the |trajectory| is below the terrain.
+  // This may be expensive as it calls into C#.
+  for (auto it = below_max_radius_begin; it != below_max_radius_end; ++it) {
+    //TODO(phl): Optimize using mix_radius?
+    if (height_above_terrain_at_time(it->time) < Length{}) {
+      // The trajectory is below the terrain.  Find the exact crossing point.
+      CHECK(it != begin) << "Below terrain at " << begin->time << ": "
+                         << begin->degrees_of_freedom;
+      auto const previous_it = std::prev(it);
+      Instant const collision_time =
+          Brent(height_above_terrain_at_time, previous_it->time, it->time);
+      return typename DiscreteTrajectory<Frame>::value_type(
+          collision_time,
+          trajectory.EvaluateDegreesOfFreedom(collision_time));
+    }
+  }
 
-  Instant const collision_time = Brent(height_above_terrain_at_time,
-                                       max_radius_time,
-                                       min_radius_time);
-
-  return typename DiscreteTrajectory<Frame>::value_type(
-      collision_time,
-      trajectory.EvaluateDegreesOfFreedom(collision_time));
+  return std::nullopt;
 }
 
 template<typename Frame, typename Predicate>

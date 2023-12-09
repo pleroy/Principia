@@ -224,12 +224,14 @@ TEST_F(ApsidesTest, ComputeCollision) {
     return (Cos(4 * longitude) + 2) * Metre;
   };
 
-  auto const collision = ComputeCollision(body,
-                                          reference_trajectory,
-                                          vessel_trajectory,
-                                          vessel_trajectory.front().time,
-                                          vessel_trajectory.back().time,
-                                          radius);
+  auto const maybe_collision = ComputeCollision(body,
+                                                reference_trajectory,
+                                                vessel_trajectory,
+                                                vessel_trajectory.begin(),
+                                                vessel_trajectory.end(),
+                                                radius);
+  ASSERT_TRUE(maybe_collision.has_value());
+  auto const& collision = maybe_collision.value();
 
   // The collision was verified with Mathematica to the given accuracy.
   EXPECT_THAT(collision.time - t0,

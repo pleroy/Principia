@@ -5,7 +5,6 @@
 #include "absl/status/status.h"
 #include "base/constant_function.hpp"
 #include "geometry/grassmann.hpp"
-#include "geometry/instant.hpp"
 #include "physics/discrete_trajectory.hpp"
 #include "physics/rotating_body.hpp"
 #include "physics/trajectory.hpp"
@@ -18,7 +17,6 @@ namespace internal {
 
 using namespace principia::base::_constant_function;
 using namespace principia::geometry::_grassmann;
-using namespace principia::geometry::_instant;
 using namespace principia::physics::_discrete_trajectory;
 using namespace principia::physics::_rotating_body;
 using namespace principia::physics::_trajectory;
@@ -42,13 +40,14 @@ void ComputeApsides(Trajectory<Frame> const& reference,
 // celestial at a particular position given by its latitude and longitude.  It
 // must never exceed the |max_radius| of the body.
 // NOTE: |first_time| must be "far" from the body and |last_time| "close".
+//TODO(phl):comments
 template<typename Frame>
-typename DiscreteTrajectory<Frame>::value_type ComputeCollision(
+std::optional<typename DiscreteTrajectory<Frame>::value_type> ComputeCollision(
     RotatingBody<Frame> const& reference_body,
     Trajectory<Frame> const& reference,
     Trajectory<Frame> const& trajectory,
-    Instant const& first_time,
-    Instant const& last_time,
+    typename DiscreteTrajectory<Frame>::iterator begin,
+    typename DiscreteTrajectory<Frame>::iterator end,
     std::function<Length(Angle const& latitude,
                          Angle const& longitude)> const& radius);
 
