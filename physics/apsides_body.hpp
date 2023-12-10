@@ -180,77 +180,53 @@ std::optional<typename DiscreteTrajectory<Frame>::value_type> ComputeCollision(
                     spherical_coordinates.longitude);
     };
 
+  if (begin == end) {
+    return std::nullopt;
+  }
+
   auto const max_radius² = Pow<2>(reference_body.max_radius());
   auto const min_radius² = Pow<2>(reference_body.min_radius());
+  Instant const t_min = reference.t_min();
+  Instant const t_max = reference.t_max();
 
-  typename DiscreteTrajectory<Frame>::iterator below_max_radius_begin = begin;
-  typename DiscreteTrajectory<Frame>::iterator below_max_radius_end = end;
-  for (;;) {
-    LOG(ERROR)<<"About to compute apsides with "<<max_radius²;
-    // Find the next segment where the |trajectory| has a point below
-    // |max_radius| and set |below_max_radius_begin| and |below_max_radius_end|
-    // accordingly.  This is local to C++.
-    bool has_point_below_max_radius = false;
-    Instant const t_min = reference.t_min();
-    Instant const t_max = reference.t_max();
-    for (auto it = below_max_radius_begin; it != end; ++it) {
-      auto const& [time, _] = *it;
-      if (time < t_min) {
-        below_max_radius_begin = it;
-        continue;
-      }
-      if (time > t_max) {
-        below_max_radius_end = it;
-        break;
-      }
-      if (squared_distance_from_centre(it) <= max_radius²) {
-        if (!has_point_below_max_radius) {
-          below_max_radius_begin = it;
-          has_point_below_max_radius = true;
-          LOG(ERROR)<<"Below max radius at "<<it->time;
-        }
-      } else if (has_point_below_max_radius) {
-        below_max_radius_end = it;
-        LOG(ERROR)<<"Above max radius at "<<it->time;
-        break;
-      }
+  // Iterate over all pairs of points of the trajectory.  If either point is
+  // below |max_radius|, we may have a collision.
+  typename DiscreteTrajectory<Frame>::iterator previous_it = begin;
+  for (auto it = std::next(begin); it != end; ++it) {
+    auto const& [time, _] = *it;
+    if (time < t_min) {
+      previous_it = it;
+      continue;
     }
-
-    // If there is no point below max_radius surely there is no collision.
-    if (!has_point_below_max_radius) {
-      LOG(ERROR)<<"Not below max radius";
-      return std::nullopt;
+    if (time > t_max) {
+      break;
     }
-
-    // Determine if there is a point where the |trajectory| is below the
-    // terrain. This may be expensive as it calls into C#.
-    for (auto it = below_max_radius_begin; it != below_max_radius_end; ++it) {
-      // TODO(phl): Optimize using mix_radius?
-      LOG(ERROR)<<"Height "<<height_above_terrain_at_time(it->time)<<
-                 " at "<<it->time;
-      if (height_above_terrain_at_time(it->time) < Length{}) {
-        // The trajectory is below the terrain.  Find the exact crossing point
-        // and return it, this is the first collision.
-        CHECK(it != begin) << "Below terrain at " << begin->time << ": "
-                           << begin->degrees_of_freedom;
-        auto const previous_it = std::prev(it);
-        LOG(ERROR)<<"Brent over "<<previous_it->time<<" "<<it->time;
-        Instant const collision_time =
-            Brent(height_above_terrain_at_time, previous_it->time, it->time);
-        LOG(ERROR)<<"Collision at "<<collision_time;
+    LOG(INFO) << "At " << previous_it->time << " distance was "
+              << squared_distance_from_centre(previous_it);
+    LOG(INFO) << "At " << time << " distance is "
+              << squared_distance_from_centre(it);
+    if (squared_distance_from_centre(previous_it) <= max_radius² ||
+        squared_distance_from_centre(it) <= max_radius²) {
+      // Find the lowest point and determine if it is below the surface
+      Instant const previous_time = previous_it->time;
+      Instant const time_of_minimum_height = Brent(height_above_terrain_at_time,
+                                                   previous_time,
+                                                   time,
+                                                   std::less<>());
+      LOG(INFO) << "At " << time_of_minimum_height << " minimum height is "
+                << height_above_terrain_at_time(time_of_minimum_height);
+      if (height_above_terrain_at_time(time_of_minimum_height) < Length{}) {
+        Instant const collision_time = Brent(height_above_terrain_at_time,
+                                             previous_time,
+                                             time_of_minimum_height);
+        LOG(INFO) << "Collision at " << collision_time;
         return typename DiscreteTrajectory<Frame>::value_type(
             collision_time,
             trajectory.EvaluateDegreesOfFreedom(collision_time));
       }
     }
-
-    // No collision so far.  See if there is another segment that is below
-    // |max_radius|.
-    LOG(ERROR)<<"Moving to next segment";
-    below_max_radius_begin = below_max_radius_end;
-    below_max_radius_end = end;
+    previous_it = it;
   }
-
   return std::nullopt;
 }
 
