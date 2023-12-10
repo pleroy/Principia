@@ -186,13 +186,14 @@ std::optional<typename DiscreteTrajectory<Frame>::value_type> ComputeCollision(
   typename DiscreteTrajectory<Frame>::iterator below_max_radius_begin = begin;
   typename DiscreteTrajectory<Frame>::iterator below_max_radius_end = end;
   for (;;) {
+    LOG(ERROR)<<"About to compute apsides with "<<max_radius²;
     // Find the next segment where the |trajectory| has a point below
     // |max_radius| and set |below_max_radius_begin| and |below_max_radius_end|
     // accordingly.  This is local to C++.
     bool has_point_below_max_radius = false;
     Instant const t_min = reference.t_min();
     Instant const t_max = reference.t_max();
-    for (auto it = begin; it != end; ++it) {
+    for (auto it = below_max_radius_begin; it != end; ++it) {
       auto const& [time, _] = *it;
       if (time < t_min) {
         below_max_radius_begin = it;
@@ -206,15 +207,18 @@ std::optional<typename DiscreteTrajectory<Frame>::value_type> ComputeCollision(
         if (!has_point_below_max_radius) {
           below_max_radius_begin = it;
           has_point_below_max_radius = true;
+          LOG(ERROR)<<"Below max radius at "<<it->time;
         }
       } else if (has_point_below_max_radius) {
         below_max_radius_end = it;
+        LOG(ERROR)<<"Above max radius at "<<it->time;
         break;
       }
     }
 
     // If there is no point below max_radius surely there is no collision.
     if (!has_point_below_max_radius) {
+      LOG(ERROR)<<"Not below max radius";
       return std::nullopt;
     }
 
@@ -222,14 +226,18 @@ std::optional<typename DiscreteTrajectory<Frame>::value_type> ComputeCollision(
     // terrain. This may be expensive as it calls into C#.
     for (auto it = below_max_radius_begin; it != below_max_radius_end; ++it) {
       // TODO(phl): Optimize using mix_radius?
+      LOG(ERROR)<<"Height "<<height_above_terrain_at_time(it->time)<<
+                 " at "<<it->time;
       if (height_above_terrain_at_time(it->time) < Length{}) {
         // The trajectory is below the terrain.  Find the exact crossing point
         // and return it, this is the first collision.
         CHECK(it != begin) << "Below terrain at " << begin->time << ": "
                            << begin->degrees_of_freedom;
         auto const previous_it = std::prev(it);
+        LOG(ERROR)<<"Brent over "<<previous_it->time<<" "<<it->time;
         Instant const collision_time =
             Brent(height_above_terrain_at_time, previous_it->time, it->time);
+        LOG(ERROR)<<"Collision at "<<collision_time;
         return typename DiscreteTrajectory<Frame>::value_type(
             collision_time,
             trajectory.EvaluateDegreesOfFreedom(collision_time));
@@ -238,7 +246,9 @@ std::optional<typename DiscreteTrajectory<Frame>::value_type> ComputeCollision(
 
     // No collision so far.  See if there is another segment that is below
     // |max_radius|.
+    LOG(ERROR)<<"Moving to next segment";
     below_max_radius_begin = below_max_radius_end;
+    below_max_radius_end = end;
   }
 
   return std::nullopt;
