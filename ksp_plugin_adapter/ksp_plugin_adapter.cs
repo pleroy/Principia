@@ -2330,7 +2330,8 @@ public partial class PrincipiaPluginAdapter : ScenarioModule,
                                    plotting_frame_selector_);
     } else {
       if (plotting_frame_selector_.Centre() != null) {
-        var centre_index = plotting_frame_selector_.Centre().flightGlobalsIndex;
+        var centre = plotting_frame_selector_.Centre();
+        var centre_index = centre.flightGlobalsIndex;
         plugin_.RenderedPredictionApsides(vessel_guid,
                                           centre_index,
                                           sun_world_position,
@@ -2351,6 +2352,28 @@ public partial class PrincipiaPluginAdapter : ScenarioModule,
                                          MapNodePool.NodeSource.Prediction,
                                          MapObject.ObjectType.Periapsis),
                                      plotting_frame_selector_);
+        if (plotting_frame_selector_.IsSurfaceFrame() &&
+            plugin_.ComputeCollision(centre_index,
+                                     (double latitude_in_degrees,
+                                      double longitude_in_degrees) =>
+                                         centre.TerrainAltitude(
+                                             latitude_in_degrees,
+                                             longitude_in_degrees,
+                                             allowNegative: !centre.ocean) +
+                                         centre.Radius,
+                                     vessel_guid,
+                                     out double time,
+                                     out QP qp)) {
+          map_node_pool_.RenderCollisionMarker(time,
+                                               qp,
+                                               new MapNodePool.Provenance(
+                                                   vessel_guid,
+                                                   MapNodePool.NodeSource.
+                                                       Prediction,
+                                                   MapObject.ObjectType.
+                                                       PatchTransition),
+                                               plotting_frame_selector_);
+        }
       }
       plugin_.RenderedPredictionNodes(vessel_guid,
                                       sun_world_position,

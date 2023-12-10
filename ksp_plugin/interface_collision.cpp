@@ -55,14 +55,14 @@ NewExecutor(Plugin const* const plugin,
 }  // namespace
 
 void __cdecl principia__CollisionDeleteExecutor(
-    PushPullExecutor<Collision, Length, Angle, Angle>** const executor,
     Plugin const* const plugin,
+    PushPullExecutor<Collision, Length, Angle, Angle>** const executor,
     bool* const collided,
     double* const time,
     QP* const qp) {
   journal::Method<journal::CollisionDeleteExecutor> m{
-      {executor,
-       plugin},
+      {plugin,
+       executor},
       {executor,
        collided,
        time,

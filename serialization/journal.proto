@@ -416,10 +416,11 @@ message CollisionDeleteExecutor {
     optional CollisionDeleteExecutor extension = 5193;
   }
   message In {
-    required fixed64 executor = 1
+    required fixed64 plugin = 1 [(pointer_to) = "Plugin const",
+                                 (is_subject) = true];
+    required fixed64 executor = 2
         [(pointer_to) = "PushPullExecutor<Collision, Length, Angle, Angle>",
          (is_consumed) = true];
-    required fixed64 plugin = 2 [(pointer_to) = "Plugin const"];
   }
   message Out {
     required fixed64 executor = 1

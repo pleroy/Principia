@@ -238,6 +238,36 @@ internal static partial class Interface {
     };
   }
 
+  internal delegate double TerrainRadius(double latitude_in_degrees,
+                                         double longitude_in_degrees);
+
+  internal static bool ComputeCollision(this IntPtr plugin,
+                                        int centre_index,
+                                        TerrainRadius radius,
+                                        string vessel_guid,
+                                        out double time,
+                                        out QP qp) {
+    var executor = plugin.CollisionNewPredictionExecutor(
+        celestial_index: centre_index,
+        sun_world_position: (XYZ)Planetarium.fetch.Sun.position,
+        vessel_guid: vessel_guid);
+
+    for (; ; ) {
+      bool more = executor.CollisionGetLatitudeLongitude(
+          out double latitude_in_degrees,
+          out double longitude_in_degrees);
+      if (!more) {
+        plugin.CollisionDeleteExecutor(ref executor,
+                                       out bool collided,
+                                       out time,
+                                       out qp);
+        return collided;
+      }
+      executor.CollisionSetRadius(radius(latitude_in_degrees,
+                                         longitude_in_degrees));
+    }
+  }
+
   [DllImport(dllName           : dll_path,
              EntryPoint        = "principia__ActivateRecorder",
              CallingConvention = CallingConvention.Cdecl)]
