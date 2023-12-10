@@ -127,6 +127,7 @@ internal class MapNodePool {
         source = provenance.source,
         time = time,
         associated_map_object = associated_map_object,
+        is_collision = true
     };
     if (pool.nodes_used == pool.nodes.Count) {
       pool.nodes.Add(MakePoolNode());
@@ -337,12 +338,21 @@ internal class MapNodePool {
           caption.Header = L10N.CacheFormat("#Principia_MapNode_ImpactHeader",
                                             source,
                                             celestial.Name());
-          caption.captionLine1 = "";
-          caption.captionLine2 = "";
+          if (properties.is_collision) {
+            double speed = properties.velocity.magnitude;
+            // TODO(phl): Localization
+            caption.captionLine2 = L10N.CacheFormat(
+                "#Principia_MapNode_ApsisCaptionLine2",
+                speed.FormatN(0));
+          } else {
+            caption.captionLine1 = "";
+            caption.captionLine2 = "";
+          }
           break;
         }
       }
-      if (properties.object_type != MapObject.ObjectType.PatchTransition) {
+      if (properties.object_type != MapObject.ObjectType.PatchTransition ||
+          properties.is_collision) {
         caption.captionLine1 =
             "T" + new PrincipiaTimeSpan(
                     Planetarium.GetUniversalTime() - properties.time).
@@ -374,6 +384,7 @@ internal class MapNodePool {
     public ReferenceFrameSelector<PlottingFrameParameters> reference_frame;
     public NodeSource source;
     public double time;
+    public bool is_collision = false;
   }
 
   private readonly PrincipiaPluginAdapter adapter_;
