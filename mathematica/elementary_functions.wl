@@ -25,6 +25,10 @@
 (*SetAttributes[machineEvaluate,HoldAll]*)
 
 
+(* ::Subsubsection:: *)
+(*Machine Evaluation with Rounding*)
+
+
 (* ::Input:: *)
 (*machineEvaluate[a_*b_+c_+d__]:=machineEvaluate[CorrectlyRound[machineEvaluate[a]machineEvaluate[b]+machineEvaluate[c]]+d]*)
 (*machineEvaluate[a_*b_+c_]:=CorrectlyRound[machineEvaluate[a]machineEvaluate[b]+machineEvaluate[c]]*)
@@ -47,6 +51,10 @@
 (*Sin*)
 
 
+(* ::Text:: *)
+(*We want to compute minimax polynomials that are odd and where the term in t is linear so that the computation produces two terms, t plus a correction.  Therefore, we approximate the function sinFn below.  Note that it is singular near 0 and must therefore be replaced by its limit there.*)
+
+
 (* ::Input:: *)
 (*Series[Sin[t],{t,0,5}]*)
 
@@ -64,7 +72,11 @@
 
 
 (* ::Subsection:: *)
-(*Minimax  Polynomials Between Table Entries*)
+(*Minimax Polynomials Between Table Entries*)
+
+
+(* ::Text:: *)
+(*Let's compute degree-1 minimax polynomials for various interval radii (i.e., various table sizes).  The error function is chosen to minimize absolute error:*)
 
 
 (* ::Input:: *)
@@ -83,62 +95,50 @@
 (*sinGeneralApproximationResults]*)
 
 
+(* ::Text:: *)
+(*The machine evaluation introduces some numeric noise for radius 1/1024:*)
+
+
 (* ::Input:: *)
 (*Map[Plot[Sin[x]-x-machineEvaluate[#[[2]][x]],{x,-#[[1]],#[[1]]},PlotRange->Full,WorkingPrecision->30]&,sinGeneralApproximations]*)
 
 
-(* ::Input:: *)
-(*Map[*)
-(*FindMaximum[{Sin[x]-x-machineEvaluate[#[[2]][x]],x>=-#[[1]]&&x<=#[[1]]},{x,9#[[1]]/10},WorkingPrecision->30]&,*)
-(*sinGeneralApproximations]*)
+(* ::Text:: *)
+(*For radii other than 1/1024, the error estimate returned by the Remez algorithm is pretty good.  (Note that FindMaximum requires tight constraints because the functions are not very smooth.)*)
 
 
 (* ::Input:: *)
-(*N[Log[2,Max[Abs[Table[Sin[x]-x-machineEvaluate[sinGeneralApproximations[[2,2]][x]],{x,9 sinGeneralApproximations[[2,1]]/10,sinGeneralApproximations[[2,1]],sinGeneralApproximations[[2,1]]/1*^6}]]]],30]*)
+(*sinGeneralApproximationExtrema=Map[{#[[2,2,2]],#[[2,1,2]]}&,sinGeneralApproximationResults]*)
 
 
 (* ::Input:: *)
-(*machineEvaluate[Evaluate[sinGeneralApproximations[[2,2]][x]]]*)
+(*sinGeneralApproximationsMachineExtrema=MapThread[*)
+(*FindMaximum[{Sin[x]-x-machineEvaluate[#1[[2]][x]],x>=99#2[[2]]/100&&x<=#1[[1]]},{x,#2[[2]]},WorkingPrecision->30]&,*)
+(*{sinGeneralApproximations,sinGeneralApproximationExtrema}]*)
+
+
+(* ::Text:: *)
+(*This gives us the number of bits available for each radius.  1/128 is not appropriate because it could only use 11 zeroes after the mantissa, but all the other radii work since they can use at least 18 bits after the mantissa:*)
 
 
 (* ::Input:: *)
-(*CorrectlyRound[CoefficientList[sinGeneralApproximations[[2,2]][x],x]]*)
+(*MapThread[{#1[[1]],Log[2,Abs[#2[[1]]]]}&,{sinGeneralApproximationResults,sinGeneralApproximationMachineExtrema}]*)
 
 
-(* ::Input:: *)
-(*HexLiteral[CorrectlyRound[CoefficientList[sinGeneralApproximations[[2,2]][x],x]]]*)
+(* ::Text:: *)
+(*For radius 1/1024, it is useful to do an exhaustive search because the function is noisy.  We see that we lose about 0.5 bits compared to the extrema found by FindMaximum:*)
 
 
 (* ::Input:: *)
 (*N[Log[2,Max[Abs[Table[Sin[x]-x-machineEvaluate[sinGeneralApproximations[[4,2]][x]],{x,9 sinGeneralApproximations[[4,1]]/10,sinGeneralApproximations[[4,1]],sinGeneralApproximations[[4,1]]/1*^6}]]]],30]*)
 
 
-(* ::Input:: *)
-(*machineEvaluate[Evaluate[sinGeneralApproximations[[4,2]][x]]]*)
-
-
-(* ::Input:: *)
-(*CorrectlyRound[CoefficientList[sinGeneralApproximations[[4,2]][x],x]]*)
-
-
-(* ::Input:: *)
-(*HexLiteral[CorrectlyRound[CoefficientList[sinGeneralApproximations[[4,2]][x],x]]]*)
-
-
-(* ::Input:: *)
-(*Map[N[Sin[x]-x-machineEvaluate[#[[2]][x]]/.x->#[[1]],20]&,sinGeneralApproximations]*)
-
-
-(* ::Input:: *)
-(*Map[Log[2,N[Abs[Sin[x]-x-machineEvaluate[#[[2]][x]]/.x->#[[1]]],20]]&,sinGeneralApproximations]*)
+(* ::Subsection:: *)
+(*Minimax  Polynomials  Near  Zero*)
 
 
 (* ::Text:: *)
-(*A radius of 1/256 gives us 71 bits, which is 18 bits more than the mantissa.  A radius of 1/1024 gives us 84 bits, which covers the 9 extra bits to reach the vicinity of zero.*)
-
-
-(* ::Subsection:: *)
-(*Minimax  Polynomials  Near  Zero*)
+(*Near zero the Gal and Bachelis method is not usable, so we use a plain minimax polynomial for the entire function.  We still want it to be odd and we still want to separate out the t term so we use the sinFn function again, but this time with an error function suitable for the relative error.  We can choose either degree 1 or degree 2, with different radii.*)
 
 
 (* ::Subsubsection:: *)
@@ -146,73 +146,87 @@
 
 
 (* ::Input:: *)
-(*sinGeneralApproximation0Results=Map[{#,GeneralMiniMaxApproximation[*)
+(*sin0GeneralApproximationResults=Map[{#,GeneralMiniMaxApproximation[*)
 (*{t^2,If[t==0,-1/6,sinFn[t]],If[t==0,1,Sin[t]/t^3]},*)
 (*{t,{0,#},1,0},*)
 (*x,WorkingPrecision->30]}&,{1/512,1/1024}]*)
 
 
 (* ::Input:: *)
-(*sinGeneralApproximation0=Map[{#[[1]],Function[u, Evaluate[ u^3 (#[[2,2,1]]/.x->u^2)]]}&,sinGeneralApproximation0Results]*)
+(*sin0GeneralApproximations=Map[{#[[1]],Function[u, Evaluate[ u^3 (#[[2,2,1]]/.x->u^2)]]}&,sin0GeneralApproximationResults]*)
+
+
+(* ::Text:: *)
+(*This time the plot of interest is for the relative error, and it is noisy for radius 1/1024:*)
 
 
 (* ::Input:: *)
-(*Map[Plot[Sin[x]-x-machineEvaluate[#[[2]][x]],{x,-#[[1]],#[[1]]},WorkingPrecision->30,PlotRange->Full]&,sinGeneralApproximation0]*)
+(*Map[Plot[1-(x+machineEvaluate[#[[2]][x]])/Sin[x],{x,-#[[1]],#[[1]]},WorkingPrecision->30,PlotRange->Full]&,sin0GeneralApproximations]*)
+
+
+(* ::Text:: *)
+(*In this case, FindMaximum suspiciously returns an error less than the one computed by the Remez algorithm:*)
 
 
 (* ::Input:: *)
-(*Map[Plot[1-(x+machineEvaluate[#[[2]][x]])/Sin[x],{x,-#[[1]],#[[1]]},WorkingPrecision->30,PlotRange->Full]&,sinGeneralApproximation0]*)
+(*sin0GeneralApproximationExtrema=Map[{#[[2,2,2]],#[[2,1,2]]}&,sin0GeneralApproximationResults]*)
 
 
 (* ::Input:: *)
-(*Map[FindMaximum[{1-(x+machineEvaluate[#[[2]][x]])/Sin[x],x>=-#[[1]]&&x<=#[[1]]},{x,9#[[1]]/10},WorkingPrecision->30]&,sinGeneralApproximation0]*)
+(*sin0GeneralApproximationMachineExtrema=MapThread[*)
+(*FindMaximum[{1-(x+machineEvaluate[#[[2]][x]])/Sin[x],x>=99#2[[2]]/100&&x<=#1[[1]]},{x,#2[[2]]},WorkingPrecision->30]&,*)
+(*{sin0GeneralApproximations,sin0GeneralApproximationExtrema}]*)
+
+
+(* ::Text:: *)
+(*This gives us the number of bits available for each radius.  1/512 is not appropriate as it would only provide 16 bits after the mantissa:*)
 
 
 (* ::Input:: *)
-(*N[Log[2,Max[Abs[Table[1-(x+machineEvaluate[sinGeneralApproximation0[[2,2]][x]])/Sin[x],{x,9 sinGeneralApproximation0[[2,1]]/10,sinGeneralApproximation0[[2,1]],sinGeneralApproximation0[[2,1]]/1*^6}]]]],30]*)
+(*MapThread[{#1[[1]],Log[2,Abs[#2[[1]]]]}&,{sin0GeneralApproximationResults,sin0GeneralApproximationMachineExtrema}]*)
+
+
+(* ::Text:: *)
+(*For radius 1/1024, it is useful to do an exhaustive search because the function is noisy.  We see that we lose about 1 bit compared to the extrema found by FindMaximum, but we are left with 21 bits after the mantissa, which is sufficient:*)
 
 
 (* ::Input:: *)
-(*HexLiteral[CorrectlyRound[CoefficientList[sinGeneralApproximations[[2,2]][x],x]]]*)
-
-
-(* ::Input:: *)
-(*Map[N[Log[2,Abs[1-(x+machineEvaluate[#[[2]][x]])/Sin[x]/.x->#[[1]]]],30]&,sinGeneralApproximation0]*)
+(*N[Log[2,Max[Abs[Table[1-(x+machineEvaluate[sin0GeneralApproximations[[2,2]][x]])/Sin[x],{x,9 sin0GeneralApproximations[[2,1]]/10,sin0GeneralApproximations[[2,1]],sin0GeneralApproximations[[2,1]]/1*^6}]]]],30]*)
 
 
 (* ::Subsubsection:: *)
 (*Degree  2*)
 
 
+(* ::Text:: *)
+(*Note: it is not clear if a radius of 1/512 is sufficient from the perspective of error analysis.  If it isn't we might as well go with 1/1024 and degree 1.*)
+
+
 (* ::Input:: *)
-(*sinGeneralApproximation0Results2=Map[{#,GeneralMiniMaxApproximation[*)
+(*sin0GeneralApproximation2Result=Map[{#,GeneralMiniMaxApproximation[*)
 (*{t^2,If[t==0,-1/6,sinFn[t]],If[t==0,1,Sin[t]/t^3]},*)
 (*{t,{0,#},2,0},*)
 (*x,WorkingPrecision->30]}&,{1/512}]*)
 
 
 (* ::Input:: *)
-(*sinGeneralApproximation02=Map[{#[[1]],Function[u, Evaluate[ u^3 (#[[2,2,1]]/.x->u^2)]]}&,sinGeneralApproximation0Results2]*)
+(*sin0GeneralApproximation2=Map[{#[[1]],Function[u, Evaluate[ u^3 (#[[2,2,1]]/.x->u^2)]]}&,sin0GeneralApproximation2Result]*)
+
+
+(* ::Text:: *)
+(*The result is extremely noisy:*)
 
 
 (* ::Input:: *)
-(*Map[Plot[Sin[x]-x-machineEvaluate[#[[2]][x]],{x,-#[[1]],#[[1]]},WorkingPrecision->30,PlotRange->Full]&,sinGeneralApproximation02]*)
+(*Map[Plot[1-(x+machineEvaluate[#[[2]][x]])/Sin[x],{x,-#[[1]],#[[1]]},WorkingPrecision->30,PlotRange->Full]&,sin0GeneralApproximation2]*)
+
+
+(* ::Text:: *)
+(*Therefore it doesn't make sense to search for the maximum using FindMaximum.  Instead, we just do an exhaustive search.  We find that this gives us less bits than radius 1/1024 and degree 1:*)
 
 
 (* ::Input:: *)
-(*Map[Plot[1-(x+machineEvaluate[#[[2]][x]])/Sin[x],{x,-#[[1]],#[[1]]},WorkingPrecision->30,PlotRange->Full]&,sinGeneralApproximation02]*)
-
-
-(* ::Input:: *)
-(*Map[FindMaximum[{1-(x+machineEvaluate[#[[2]][x]])/Sin[x],x>=-#[[1]]&&x<=#[[1]]},{x,9#[[1]]/10},WorkingPrecision->30]&,sinGeneralApproximation02]*)
-
-
-(* ::Input:: *)
-(*N[Log[2,Max[Abs[Table[1-(x+machineEvaluate[sinGeneralApproximation02[[1,2]][x]])/Sin[x],{x,9 sinGeneralApproximation02[[1,1]]/10,sinGeneralApproximation02[[1,1]],sinGeneralApproximation02[[1,1]]/1*^6}]]]],30]*)
-
-
-(* ::Input:: *)
-(*Map[N[Log[2,Abs[1-(x+machineEvaluate[#[[2]][x]])/Sin[x]/.x->#[[1]]]],30]&,sinGeneralApproximation02]*)
+(*N[Log[2,Max[Abs[Table[1-(x+machineEvaluate[sin0GeneralApproximation2[[1,2]][x]])/Sin[x],{x,9 sin0GeneralApproximation2[[1,1]]/10,sin0GeneralApproximation2[[1,1]],sin0GeneralApproximation2[[1,1]]/1*^6}]]]],30]*)
 
 
 (* ::Section:: *)
