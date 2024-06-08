@@ -203,14 +203,14 @@
 
 
 (* ::Input:: *)
-(*sin0GeneralApproximation2Result=Map[{#,GeneralMiniMaxApproximation[*)
+(*sin0GeneralApproximationResult2=Map[{#,GeneralMiniMaxApproximation[*)
 (*{t^2,If[t==0,-1/6,sinFn[t]],If[t==0,1,Sin[t]/t^3]},*)
 (*{t,{0,#},2,0},*)
 (*x,WorkingPrecision->30]}&,{1/512}]*)
 
 
 (* ::Input:: *)
-(*sin0GeneralApproximation2=Map[{#[[1]],Function[u, Evaluate[ u^3 (#[[2,2,1]]/.x->u^2)]]}&,sin0GeneralApproximation2Result]*)
+(*sin0GeneralApproximation2=Map[{#[[1]],Function[u, Evaluate[ u^3 (#[[2,2,1]]/.x->u^2)]]}&,sin0GeneralApproximationResult2]*)
 
 
 (* ::Text:: *)
@@ -233,12 +233,20 @@
 (*Cos*)
 
 
+(* ::Text:: *)
+(*We want to compute minimax polynomials that are even and return 1 for 0.  Therefore, we approximate the function cosFn1 or cosFn2 below.  Note that they are singular near 0 and must therefore be replaced by their limit there.*)
+
+
 (* ::Input:: *)
 (*Series[Cos[t],{t,0,5}]*)
 
 
 (* ::Subsection:: *)
 (*Minimax  Polynomials Between Table Entries*)
+
+
+(* ::Text:: *)
+(*Between table entries we choose an error function that minimizes the absolute error.  We try degree 1 and degree 2, with various interval radii.*)
 
 
 (* ::Subsubsection:: *)
@@ -263,8 +271,8 @@
 (*GeneralMiniMaxApproximation[*)
 (*{t^2,If[t==0,-1/2,cosFn1[t]],If[t==0,1,1/t^2]},*)
 (*{t,{0,2^-n},1,0},*)
-(*x,WorkingPrecision->40]},*)
-(*{n,7,12}]*)
+(*x,WorkingPrecision->30]},*)
+(*{n,9,12}]*)
 
 
 (* ::Input:: *)
@@ -273,72 +281,16 @@
 (*cosGeneralApproximationResults1]*)
 
 
+(* ::Text:: *)
+(*For radii other than 1/512, the result is extremely noisy:*)
+
+
 (* ::Input:: *)
 (*Map[Plot[Cos[x]-1-machineEvaluate[#[[2]][x]],{x,-#[[1]],#[[1]]},PlotRange->Full,WorkingPrecision->30]&,cosGeneralApproximations1]*)
 
 
 (* ::Output:: *)
 (*{Graphics[Annotation[{{{{}, {}, Annotation[{Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]], Line[CompressedData["*)
-(*1:eJwB4QQe+yFib1JlAgAAAE0AAAACAAAALj8W6v//f7/aNY8C0kaDvG/5I4j5*)
-(*+n+/JwdSW7cBg7ywszEm8/V/vz/FqTkpvYK8MihNYubrf79UvGAVqjSCvDcR*)
-(*hNrM13+/QiGnOIgngbxA4/HKma9/v4xb+S9IOn68UofNqzNff7+1BK6KY4p2*)
-(*vHfPhG1nvn6/3w/mSOfvYbzU1AvqwWF9v7ilPZZTbGo8HcBvFDccfL8Y5eOf*)
-(*W4t6PLVrxAUP3Xq/IYBpSEEfgTxgjDHw2YJ5v0bbm6DZAoM8+JJ7iL8/eL9L*)
-(*FLtaSzODPKMO3hmY4Xa/BKuGhME3gjycSjFy04l1v4m+QPnMeoA8gmxheClJ*)
-(*dL8qrmdXkvF8PHsDqndy7XK/AJL4kNhAeDxhgM8k1qhxvya/yj5h6HM8lb3l*)
-(*mJxqcL8YiOlygNJvPLrfKAysIm6/cochRn0RaDwjEEBCVJ5rv3kAI8VA4GE8*)
-(*siqIauLjaL9wAJissb9YPN/FsSA2Nma/sWE403lYUDzlLJUyv7Zjv7p4mySG*)
-(*9EQ8EX6pNi4BYb+3X/uBA+c3PCw27yyl81y/o3yrKBC0KTyDRO3QuXhXvx6A*)
-(*yH9yqxY8FVSukFkXUr8s03MM9D8APLL2xQ/IJEq/yC3GPyfo4Tul2+WN6YQ+*)
-(*vxenm/xitrA7XVEctNtjJL/TJUBiISxKO7kKe9XCdSM/BKjVVmF8RTs14gEe*)
-(*gVg/P8dzB8l3mbI7I/C7+TrCST9cO3407OHgO0mj2c1OWFI/3y/JIg0tATxF*)
-(*TRID9bVXP+yHWrcalBc8j1/XgDC3XD+wTs3Q7OUoPMdOHQ1QEmE/Jqn7Nm5E*)
-(*ODztIRV+0ppjP8yICV2uhUQ8dXQrYY8WZj9zb9wqTQNQPNfcEFJmyGg/YpAz*)
-(*mUFeWDxgeTznB0xrP2aqJF53KWE8wys3isMFbj+QVE3JlsRnPCYJvOikSHA/*)
-(*rvpMHfwCbzwdvGtFBYhxP9gMkPhQe3M8APoCqXLicj+kLIeghxp4PPdRvV7F*)
-(*JXQ/UnrSKW95fDzbNF8bJYR1PwLAgIdNcoA8cFcQESLcdj9gFCAM2jGCPBmU*)
-(*5FgEHXg/WLwxIJwmgzyuW6Cn83h5P22dFe7WCYM8Vz1/SMi9ej/Ip/suG2GB*)
-(*PLFebSI6/Hs/Irh484iIezz4CkMDuVV9P3MNjhCqo2s8UtE7Nh2Yfj9DVx+/*)
-(*iUdYvAo7C8G8nX4/A39eVbv0WbzBpNpLXKN+P6kM3f5nolu8MHh5YZuufj+A*)
-(*bhFkHAtfvA4ft4wZxX4/8nn6u936YrzJbDLjFfJ+P3QqucyTKWq8QAgpkA5M*)
-(*fz94rB4twc10vPhx+BquUX8/BBbp4+lOdbyv28elTVd/P3uMj7mf0XW8Hq9m*)
-(*u4xifz8+DZKTm9l2vPxVpOYKeX8/fRjDJ+PweLy3ox89B6Z/PwAUzOHIRn28*)
-(*bg3vx6arfz+nLYwxItV9vCZ3vlJGsX8/ePnvYflkfryUSl1ohbx/PwD6rtWv*)
-(*hH+8cvGakwPTfz8murTJSuiAvCpbah6j2H8/sqwv26AygbzhxDmpQt5/P/5z*)
-(*onyCfYG8UJjYvoHpfz/IhuE7NhSCvAgCqEkh738/TOl19CNggry/a3fUwPR/*)
-(*P12RsgrTrIK8dtVGX2D6fz8kNN1NwvmCvC4/Fur//38/2jWPAtJGg7xwFEvw*)
-(**)
-(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 128], Rational[1, 128]}, {-3.3439643412375455`*^-17, 3.330733010085182*^-17}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 1.8489679631747698`*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 1.8489679631747698`*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 128], Rational[1, 128]}, {-3.3439643412375455`*^-17, 3.330733010085182*^-17}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}],Graphics[Annotation[{{{{}, {}, Annotation[{Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]], Line[CompressedData["*)
-(*1:eJwB4QQe+yFib1JlAgAAAE0AAAACAAAALj8W6v//b7+z55pCaEUjvG/5I4j5*)
-(*+m+/j6P6DMUFI7ywszEm8/Vvv78EMFQWuiK8MihNYubrb7/GbwKGeDIivDcR*)
-(*hNrM12+//5tPs+cjIbxA4/HKma9vv4aw0iFiNB68UofNqzNfb7+TenlI35AW*)
-(*vHfPhG1nvm6/BXzRouTzAbzU1AvqwWFtv23naKVrZAo8HcBvFDccbL9Q20ko*)
-(*AYUaPLVrxAUP3Wq/d0DbgGwfITxgjDHw2YJpv51Q099TACM8+JJ7iL8/aL8s*)
-(*9/vbYjYjPKMO3hmY4Wa/z/6HyH44IjycSjFy04llv5fV61avfCA8gmxheClJ*)
-(*ZL9oJiIDB/McPHsDqndy7WK/oA87vA0+GDxhgM8k1qhhv+O/K4Ra6RM8lb3l*)
-(*mJxqYL9YW00kqNgPPLrfKAysIl6/2Z1E8P0NCDwjEEBCVJ5bv0UdYlVW3wE8*)
-(*siqIauLjWL+JnwD+yMP4O9/FsSA2Nla/ZQvMLIZa8DvlLJUyv7ZTvzK3Fq10*)
-(*9OQ7EX6pNi4BUb+1jqy9/+TXOyw27yyl80y/IzX7uYqlyTuDRO3QuXhHv+Ah*)
-(*UR/Hx7Y7FVSukFkXQr+7NXsaq1ygO7L2xQ/IJDq/jF93RQ4Ggjul2+WN6YQu*)
-(*v3xoM6j/UlA7XVEctNtjFL/uFHvaKP/vOrkKe9XCdRM/uXFXzWX46To14gEe*)
-(*gVgvP2DLcXAPxVI7I/C7+TrCOT9m6UrtRuOAO0mj2c1OWEI/+zmNZHg2oTtF*)
-(*TRID9bVHP1jLHnwai7c7j1/XgDC3TD9LAEqinNrIO8dOHQ1QElE/g7A9SnU2*)
-(*2DvtIRV+0ppTPyKVSJw4iOQ7dXQrYY8WVj+gGy+tEAbwO9fcEFJmyFg/A7s7*)
-(*4HZY+DtgeTznB0xbP0LLXH//JgE8wys3isMFXj+7qC9spcEHPCYJvOikSGA/*)
-(*CJ7L40oJDzwdvGtFBYhhP2AWQ9xcdxM8APoCqXLiYj9qbdEyaR4YPPdRvV7F*)
-(*JWQ/LfKbI216HDzbNF8bJYRlP6frgsHUciA8cFcQESLcZj8WMBurfi4iPBmU*)
-(*5FgEHWg/rfjY1RAnIzyuW6Cn83hpP/qXEw7RCyM8Vz1/SMi9aj+I56Yai2Ah*)
-(*PLFebSI6/Gs/kqPycn+DGzz4CkMDuVVtP7/Q8kCsrws8UtE7Nh2Ybj9CMwTK*)
-(*kl74uwo7C8G8nW4/bsgePDj7+bvBpNpLXKNuP14sRj/6kPu7MHh5YZuubj9v*)
-(*LkQ1ufb+uw4ft4wZxW4/G++w8+n0ArzJbDLjFfJuP5LxilMrMwq8QAgpkA5M*)
-(*bz8jdjkTacwUvPhx+BquUW8/4nJtIbhKFbyv28elTVdvP5HkdTEw1BW8Hq9m*)
-(*u4xibz9E5Hw6KdIWvPxVpOYKeW8/hwsPIT3sGLy3ox89B6ZvP+zMxYg8Tx28*)
-(*bg3vx6arbz/6hqdZi9AdvCZ3vlJGsW8/V06b0dlrHryUSl1ohbxvP3EfQVjU*)
-(*fx+8cvGakwPTbz/8NtQ/DOogvCpbah6j2G8/X989tzc0IbzhxDmpQt5vP/qn*)
-(*Ewi5fCG8UJjYvoHpbz88wDzgsxcivAgCqEkh728/byppSp1gIry/a3fUwPRv*)
-(*P2kDlNWlrCK8dtVGX2D6bz8cxbHtvvUivC4/Fur//28/s+eaQmhFI7wXk0F1*)
-(**)
-(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 256], Rational[1, 256]}, {-5.22344812098875*^-19, 5.207543915783045*^-19}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.2146431015717308`*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.2146431015717308`*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 256], Rational[1, 256]}, {-5.22344812098875*^-19, 5.207543915783045*^-19}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}],Graphics[Annotation[{{{{}, {}, Annotation[{Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]], Line[CompressedData["*)
 (*1:eJwB4QQe+yFib1JlAgAAAE0AAAACAAAALj8W6v//X78UTP0VIXTDu2/5I4j5*)
 (*+l+/+JsQtZYHw7uwszEm8/Vfv0eDXc2hfsK7MihNYubrX7/DngMRBUfCuzcR*)
 (*hNrM11+/DqoZMttGwbtA4/HKma9fvyDXvsfnUr67UofNqzNfX78J91wqZ162*)
@@ -461,66 +413,30 @@
 (*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 4096], Rational[1, 4096]}, {-1.1666161206489614`*^-24, 1.6015381522847428`*^-24}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.2204460360462934`*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.2204460360462934`*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 4096], Rational[1, 4096]}, {-1.1666161206489614`*^-24, 1.6015381522847428`*^-24}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}]}*)
 
 
-(* ::Input:: *)
-(*Map[*)
-(*FindMaximum[{Cos[x]-1-machineEvaluate[#[[2]][x]],x>=-#[[1]]&&x<=#[[1]]},{x,9#[[1]]/10},WorkingPrecision->30]&,*)
-(*cosGeneralApproximations1]*)
+(* ::Text:: *)
+(*In this case, the errors returned by FindMaximum for radii other than 1/512 are not to be believed:*)
 
 
 (* ::Input:: *)
-(*N[Log[2,Max[Abs[Table[Cos[x]-1-machineEvaluate[cosGeneralApproximations1[[4,2]][x]],{x,9 cosGeneralApproximations1[[4,1]]/10,cosGeneralApproximations1[[4,1]],cosGeneralApproximations1[[4,1]]/1*^6}]]]],30]*)
+(*cosGeneralApproximationExtrema1=Map[{#[[2,2,2]],#[[2,1,2]]}&,cosGeneralApproximationResults1]*)
 
 
 (* ::Input:: *)
-(*machineEvaluate[Evaluate[cosGeneralApproximations1[[4,2]][x]]]*)
-
-
-(* ::Input:: *)
-(*CorrectlyRound[CoefficientList[cosGeneralApproximations1[[4,2]][x],x]]*)
-
-
-(* ::Input:: *)
-(*HexLiteral[CorrectlyRound[CoefficientList[cosGeneralApproximations1[[4,2]][x],x]]]*)
-
-
-(* ::Input:: *)
-(*N[Log[2,Max[Abs[Table[Cos[x]-1-machineEvaluate[cosGeneralApproximations1[[5,2]][x]],{x,9 cosGeneralApproximations1[[5,1]]/10,cosGeneralApproximations1[[5,1]],cosGeneralApproximations1[[5,1]]/1*^6}]]]],30]*)
-
-
-(* ::Input:: *)
-(*machineEvaluate[Evaluate[cosGeneralApproximations1[[5,2]][x]]]*)
-
-
-(* ::Input:: *)
-(*CorrectlyRound[CoefficientList[cosGeneralApproximations1[[5,2]][x],x]]*)
-
-
-(* ::Input:: *)
-(*HexLiteral[CorrectlyRound[CoefficientList[cosGeneralApproximations1[[5,2]][x],x]]]*)
-
-
-(* ::Input:: *)
-(*N[Log[2,Max[Abs[Table[Cos[x]-1-machineEvaluate[cosGeneralApproximations1[[6,2]][x]],{x,9 cosGeneralApproximations1[[6,1]]/10,cosGeneralApproximations1[[6,1]],cosGeneralApproximations1[[6,1]]/1*^6}]]]],30]*)
-
-
-(* ::Input:: *)
-(*machineEvaluate[Evaluate[cosGeneralApproximations1[[6,2]][x]]]*)
-
-
-(* ::Input:: *)
-(*CorrectlyRound[CoefficientList[cosGeneralApproximations1[[6,2]][x],x]]*)
-
-
-(* ::Input:: *)
-(*HexLiteral[CorrectlyRound[CoefficientList[cosGeneralApproximations1[[6,2]][x],x]]]*)
-
-
-(* ::Input:: *)
-(*Map[Log[2,N[Abs[(Cos[x]-1-machineEvaluate[#[[2]][x]]/.x->#[[1]])],20]]&,cosGeneralApproximations1]*)
+(*cosGeneralApproximationMachineExtrema1=MapThread[*)
+(*FindMaximum[{Cos[x]-1-machineEvaluate[#[[2]][x]],x>=99#2[[2]]/100&&x<=#1[[1]]},{x,#2[[2]]},WorkingPrecision->30]&,*)
+(*{cosGeneralApproximations1,cosGeneralApproximationExtrema1}]*)
 
 
 (* ::Text:: *)
-(*A radius of 1/1024 gives us 72 bits, which covers the 18 bits we want to have in the accurate values.  For the binade with 1 leading zeroes, we must use the polynomial for radius 1/2048 works.  For binades with 2 leading zeroes or more, we must use the polynomial for radius 1/4096.*)
+(*To obtain the number of bits we have to use exhaustive search:*)
+
+
+(* ::Input:: *)
+(*MapThread[{#1[[1]],N[Log[2,Max[Abs[Table[Cos[x]-1-machineEvaluate[#2[[2]][x]],{x,9 #2[[1]]/10,#2[[1]],#2[[1]]/1*^6}]]]],30]}&,{cosGeneralApproximationResults1,cosGeneralApproximations1}]*)
+
+
+(* ::Text:: *)
+(*A radius of 1/1024 gives us 72 bits, which covers the 18 bits we want to have in the accurate values.  Remember that for the same radius the Sin approximation has 84 bits.*)
 
 
 (* ::Subsubsection:: *)
@@ -546,13 +462,17 @@
 (*{t^2,If[t==0,1/24,cosFn2[t]],If[t==0,1,1/t^4]},*)
 (*{t,{0,2^-n},1,0},*)
 (*x,WorkingPrecision->40]},*)
-(*{n,7,10}]*)
+(*{n,7,8}]*)
 
 
 (* ::Input:: *)
 (*cosGeneralApproximations2=Map[*)
 (*{#[[1]],Function[u, Evaluate[u^4(HornerForm[#[[2,2,1]]]/.x->u^2)]]}&,*)
 (*cosGeneralApproximationResults2]*)
+
+
+(* ::Text:: *)
+(*In this case the polynomials don't exhibit numeric noise:*)
 
 
 (* ::Input:: *)
@@ -620,105 +540,41 @@
 (*6GzfwLs6UJjYvoHpbz/8wOHE0+W8OggCqEkh728/zmWRTLuyvTq/a3fUwPRv*)
 (*PzMFnLIbbL46dtVGX2D6bz/CbEAkbge/Oi4/Fur//28/Fqz+DX4JwDqgZGWh*)
 (**)
-(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 256], Rational[1, 256]}, {-1.0280650589930651`*^-25, 1.0363719845969535`*^-25}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.220446048107562*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.220446048107562*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 256], Rational[1, 256]}, {-1.0280650589930651`*^-25, 1.0363719845969535`*^-25}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}],Graphics[Annotation[{{{{}, {}, Annotation[{Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]], Line[CompressedData["*)
-(*1:eJwB4QQe+yFib1JlAgAAAE0AAAACAAAALj8W6v//X7+VI9Y6ZSE8Om/5I4j5*)
-(*+l+/C7y6AeGZPjqwszEm8/Vfv3vAUB17wEA6MihNYubrX7+xDqzH39s5OjcR*)
-(*hNrM11+/ZESJsq47NzpA4/HKma9fv/FshV/9gjU6UofNqzNfX7/9V/5SyxMk*)
-(*OnfPhG1nvl6/kYOtpxsu+jnU1AvqwWFdvyw0+a6/Aja6HcBvFDccXL/aJVU9*)
-(*KWE8urVrxAUP3Vq/tgovJ5auP7pgjDHw2YJZvxj/4AXsHz26+JJ7iL8/WL/p*)
-(*JDiyna06uqMO3hmY4Va/1YJp+id4N7qcSjFy04lVv4IUQf45tzG6gmxheClJ*)
-(*VL9baFwBJhMtunsDqndy7VK/ivgxIkfLI7phgM8k1qhRvy3fVcLPjB26lb3l*)
-(*mJxqUL9gIiVZTCoTurrfKAysIk6/r0KMefk0CrojEEBCVJ5Lv7XvkUi5SwC6*)
-(*siqIauLjSL9haHf0QhXxud/FsSA2Nka/hTd2Xayw4LnlLJUyv7ZDv3vFvaH9*)
-(*fdK5EX6pNi4BQb/u4kvUYu2+uSw27yyl8zy/H+lJurN2prmDRO3QuXg3v5Cp*)
-(*xAhgNo25FVSukFkXMr8kIosXTpxqubL2xQ/IJCq/FZhMGc82Qbml2+WN6YQe*)
-(*vyUVljzA6w+5XVEctNtjBL8CQ5tmYxmRuLkKe9XCdQM/BMaIWXm6grg14gEe*)
-(*gVgfP1NUjtpu8ta4I/C7+TrCKT+zAHkL9ctIuUmj2c1OWDI/zliqz+jKYrlF*)
-(*TRID9bU3P93qXKBiIZO5j1/XgDC3PD/gWhHyXXOlucdOHQ1QEkE/1mDKdz23*)
-(*wLntIRV+0ppDPxoHzF1NfdG5dXQrYY8WRj8gJ++zabXiudfcEFJmyEg/STEk*)
-(*eqFN8blgeTznB0xLP0YCMWHdePy5wys3isMFTj/VwYdKeIUKuiYJvOikSFA/*)
-(*HEgSlbG5E7odvGtFBYhRP3pdPorx5Bu6APoCqXLiUj9m4fJKGQckuvdRvV7F*)
-(*JVQ/wkO7APSHKrrbNF8bJYRVP30H5VDzETO6cFcQESLcVj8LgscsHB83uhmU*)
-(*5FgEHVg/AZFT6N5cO7quW6Cn83hZP/M8WMhqTEC6Vz1/SMi9Wj+wq4VDa2hA*)
-(*urFebSI6/Fs/VHGzTX3kPrr4CkMDuVVdP83+XJmTyTK6UtE7Nh2YXj8iUZ2j*)
-(*R7L6uQo7C8G8nV4/qJHAMV4X97nBpNpLXKNeP77nS2XU+fk5MHh5YZuuXj8B*)
-(*xNpZIY/iuQ4ft4wZxV4/ZOFrdqje87nJbDLjFfJeP96ONIMqvhM6QAgpkA5M*)
-(*Xz8kjZO4AqokOvhx+BquUV8/BAouQ482Ijqv28elTVdfPycHvbX1bCk6Hq9m*)
-(*u4xiXz/Rjtoh8y8rOvxVpOYKeV8/Q04+R3oQNDq3ox89B6ZfP0LCrsY9MjM6*)
-(*bg3vx6arXz/HfnxFXuc5OiZ3vlJGsV8/2459I4WZNTqUSl1ohbxfPxuHjSYu*)
-(*+TU6cvGakwPTXz+/ImI1zSk8Oipbah6j2F8/qg2XyWNSODrhxDmpQt5fPwg9*)
-(*bPS4xjw6UJjYvoHpXz/EreOQPSs/OggCqEkh718/1eRWXNSIOjq/a3fUwPRf*)
-(*P2HOCgajWUA6dtVGX2D6Xz88TSeEgZY8Oi4/Fur//18/lSPWOmUhPDojYkRJ*)
-(**)
-(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 512], Rational[1, 512]}, {-4.141932917378821*^-28, 4.228768671840614*^-28}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.220446049245711*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.220446049245711*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 512], Rational[1, 512]}, {-4.141932917378821*^-28, 4.228768671840614*^-28}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}],Graphics[Annotation[{{{{}, {}, Annotation[{Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]], Line[CompressedData["*)
-(*1:eJwB4QQe+yFib1JlAgAAAE0AAAACAAAALj8W6v//T79IxKY+IpvUOW/5I4j5*)
-(*+k+/akGyzqbf1jmwszEm8/VPvwlWDRyUnoS5MihNYubrT7+KuEb8RyZ8OTcR*)
-(*hNrM10+/IfhmUXuVyDlA4/HKma9Pv75fuxLXhNM5UofNqzNfT78Rwng19IOx*)
-(*uXfPhG1nvk6/vBymxpqOrjnU1AvqwWFNv2A0JwdMzry5HcBvFDccTL+QsC/H*)
-(*mGayubVrxAUP3Uq/FFsmt7rLu7lgjDHw2YJJvxv9Yvuj98S5+JJ7iL8/SL+J*)
-(*feduB5SxuaMO3hmY4Ua/3Y4X+JqquLmcSjFy04lFvzOa4st2wb+5gmxheClJ*)
-(*RL+f1FARcY+tuXsDqndy7UK/zt5V3P3PoblhgM8k1qhBv4D3jWDhIqG5lb3l*)
-(*mJxqQL+HHjbNTgR7ubrfKAysIj6/dpeHI82rZLkjEEBCVJ47v1L85L3/MIy5*)
-(*siqIauLjOL/eAmOpBnhEud/FsSA2Nja/8ZS8sgDEcbnlLJUyv7YzvzqcDbzR*)
-(*zTI5EX6pNi4BMb92RpJB9Rk5uSw27yyl8yy/SxPS1j8bQ7mDRO3QuXgnvx2Y*)
-(*I5LQvCQ5FVSukFkXIr8ylkMLG88KubL2xQ/IJBq/QOcKYFbS+jil2+WN6YQO*)
-(*v6MgKgLHGMC4XVEctNtj9L5/NOrRMM9JuLkKe9XCdfM+jvOPQ0lPL7g14gEe*)
-(*gVgPPyVCReiVp5M4I/C7+TrCGT8fi66Y0yjhOEmj2c1OWCI/vZDlxr4F+DhF*)
-(*TRID9bUnPzBHgUbENzK5j1/XgDC3LD/RsF+eTa8/ucdOHQ1QEjE/82NcpP7g*)
-(*MTntIRV+0pozP8IjOfXvcze5dXQrYY8WNj9U1frjJr1CudfcEFJmyDg/bOYM*)
-(*YANsaLlgeTznB0w7P/X/BhPVG2e5wys3isMFPj9IrGJqpBOYuSYJvOikSEA/*)
-(*bEm1RbrldLkdvGtFBYhBP9+E5orfX5y5APoCqXLiQj/NK1L/wcewufdRvV7F*)
-(*JUQ/UPKXZ9TXtLnbNF8bJYRFPxMfLfz+Joq5cFcQESLcRj8mZn8ljDGzuRmU*)
-(*5FgEHUg/hcCwVuddvrmuW6Cn83hJPzqpjHjo6bG5Vz1/SMi9Sj/i7eyJHsa2*)
-(*ubFebSI6/Es/qP8oRihvuLn4CkMDuVVNP2mgvLezksS5UtE7Nh2YTj+aHb++*)
-(*1BjIOQo7C8G8nU4/qmMPZhK2tDnBpNpLXKNOP/Ifu2K4LLM5MHh5YZuuTj+r*)
-(*Mxr0vrLIuQ4ft4wZxU4/hnZzC6SZyTnJbDLjFfJOP7DCSKyOQaA5QAgpkA5M*)
-(*Tz9e9ue6HLXAOfhx+BquUU8/USU6dfyb0Tmv28elTVdPP0Gq/oWIIZC5Hq9m*)
-(*u4xiTz+qW2VJkqWhOfxVpOYKeU8/DK1FuE8UqLm3ox89B6ZPP/o19IFQUMC5*)
-(*bg3vx6arTz8rVlmG/XC8OSZ3vlJGsU8/o2inWWZNqrmUSl1ohbxPP98AnPJt*)
-(*hMo5cvGakwPTTz+OGCYe/fyhOSpbah6j2E8/lNUw3qecwTnhxDmpQt5PP26n*)
-(*HkT8g6i5UJjYvoHpTz9NWf5x1Y7BOQgCqEkh708//42NxMcT1jm/a3fUwPRP*)
-(*P/gTaxidH7W5dtVGX2D6Tz+Qm14cWeK3OS4/Fur//08/SMSmPiKb1DlwAmHN*)
-(**)
-(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 1024], Rational[1, 1024]}, {-2.4354331366140135`*^-30, 4.511029897537687*^-30}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.22044604925029*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.22044604925029*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 1024], Rational[1, 1024]}, {-2.4354331366140135`*^-30, 4.511029897537687*^-30}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}]}*)
-
-
-(* ::Input:: *)
-(*Map[*)
-(*FindMaximum[{Cos[x]-1+x^2/2-machineEvaluate[#[[2]][x]],x>=-#[[1]]&&x<=#[[1]]},{x,9#[[1]]/10},WorkingPrecision->30]&,*)
-(*cosGeneralApproximations2]*)
-
-
-(* ::Input:: *)
-(*N[Log[2,Max[Abs[Table[Cos[x]-1+x^2/2-machineEvaluate[cosGeneralApproximations2[[4,2]][x]],{x,9 cosGeneralApproximations2[[4,1]]/10,cosGeneralApproximations2[[4,1]],cosGeneralApproximations2[[4,1]]/1*^6}]]]],30]*)
-
-
-(* ::Input:: *)
-(*CorrectlyRound[CoefficientList[cosGeneralApproximations2[[4,2]][x],x]]*)
-
-
-(* ::Input:: *)
-(*HexLiteral[CorrectlyRound[CoefficientList[cosGeneralApproximations2[[4,2]][x],x]]]*)
-
-
-(* ::Input:: *)
-(*Map[Log[2,N[Abs[(Cos[x]-1+x^2/2-machineEvaluate[#[[2]][x]]/.x->#[[1]])],20]]&,cosGeneralApproximations2]*)
-
-
-(* ::Input:: *)
-(*Map[N[Cos[x]-1-machineEvaluate[#[[2]][x]]/.x->#[[1]],20]&,cosGeneralApproximations2]*)
-
-
-(* ::Input:: *)
-(*Map[Log[2,N[Abs[(Cos[x]-1+x^2/2-machineEvaluate[#[[2]][x]]/.x->#[[1]])],20]]&,cosGeneralApproximations2]*)
+(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 256], Rational[1, 256]}, {-1.0280650589930651`*^-25, 1.0363719845969535`*^-25}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.220446048107562*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.220446048107562*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 256], Rational[1, 256]}, {-1.0280650589930651`*^-25, 1.0363719845969535`*^-25}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}]}*)
 
 
 (* ::Text:: *)
-(*A radius of 1/128 gives us 77 bits, which is compatible with what we have for the Sin function.*)
+(*And we see that the error estimate from the Remez algorithm is very close to the one obtained by FindMaximum:*)
+
+
+(* ::Input:: *)
+(*cosGeneralApproximationExtrema2=Map[{#[[2,2,2]],#[[2,1,2]]}&,cosGeneralApproximationResults2]*)
+
+
+(* ::Input:: *)
+(*cosGeneralApproximationMachineExtrema2=MapThread[*)
+(*FindMaximum[{Cos[x]-1+x^2/2-machineEvaluate[#[[2]][x]],x>=99#2[[2]]/100&&x<=#1[[1]]},{x,#2[[2]]},WorkingPrecision->30]&,*)
+(*{cosGeneralApproximations2,cosGeneralApproximationExtrema2}]*)
+
+
+(* ::Text:: *)
+(*This gives us the number of bits available for each radius.  1/128 is not appropriate because it could only use 11 zeroes after the mantissa, but all the other radii work since they can use at least 18 bits after the mantissa:*)
+
+
+(* ::Input:: *)
+(*MapThread[{#1[[1]],Log[2,Abs[#2[[1]]]]}&,{cosGeneralApproximationResults2,cosGeneralApproximationMachineExtrema2}]*)
+
+
+(* ::Text:: *)
+(*Both radii give us enough bits, but we have to remember that 1/128 does not work for the Sin function.  So if we use degree 2 for Cos, we have to use a radius of 1/256.*)
 
 
 (* ::Section:: *)
 (*Cutoff Points*)
+
+
+(* ::Text::RGBColor[1, 0, 0]:: *)
+(*Work in progress!*)
 
 
 (* ::Input:: *)
