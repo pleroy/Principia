@@ -88,12 +88,11 @@ sign(1+\[Mu]/2^(significandBits-1))2^(e-bias)]];
 UlpDistance[x_,y_]:=Abs[Representation[x]-Representation[y]]
 
 
-CorrectlyRound[x_,OptionsPattern[]]:=With[
+CorrectlyRound[x_?NumberQ,OptionsPattern[]]:=With[
 {rounding=If[OptionValue[RoundingMode]===Automatic,correctlyRoundRepresentation,OptionValue[RoundingMode]]},
 If[x==\[Infinity]||x==-\[Infinity],x,
 If[Abs[#]>=2^(bias+1),Sign[x]\[Infinity],#]&
 @FromRepresentation[rounding[Representation[x]]]]];
-UlpDistance[x_,y_]:=Abs[Representation[x]-Representation[y]];
 Options[CorrectlyRound]={RoundingMode->Automatic};
 
 
