@@ -9,6 +9,10 @@
 
 
 (* ::Input:: *)
+(*ClearAll[CorrectlyRound]*)
+
+
+(* ::Input:: *)
 (*Get[FileNameJoin[{NotebookDirectory[],"floating_point.wl"}]]*)
 
 
@@ -17,37 +21,81 @@
 (*SetRoundingMode[NearestTiesToEven]*)
 
 
-(* ::Input:: *)
-(*machineEvaluate//ClearAll*)
-
-
-(* ::Input:: *)
-(*SetAttributes[machineEvaluate,HoldAll]*)
-
-
 (* ::Subsubsection:: *)
 (*Machine Evaluation with Rounding*)
 
 
 (* ::Input:: *)
-(*machineEvaluate[a_*b_+c_+d__]:=machineEvaluate[CorrectlyRound[machineEvaluate[a]machineEvaluate[b]+machineEvaluate[c]]+d]*)
-(*machineEvaluate[a_*b_+c_]:=CorrectlyRound[machineEvaluate[a]machineEvaluate[b]+machineEvaluate[c]]*)
-(*machineEvaluate[a_ +Shortest[ b_]]:=CorrectlyRound[machineEvaluate[a]+machineEvaluate[b]]*)
-(*machineEvaluate[a_*Shortest[b_]]:=CorrectlyRound[machineEvaluate[a]machineEvaluate[b]]*)
-(*machineEvaluate[a_-b_]:=CorrectlyRound[machineEvaluate[a]-machineEvaluate[b]]*)
-(*machineEvaluate[a_/b_]:=CorrectlyRound[machineEvaluate[a]/machineEvaluate[b]]*)
-(*machineEvaluate[a_^2]:=CorrectlyRound[machineEvaluate[a ]machineEvaluate[a]]*)
-(*machineEvaluate[a_^3]:=CorrectlyRound[machineEvaluate[a^2 ]machineEvaluate[a]]*)
-(*machineEvaluate[a_^4]:=CorrectlyRound[machineEvaluate[a^2 ]machineEvaluate[a^2]]*)
-(*machineEvaluate[a_?NumberQ]:=CorrectlyRound[a]*)
-(*machineEvaluate[CorrectlyRound[a_]]:=CorrectlyRound[a]*)
+(*ClearAll[machineEvaluate];*)
+(*SetAttributes[machineEvaluate,HoldAll];*)
+(*machineEvaluate[x:(_Plus|_Times|_Power|_?NumberQ)]:=Block[{Plus,Times,me},*)
+(*ClearAttributes[Plus,Flat];*)
+(*ClearAttributes[Times,Flat];*)
+(*SetAttributes[me,HoldAll];*)
+(*me[a_*b_+c_]:=CorrectlyRound[machineEvaluate[a]machineEvaluate[b]+machineEvaluate[c]];*)
+(*me[a_ +b_]:=CorrectlyRound[machineEvaluate[a]+machineEvaluate[b]];*)
+(*me[a_-b_]:=CorrectlyRound[machineEvaluate[a]-machineEvaluate[b]];*)
+(*me[a_*b_]:=CorrectlyRound[machineEvaluate[a]*machineEvaluate[b]];*)
+(*me[a_/b_]:=CorrectlyRound[machineEvaluate[a]/machineEvaluate[b]];*)
+(*me[a_^2]:=CorrectlyRound[machineEvaluate[a ]machineEvaluate[a]];*)
+(*me[a_^3]:=CorrectlyRound[machineEvaluate[a^2 ]machineEvaluate[a]];*)
+(*me[a_^4]:=CorrectlyRound[machineEvaluate[a^2 ]machineEvaluate[a^2]];*)
+(*me[a_?NumberQ]:=CorrectlyRound[a];*)
+(*me[x]]*)
 
 
 (* ::Input:: *)
-(*machineEvaluate[x^3*(-0.1666666666666666666666666517210414159141306579306540343219`30. +0.0083333331609395193764627166673865023798916269058631840465`30. x)]*)
+(*machineEvaluate[(2x+1/3)+y^2]*)
 
 
-(* ::Section:: *)
+(* ::Subsubsection:: *)
+(*Machine Evaluation with Intervals*)
+
+
+(* ::Input:: *)
+(*ClearAll[mei2];*)
+(*applyOpToIntervals[op_,{exact_Interval,approx_Interval}]:=Block[{e=op[exact],a=op[approx]},{e,a*Interval[{1-2^-53,1+2^-53}]}];*)
+(*applyOpToIntervals[op_,{exact1_Interval,approx1_Interval},{exact2_Interval,approx2_Interval}]:=Block[{e=op[exact1,exact2],a=op[approx1,approx2]},{e,a*Interval[{1-2^-53,1+2^-53}]}];*)
+(*applyOpToIntervals[op_,{exact1_Interval,approx1_Interval},{exact2_Interval,approx2_Interval},{exact3_Interval,approx3_Interval}]:=Block[{e=op[exact1,exact2,exact3],a=op[approx1,approx2,approx3]},{e,a*Interval[{1-2^-53,1+2^-53}]}]*)
+
+
+(* ::Input:: *)
+(*ClearAll[machineEvaluateInterval];SetAttributes[machineEvaluateInterval,HoldAll];machineEvaluateInterval[x:(_Plus|_Times|_Power|_Interval|_?NumberQ)]:=Block[{Plus,Times,mei},*)
+(*ClearAttributes[Plus,Flat];*)
+(*ClearAttributes[Times,Flat];*)
+(*SetAttributes[mei,HoldAll];*)
+(*mei[a_*b_+c_]:=applyOpToIntervals[#1 #2+#3&,machineEvaluateInterval[a],machineEvaluateInterval[b],machineEvaluateInterval[c]];*)
+(*mei[a_ +b_]:=applyOpToIntervals[Plus,machineEvaluateInterval[a],machineEvaluateInterval[b]];*)
+(*mei[a_-b_]:=applyOpToIntervals[Subtract,machineEvaluateInterval[a],machineEvaluateInterval[b]];*)
+(*mei[a_*b_]:=applyOpToIntervals[Times,machineEvaluateInterval[a],machineEvaluateInterval[b]];*)
+(*mei[a_/b_]:=applyOpToIntervals[Divide,machineEvaluateInterval[a],machineEvaluateInterval[b]];*)
+(*mei[a_^2]:=applyOpToIntervals[#^2&,machineEvaluateInterval[a ]];*)
+(*mei[a_^3]:=applyOpToIntervals[Times,machineEvaluateInterval[a^2 ],machineEvaluateInterval[a]];*)
+(*mei[a_^4]:=applyOpToIntervals[#^2&,machineEvaluateInterval[a^2 ]];*)
+(*mei[a_^5]:=applyOpToIntervals[Times,machineEvaluateInterval[a^4 ],machineEvaluateInterval[a]];*)
+(*mei[a_Interval]:={a,a};*)
+(*mei[a_?NumberQ]:=Block[{ca=CorrectlyRound[a],i},i=Interval[{ca,ca}];{i,i}];*)
+(*mei[x]]*)
+
+
+(* ::Input:: *)
+(*ClearAll[bounds];*)
+(*bounds[{exact_Interval,approx_Interval}]:={Log2[Max[Abs[Min[exact]-Min[approx]],Abs[Max[exact]-Max[approx]]]],Log2[Max[Abs[Min[exact]],Abs[Min[approx]],Abs[Max[exact]],Abs[Max[approx]]]]}*)
+
+
+(* ::Input:: *)
+(*i=machineEvaluateInterval[Interval[{1/3,2/3}]+Interval[{1/7,2/7}]]*)
+
+
+(* ::Input:: *)
+(*Min[i[[2]]]<=10/21*)
+
+
+(* ::Input:: *)
+(*Max[i[[2]]]>=20/21*)
+
+
+(* ::Section::Closed:: *)
 (*Sin*)
 
 
@@ -229,7 +277,7 @@
 (*N[Log[2,Max[Abs[Table[1-(x+machineEvaluate[sin0GeneralApproximation2[[1,2]][x]])/Sin[x],{x,9 sin0GeneralApproximation2[[1,1]]/10,sin0GeneralApproximation2[[1,1]],sin0GeneralApproximation2[[1,1]]/1*^6}]]]],30]*)
 
 
-(* ::Section:: *)
+(* ::Section::Closed:: *)
 (*Cos*)
 
 
@@ -570,6 +618,74 @@
 
 
 (* ::Section:: *)
+(*Error Analysis*)
+
+
+(* ::Subsection:: *)
+(*Stehle\:0301-Zimmermann Polynomials*)
+
+
+(* ::Input:: *)
+(*szHMax=CorrectlyRound[2^-10.977`30,RoundingMode->Toward0]*)
+
+
+(* ::Input:: *)
+(*szHMin=-szHMax*)
+
+
+(* ::Input:: *)
+(*szHInterval=Interval[{szHMin,szHMax}]*)
+
+
+(* ::Input:: *)
+(*machineEvaluateInterval[szHMax]//bounds//N*)
+
+
+(* ::Input:: *)
+(*machineEvaluateInterval[szHMax^2]//bounds//N*)
+
+
+(* ::Input:: *)
+(*machineEvaluateInterval[szHMax^3]//bounds//N*)
+
+
+(* ::Input:: *)
+(*a5=1/5!;*)
+
+
+(* ::Input:: *)
+(*machineEvaluateInterval[a5 szHMax^2]//bounds//N*)
+
+
+(* ::Input:: *)
+(*a3=1/3!;*)
+
+
+(* ::Input:: *)
+(*machineEvaluateInterval[a5 szHMax^2-a3]//bounds//N*)
+
+
+(* ::Input:: *)
+(*machineEvaluateInterval[szHMax^3(a5 szHMax^2-a3)]//bounds//N*)
+
+
+(* ::Input:: *)
+(*a4=1/4!;*)
+
+
+(* ::Input:: *)
+(*machineEvaluateInterval[a4 szHMax^2]//bounds//N*)
+
+
+(* ::Input:: *)
+(*machineEvaluateInterval[a4 szHMax^2-1/2]//bounds//N*)
+
+
+(* ::Input:: *)
+(*machineEvaluateInterval[szHMax^2(a4 szHMax^2-1/2)]//bounds//N*)
+
+
+(* ::Section::Closed:: *)
 (*Cutoff Points*)
 
 
