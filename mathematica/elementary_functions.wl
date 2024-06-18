@@ -9,7 +9,7 @@
 
 
 (* ::Input:: *)
-(*ClearAll[CorrectlyRound]*)
+(*ClearAll[IEEE754FloatingPoint`CorrectlyRound]*)
 
 
 (* ::Input:: *)
@@ -60,7 +60,7 @@
 
 
 (* ::Input:: *)
-(*ClearAll[machineEvaluateInterval];SetAttributes[machineEvaluateInterval,HoldAll];machineEvaluateInterval[x:(_Plus|_Times|_Power|_Interval|_?NumberQ)]:=Block[{Plus,Times,mei},*)
+(*ClearAll[machineEvaluateInterval];SetAttributes[machineEvaluateInterval,HoldAll];machineEvaluateInterval[x:(_Plus|_Times|_Power|_Interval|_?ValueQ|_?NumericQ)]:=Block[{Plus,Times,mei},*)
 (*ClearAttributes[Plus,Flat];*)
 (*ClearAttributes[Times,Flat];*)
 (*SetAttributes[mei,HoldAll];*)
@@ -73,8 +73,9 @@
 (*mei[a_^3]:=applyOpToIntervals[Times,machineEvaluateInterval[a^2 ],machineEvaluateInterval[a]];*)
 (*mei[a_^4]:=applyOpToIntervals[#^2&,machineEvaluateInterval[a^2 ]];*)
 (*mei[a_^5]:=applyOpToIntervals[Times,machineEvaluateInterval[a^4 ],machineEvaluateInterval[a]];*)
-(*mei[a_Interval]:={a,a};*)
-(*mei[a_?NumberQ]:=Block[{ca=CorrectlyRound[a],i},i=Interval[{ca,ca}];{i,i}];*)
+(*mei[a_Interval]:=Block[{la=machineEvaluateInterval[Min[a]],ua=machineEvaluateInterval[Max[a]]},{Interval[{Min[Min[la[[1]]],Min[ua[[1]]]],Max[Max[la[[1]]],Max[ua[[1]]]]}],Interval[{Min[Min[la[[2]]],Min[ua[[2]]]],Max[Max[la[[2]]],Max[ua[[2]]]]}]}];*)
+(*mei[a_?NumericQ]:=Block[{ca=CorrectlyRound[N[a,100]],i},i=Interval[{ca,ca}];{i,i}];*)
+(*mei[a_?ValueQ]:=machineEvaluateInterval[Evaluate[a]];*)
 (*mei[x]]*)
 
 
@@ -368,7 +369,7 @@
 (*8z6VPcG7UJjYvoHpXz+c3fC0U+DBuwgCqEkh718/U6alEx1Nwru/a3fUwPRf*)
 (*P9wJajJkhcK7dtVGX2D6Xz+H1b5pZvDCuy4/Fur//18/FEz9FSF0w7uG1FnU*)
 (**)
-(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 512], Rational[1, 512]}, {-8.238932713621388*^-21, 8.153285712498936*^-21}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.2203545531351673`*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.2203545531351673`*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 512], Rational[1, 512]}, {-8.238932713621388*^-21, 8.153285712498936*^-21}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}],Graphics[Annotation[{{{{}, {}, Annotation[{Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]], Line[CompressedData["*)
+(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 512], Rational[1, 512]}, {-8.238932713621388*^-21, 8.153285712498936*^-21}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.2203545531351678`*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.2203545531351678`*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 512], Rational[1, 512]}, {-8.238932713621388*^-21, 8.153285712498936*^-21}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}],Graphics[Annotation[{{{{}, {}, Annotation[{Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]], Line[CompressedData["*)
 (*1:eJwB4QQe+yFib1JlAgAAAE0AAAACAAAALj8W6v//T7/jsyQtg25fu2/5I4j5*)
 (*+k+/QujRNJEVXruwszEm8/VPv5BgMgJ7QGW7MihNYubrT7/hneCOmBBluzcR*)
 (*hNrM10+/oLdSNSxMYLtA4/HKma9Pv+1wmOAE81u7UofNqzNfT78vyM5q7NFZ*)
@@ -398,7 +399,7 @@
 (*3u2nhl67UJjYvoHpTz/HIQhoNR9fuwgCqEkh708/LiSX4/kqY7u/a3fUwPRP*)
 (*P8PB3m7KAWa7dtVGX2D6Tz91GaX9kKhjuy4/Fur//08/47MkLYNuX7vDLjqD*)
 (**)
-(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 1024], Rational[1, 1024]}, {-1.4563007772160165`*^-22, 1.5101885787122222`*^-22}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.2204444281445765`*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.2204444281445765`*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 1024], Rational[1, 1024]}, {-1.4563007772160165`*^-22, 1.5101885787122222`*^-22}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}],Graphics[Annotation[{{{{}, {}, Annotation[{Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]], Line[CompressedData["*)
+(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 1024], Rational[1, 1024]}, {-1.4563007772160165`*^-22, 1.5101885787122225`*^-22}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.2204444281445768`*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.2204444281445768`*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 1024], Rational[1, 1024]}, {-1.4563007772160165`*^-22, 1.5101885787122225`*^-22}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}],Graphics[Annotation[{{{{}, {}, Annotation[{Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]], Line[CompressedData["*)
 (*1:eJwB4QQe+yFib1JlAgAAAE0AAAACAAAALj8W6v//P7/D7Tazyb7VOm/5I4j5*)
 (*+j+/S+q1NCwpAzuwszEm8/U/v8ICzNvIUCO7MihNYubrP79uN8qUOykSOzcR*)
 (*hNrM1z+/Ove30qzo57pA4/HKma8/v1yoZL51aga7UofNqzNfP79UbSBfqbsP*)
@@ -428,7 +429,7 @@
 (*wPjbvxy7UJjYvoHpPz+zv3ZSvhkJuwgCqEkh7z8/0LqhhyqfCDu/a3fUwPQ/*)
 (*P6P9wy9fxRm7dtVGX2D6Pz8bfJkvpdgiuy4/Fur//z8/w+02s8m+1TqjLE0T*)
 (**)
-(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 2048], Rational[1, 2048]}, {-7.98873038582587*^-24, 7.165015235367508*^-24}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.2204459609442666`*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.2204459609442666`*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 2048], Rational[1, 2048]}, {-7.98873038582587*^-24, 7.165015235367508*^-24}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}],Graphics[Annotation[{{{{}, {}, Annotation[{Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]], Line[CompressedData["*)
+(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 2048], Rational[1, 2048]}, {-7.98873038582587*^-24, 7.165015235367508*^-24}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.220445960944266*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.220445960944266*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 2048], Rational[1, 2048]}, {-7.98873038582587*^-24, 7.165015235367508*^-24}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}],Graphics[Annotation[{{{{}, {}, Annotation[{Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]], Line[CompressedData["*)
 (*1:eJwB4QQe+yFib1JlAgAAAE0AAAACAAAALj8W6v//L7+uHPlqbyHxOm/5I4j5*)
 (*+i+/zLYyDyUA+zqwszEm8/Uvv4Y04uzuF/w6MihNYubrL78NhKq3jU7SOjcR*)
 (*hNrM1y+/S25ej99j57pA4/HKma8vv1p2eIB9zsq6UofNqzNfL78Aj7z0EZzq*)
@@ -458,7 +459,7 @@
 (*qMV/TO66UJjYvoHpLz9nYXh2RfvMOggCqEkh7y8/QoHZmwjf+Dq/a3fUwPQv*)
 (*P5aAtWoYycC6dtVGX2D6Lz8af+kV+oHiOi4/Fur//y8/rhz5am8h8TrCmGVO*)
 (**)
-(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 4096], Rational[1, 4096]}, {-1.1666161206489614`*^-24, 1.6015381522847428`*^-24}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.2204460360462934`*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.2204460360462934`*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 4096], Rational[1, 4096]}, {-1.1666161206489614`*^-24, 1.6015381522847428`*^-24}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}]}*)
+(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 4096], Rational[1, 4096]}, {-1.1666161206489617`*^-24, 1.6015381522847427`*^-24}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.2204460360462934`*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.2204460360462934`*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 4096], Rational[1, 4096]}, {-1.1666161206489617`*^-24, 1.6015381522847427`*^-24}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}]}*)
 
 
 (* ::Text:: *)
@@ -558,7 +559,7 @@
 (*5E3cyjs7UJjYvoHpfz+OvX/23x89OwgCqEkh738/E4OKGODOPTu/a3fUwPR/*)
 (*PymC/UmGfj47dtVGX2D6fz8om0m+2i8/Oy4/Fur//38/DLuMBJvnPzsyX06a*)
 (**)
-(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 128], Rational[1, 128]}, {-2.6369985773252234`*^-23, 2.6390956844366166`*^-23}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.2204457562388255`*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.2204457562388255`*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 128], Rational[1, 128]}, {-2.6369985773252234`*^-23, 2.6390956844366166`*^-23}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}],Graphics[Annotation[{{{{}, {}, Annotation[{Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]], Line[CompressedData["*)
+(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 128], Rational[1, 128]}, {-2.636998577325223*^-23, 2.6390956844366163`*^-23}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.220445756238825*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.220445756238825*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 128], Rational[1, 128]}, {-2.636998577325223*^-23, 2.6390956844366163`*^-23}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}],Graphics[Annotation[{{{{}, {}, Annotation[{Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]], Line[CompressedData["*)
 (*1:eJwB4QQe+yFib1JlAgAAAE0AAAACAAAALj8W6v//b78WrP4NfgnAOm/5I4j5*)
 (*+m+/ajg/nJpFvzqwszEm8/Vvvyjj2ZPtuL46MihNYubrb7+womeSVG69OjcR*)
 (*hNrM12+/IJy+C+7FujpA4/HKma9vvwZzjzBbYLY6UofNqzNfb78MTSmceSas*)
@@ -588,7 +589,7 @@
 (*6GzfwLs6UJjYvoHpbz/8wOHE0+W8OggCqEkh728/zmWRTLuyvTq/a3fUwPRv*)
 (*PzMFnLIbbL46dtVGX2D6bz/CbEAkbge/Oi4/Fur//28/Fqz+DX4JwDqgZGWh*)
 (**)
-(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 256], Rational[1, 256]}, {-1.0280650589930651`*^-25, 1.0363719845969535`*^-25}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.220446048107562*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.220446048107562*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 256], Rational[1, 256]}, {-1.0280650589930651`*^-25, 1.0363719845969535`*^-25}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}]}*)
+(*"]]}, "Charting`Private`Tag#1"]}}, {}}, <|"HighlightElements" -> <|"Label" -> {"XYLabel"}, "Ball" -> {"InterpolatedBall"}|>, "LayoutOptions" -> <|"PanelPlotLayout" -> <||>, "PlotRange" -> {{Rational[-1, 256], Rational[1, 256]}, {-1.0280650589930652`*^-25, 1.0363719845969537`*^-25}}, "Frame" -> {{False, False}, {False, False}}, "AxesOrigin" -> {0, 2.220446048107562*^-16}, "ImageSize" -> {360, 360/GoldenRatio}, "Axes" -> {True, True}, "LabelStyle" -> {}, "AspectRatio" -> GoldenRatio^(-1), "DefaultStyle" -> {Directive[Opacity[1.], RGBColor[0.368417, 0.506779, 0.709798], AbsoluteThickness[2]]}, "HighlightLabelingFunctions" -> <|"CoordinatesToolOptions" -> ({Identity[Part[#, 1]], Identity[Part[#, 2]]}& ), "ScalingFunctions" -> {{Identity, Identity}, {Identity, Identity}}|>, "Primitives" -> {}, "GCFlag" -> False|>, "Meta" -> <|"DefaultHighlight" -> {"Dynamic", None}, "Index" -> {}, "Function" -> Plot, "GroupHighlight" -> False|>|>, "DynamicHighlight"], AspectRatio -> GoldenRatio^(-1), Axes -> {True, True}, AxesLabel -> {None, None}, AxesOrigin -> {0, 2.220446048107562*^-16}, DisplayFunction -> Identity, Frame -> {{False, False}, {False, False}}, FrameLabel -> {{None, None}, {None, None}}, FrameTicks -> {{Automatic, Automatic}, {Automatic, Automatic}}, GridLines -> {None, None}, GridLinesStyle -> Directive[GrayLevel[0.5, 0.4]], ImagePadding -> All, Method -> {"DefaultBoundaryStyle" -> Automatic, "DefaultGraphicsInteraction" -> {"Version" -> 1.2, "TrackMousePosition" -> {True, False}, "Effects" -> {"Highlight" -> {"ratio" -> 2}, "HighlightPoint" -> {"ratio" -> 2}, "Droplines" -> {"freeformCursorMode" -> True, "placement" -> {"x" -> "All", "y" -> "None"}}}}, "DefaultMeshStyle" -> AbsolutePointSize[6], "ScalingFunctions" -> None, "CoordinatesToolOptions" -> {"DisplayFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& ), "CopiedValueFunction" -> ({(Identity[#]& )[Part[#, 1]], (Identity[#]& )[Part[#, 2]]}& )}}, PlotRange -> {{Rational[-1, 256], Rational[1, 256]}, {-1.0280650589930652`*^-25, 1.0363719845969537`*^-25}}, PlotRangeClipping -> True, PlotRangePadding -> {{Scaled[0.02], Scaled[0.02]}, {Scaled[0.05], Scaled[0.05]}}, Ticks -> {Automatic, Automatic}]}*)
 
 
 (* ::Text:: *)
@@ -638,6 +639,10 @@
 
 
 (* ::Input:: *)
+(*{a3,a4,a5}={1/3!,1/4!,1/5!}*)
+
+
+(* ::Input:: *)
 (*machineEvaluateInterval[szHMax]//bounds//N*)
 
 
@@ -650,15 +655,7 @@
 
 
 (* ::Input:: *)
-(*a5=1/5!;*)
-
-
-(* ::Input:: *)
 (*machineEvaluateInterval[a5 szHMax^2]//bounds//N*)
-
-
-(* ::Input:: *)
-(*a3=1/3!;*)
 
 
 (* ::Input:: *)
@@ -670,7 +667,7 @@
 
 
 (* ::Input:: *)
-(*a4=1/4!;*)
+(*machineEvaluateInterval[h^3(a5 h^2-a3)]/.h->szHMax//bounds//N*)
 
 
 (* ::Input:: *)
@@ -683,6 +680,42 @@
 
 (* ::Input:: *)
 (*machineEvaluateInterval[szHMax^2(a4 szHMax^2-1/2)]//bounds//N*)
+
+
+(* ::Input:: *)
+(*machineEvaluateInterval[h^2(a4 h^2-1/2)]/.h->szHMax//bounds//N*)
+
+
+(* ::Input:: *)
+(*Cos[{1/2,1}]//N*)
+
+
+(* ::Input:: *)
+(*Sin[{1/2,1}]//N*)
+
+
+(* ::Input:: *)
+(*c0=Interval[{Cos[1/2],Cos[1]}]*)
+
+
+(* ::Input:: *)
+(*machineEvaluateInterval[c0(szHMax^3(a5 szHMax^2-a3))]//bounds//N*)
+
+
+(* ::Input:: *)
+(*s0=Interval[{Sin[1/2],Sin[1]}]*)
+
+
+(* ::Input:: *)
+(*machineEvaluateInterval[s0(szHMax^2(a4 szHMax^2-1/2))]//bounds//N*)
+
+
+(* ::Input:: *)
+(*machineEvaluateInterval[c0(szHMax^3(a5 szHMax^2-a3))+s0(szHMax^2(a4 szHMax^2-1/2))]//bounds//N*)
+
+
+(* ::Input:: *)
+(*machineEvaluateInterval[c0(h^3(a5 h^2-a3))+s0(h^2(a4 h^2-1/2))]/.h->szHMax//bounds//N*)
 
 
 (* ::Section::Closed:: *)
