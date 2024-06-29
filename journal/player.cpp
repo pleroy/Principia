@@ -102,8 +102,8 @@ bool Player::Process(std::unique_ptr<serialization::Method> method_in,
       << method_in->ShortDebugString() << "\n"
       << method_out_return->ShortDebugString();
 #endif
-#if 0
-  LOG_IF(ERROR, index > 3170000) << "index: " << index << "\n"
+#if 1
+  LOG_IF(ERROR, index > 58889025 - 50) << "index: " << index << "\n"
                                  << method_in->ShortDebugString() << "\n"
                                  << method_out_return->ShortDebugString();
 #endif
