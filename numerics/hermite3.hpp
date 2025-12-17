@@ -74,7 +74,9 @@ class Hermite3 final {
   Value a0_;
   Derivative1 a1_;
   Derivative2 a2_;
+  Derivative2 two_a2_;
   Derivative3 a3_;
+  Derivative3 three_a3_;
 };
 
 }  // namespace internal

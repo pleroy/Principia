@@ -6,6 +6,8 @@
 #include <utility>
 #include <vector>
 
+#include "numerics/elementary_functions.hpp"
+#include "numerics/fma.hpp"
 #include "numerics/root_finders.hpp"
 
 namespace principia {
@@ -13,6 +15,8 @@ namespace numerics {
 namespace _hermite3 {
 namespace internal {
 
+using namespace principia::numerics::_elementary_functions;
+using namespace principia::numerics::_fma;
 using namespace principia::numerics::_root_finders;
 
 template<typename Value_, typename Argument_>
@@ -31,7 +35,9 @@ Hermite3<Value_, Argument_>::Hermite3(
       values.first == values.second &&
       derivatives.first == derivatives.second) {
     a2_ = {};
+    two_a2_ = {};
     a3_ = {};
+    three_a3_ = {};
     return;
   }
   auto const one_over_Δargument = 1.0 / Δargument;
@@ -41,14 +47,23 @@ Hermite3<Value_, Argument_>::Hermite3(
   Difference<Value> const Δvalue = values.second - values.first;
   a2_ = 3.0 * Δvalue * one_over_Δargument² -
             (2.0 * derivatives.first + derivatives.second) * one_over_Δargument;
+  two_a2_ = 2.0 * a2_;
   a3_ = -2.0 * Δvalue * one_over_Δargument³ +
             (derivatives.first + derivatives.second) * one_over_Δargument²;
+  three_a3_ = 3.0 * a3_;
 }
 
 template<typename Value_, typename Argument_>
 Value_ Hermite3<Value_, Argument_>::Evaluate(Argument const& argument) const {
   Difference<Argument> const Δargument = argument - arguments_.first;
-  return (((a3_ * Δargument + a2_) * Δargument) + a1_) * Δargument + a0_;
+  if (CanUseHardwareFMA) {
+    return FusedMultiplyAdd(
+        FusedMultiplyAdd(FusedMultiplyAdd(a3_, Δargument, a2_), Δargument, a1_),
+        Δargument,
+        a0_);
+  } else {
+    return (((a3_ * Δargument + a2_) * Δargument) + a1_) * Δargument + a0_;
+  }
 }
 
 template<typename Value_, typename Argument_>
@@ -56,7 +71,12 @@ typename Hermite3<Value_, Argument_>::Derivative1
 Hermite3<Value_, Argument_>::
 EvaluateDerivative(Argument const& argument) const {
   Difference<Argument> const Δargument = argument - arguments_.first;
-  return ((3.0 * a3_ * Δargument + 2.0 * a2_) * Δargument) + a1_;
+  if (CanUseHardwareFMA) {
+    return FusedMultiplyAdd(
+        FusedMultiplyAdd(three_a3_, Δargument, two_a2_), Δargument, a1_);
+  } else {
+    return ((three_a3_ * Δargument + two_a2_) * Δargument) + a1_;
+  }
 }
 
 template<typename Value_, typename Argument_>
