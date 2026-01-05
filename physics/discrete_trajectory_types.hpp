@@ -39,6 +39,7 @@ struct value_type {
              DegreesOfFreedom<Frame> const& degrees_of_freedom);
   Instant time;
   DegreesOfFreedom<Frame> degrees_of_freedom;
+  Time one_over_Δt = NaN<Time>;
 };
 
 struct Earlier {

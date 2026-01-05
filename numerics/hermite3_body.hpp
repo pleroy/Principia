@@ -17,10 +17,22 @@ using namespace principia::numerics::_root_finders;
 
 template<affine Value_, affine Argument_>
 Hermite3<Value_, Argument_>::Hermite3(
+    Inverse<Difference<Argument>> const& one_over_Δargument,
     std::pair<Argument, Argument> const& arguments,
     std::pair<Value, Value> const& values,
     std::pair<Derivative1, Derivative1> const& derivatives)
-    : p_(MakePolynomial(arguments, values, derivatives)),
+    : p_(MakePolynomial(one_over_Δargument, arguments, values, derivatives)),
+      pʹ_(p_.Derivative()) {}
+
+template<affine Value_, affine Argument_>
+Hermite3<Value_, Argument_>::Hermite3(
+    std::pair<Argument, Argument> const& arguments,
+    std::pair<Value, Value> const& values,
+    std::pair<Derivative1, Derivative1> const& derivatives)
+    : p_(MakePolynomial(1.0 / (arguments.second - arguments.first),
+                        arguments,
+                        values,
+                        derivatives)),
       pʹ_(p_.Derivative()) {}
 
 template<affine Value_, affine Argument_>
@@ -92,6 +104,7 @@ template<affine Value_, affine Argument_>
 FORCE_INLINE(inline)
 PolynomialInMonomialBasis<Value_, Argument_, 3>
 Hermite3<Value_, Argument_>::MakePolynomial(
+    Inverse<Difference<Argument>> const& one_over_Δargument,
     std::pair<Argument, Argument> const& arguments,
     std::pair<Value, Value> const& values,
     std::pair<Derivative1, Derivative1> const& derivatives) {
@@ -110,7 +123,6 @@ Hermite3<Value_, Argument_>::MakePolynomial(
   if (Δargument != Difference<Argument>{} ||
       values.first != values.second ||
       derivatives.first != derivatives.second) {
-    auto const one_over_Δargument = 1.0 / Δargument;
     auto const one_over_Δargument² = one_over_Δargument * one_over_Δargument;
     auto const one_over_Δargument³ = one_over_Δargument * one_over_Δargument²;
     Difference<Value> const Δvalue = values.second - values.first;
