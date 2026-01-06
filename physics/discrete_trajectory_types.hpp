@@ -1,11 +1,13 @@
 #pragma once
 
 #include <list>
+#include <tuple>
 
 #include "absl/container/btree_set.h"
 #include "base/macros.hpp"  // 🧙 For forward declarations.
 #include "geometry/instant.hpp"
 #include "physics/degrees_of_freedom.hpp"
+#include "quantities/named_quantities.hpp"
 #include "quantities/quantities.hpp"
 
 // An internal header to avoid replicating data structures in multiple places.
@@ -23,6 +25,7 @@ namespace internal {
 
 using namespace principia::geometry::_instant;
 using namespace principia::physics::_degrees_of_freedom;
+using namespace principia::quantities::_named_quantities;
 using namespace principia::quantities::_quantities;
 
 // `max_dense_intervals` is the maximal number of dense intervals before
@@ -39,7 +42,11 @@ struct value_type {
              DegreesOfFreedom<Frame> const& degrees_of_freedom);
   Instant time;
   DegreesOfFreedom<Frame> degrees_of_freedom;
-  Time one_over_Δt = NaN<Time>;
+  Frequency one_over_Δt;
+
+  // Support for structured bindings of `time` and `degrees_of_freedom`.
+  template<std::size_t i, typename Self>
+  constexpr auto&& get(this Self&& self);
 };
 
 struct Earlier {
@@ -71,5 +78,23 @@ using internal::Timeline;
 }  // namespace _discrete_trajectory_types
 }  // namespace physics
 }  // namespace principia
+
+namespace std {
+
+template<typename Frame>
+struct tuple_size<
+    principia::physics::_discrete_trajectory_types::internal::value_type<Frame>>
+    : std::integral_constant<std::size_t, 2> {};
+
+template<std::size_t i, typename Frame>
+struct tuple_element<
+    i,
+    principia::physics::_discrete_trajectory_types::internal::value_type<Frame>>
+    : tuple_element<i,
+                    tuple<principia::geometry::_instant::Instant,
+                          principia::physics::_degrees_of_freedom::
+                              DegreesOfFreedom<Frame>>> {};
+
+}  // namespace std
 
 #include "physics/discrete_trajectory_types_body.hpp"
