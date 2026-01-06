@@ -42,7 +42,7 @@ struct value_type {
              DegreesOfFreedom<Frame> const& degrees_of_freedom);
   Instant time;
   DegreesOfFreedom<Frame> degrees_of_freedom;
-  Frequency one_over_Δt;
+  Frequency one_over_Δt = NaN<Frequency>;
 
   // Support for structured bindings of `time` and `degrees_of_freedom`.
   template<std::size_t i, typename Self>

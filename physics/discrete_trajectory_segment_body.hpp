@@ -423,9 +423,14 @@ absl::Status DiscreteTrajectorySegment<Frame>::Append(
   auto it = timeline_.emplace_hint(timeline_.cend(),
                                    t,
                                    degrees_of_freedom);
-  CHECK(++it == timeline_.end())
+  CHECK(std::next(it) == timeline_.end())
       << "Append out of order at " << t << ", last time is "
       << timeline_.crbegin()->time;
+
+  if (it != timeline_.begin()) {
+    auto const prev = std::prev(it);
+    it->one_over_Δt = 1.0 / (t - prev->time);
+  }
 
   if (downsampling_parameters_.has_value()) {
     return DownsampleIfNeeded();
@@ -578,13 +583,11 @@ DiscreteTrajectorySegment<Frame>::GetInterpolation(
     typename Timeline::const_iterator const upper) const {
   CHECK(upper != timeline_.cbegin());
   auto const lower = std::prev(upper);
-  auto const& [lower_time, lower_degrees_of_freedom, _] = *lower;
-  auto& [upper_time, upper_degrees_of_freedom, upper_one_over_Δt] = *upper;
-  if (upper_one_over_Δt != upper_one_over_Δt) {
-    upper_one_over_Δt = 1.0 / (upper_time - lower_time);
-  }
+  auto const& [lower_time, lower_degrees_of_freedom] = *lower;
+  auto const& [upper_time, upper_degrees_of_freedom] = *upper;
+  auto const& one_over_Δt = upper->one_over_Δt;
   return Hermite3<Position<Frame>, Instant>{
-      upper_one_over_Δt,
+      one_over_Δt,
       {lower_time, upper_time},
       {lower_degrees_of_freedom.position(),
        upper_degrees_of_freedom.position()},
