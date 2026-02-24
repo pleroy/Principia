@@ -34,6 +34,8 @@ constexpr int divisions = 8;
 template<typename Value>
 using QV = std::array<DirectSum<Value, Variation<Value>>, divisions + 1>;
 
+using C = DirectSum<double, Time>;
+
 // A helper to unroll the dot product between an array-like object (which must
 // have an operator[]) and a `QV`.
 template<int index = 2 * divisions + 1>
@@ -52,26 +54,26 @@ template<int index>
 template<typename Left, typename RightElement>
 RightElement DotProduct<index>::Compute(Left const& left,
                                         QV<RightElement> const& right) {
-  return left[index] * right[index] +
+  return InnerProduct(left[index], right[index]) +
          DotProduct<index - 1>::Compute(left, right);
 }
 
 template<typename Left, typename RightElement>
 RightElement DotProduct<0>::Compute(Left const& left,
                                     QV<RightElement> const& right) {
-  return left[0] * right[0];
+  return InnerProduct(left[0], right[0]);
 }
 
 // Fills `result` (which must be array-like) with the result of multiplying a
 // matrix with a `QV`.
 template<int degree, typename RightElement, typename Result>
-void Multiply(FixedMatrix<double, degree + 1, 2 * divisions + 2> const& left,
+void Multiply(FixedMatrix<C, degree + 1, divisions + 1> const& left,
               QV<RightElement> const& right,
               Result& result) {
   auto const* row = left.template row<0>();
   for (int i = 0; i < degree + 1; ++i) {
     result[i] = DotProduct<>::Compute(row, right);
-    row += 2 * divisions + 2;
+    row += divisions + 1;
   }
 }
 
