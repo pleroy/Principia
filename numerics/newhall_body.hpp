@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "geometry/barycentre_calculator.hpp"
+#include "geometry/direct_sum.hpp"
 #include "glog/logging.h"
 #include "numerics/fixed_arrays.hpp"
 #include "numerics/newhall_matrices.mathematica.h"
@@ -17,6 +18,7 @@ namespace _newhall {
 namespace internal {
 
 using namespace principia::geometry::_barycentre_calculator;
+using namespace principia::geometry::_direct_sum;
 using namespace principia::numerics::_fixed_arrays;
 using namespace principia::numerics::_newhall_matrices;
 using namespace principia::quantities::_quantities;
@@ -28,8 +30,9 @@ constexpr int divisions = 8;
 // displacements) and velocities.  However, this would require giving dimensions
 // to the derivatives of the Чебышёв polynomials.  Let's no go there, let's do a
 // bit of type decay instead.
+//TODO(phl)Comments
 template<typename Value>
-using QV = std::array<Value, 2 * divisions + 2>;
+using QV = std::array<DirectSum<Value, Variation<Value>>, divisions + 1>;
 
 // A helper to unroll the dot product between an array-like object (which must
 // have an operator[]) and a `QV`.
@@ -243,11 +246,10 @@ NewhallApproximationInЧебышёвBasis(std::vector<Value> const& q,
   // Tricky.  The order in Newhall's matrices is such that the entries for the
   // largest time occur first.
   QV<Value> qv;
-  for (int i = 0, j = 2 * divisions;
+  for (std::int64_t i = 0, j = divisions;
        i < divisions + 1 && j >= 0;
-       ++i, j -= 2) {
-    qv[j] = q[i];
-    qv[j + 1] = v[i] * duration_over_two;
+       ++i, --j) {
+    qv[j] = {q[i], v[i]};
   }
 
   auto const coefficients =
@@ -313,11 +315,10 @@ NewhallApproximationInMonomialBasis(std::vector<Value> const& q,
   // Tricky.  The order in Newhall's matrices is such that the entries for the
   // largest time occur first.
   QV<Difference<Value>> qv;
-  for (int i = 0, j = 2 * divisions;
+  for (std::int64_t i = 0, j = divisions;
        i < divisions + 1 && j >= 0;
-       ++i, j -= 2) {
-    qv[j] = q[i] - origin;
-    qv[j + 1] = v[i] * duration_over_two;
+       ++i, --j) {
+    qv[j] = {q[i] - origin, v[i]};
   }
 
   Instant const t_mid = Barycentre({t_min, t_max});
