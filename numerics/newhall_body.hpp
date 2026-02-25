@@ -246,13 +246,13 @@ PRINCIPIA_NEWHALL_MONOMIAL_APPROXIMATOR_SPECIALIZATION(17);
 
 template<typename Value, int degree>
 PolynomialInЧебышёвBasis<Value, Instant, degree>
-NewhallApproximationInЧебышёвBasis(std::vector<Value> const& q,
-                                   std::vector<Variation<Value>> const& v,
+NewhallApproximationInЧебышёвBasis(std::vector<Value> const& qs,
+                                   std::vector<Variation<Value>> const& vs,
                                    Instant const& t_min,
                                    Instant const& t_max,
                                    Value& error_estimate) {
-  CHECK_EQ(divisions + 1, q.size());
-  CHECK_EQ(divisions + 1, v.size());
+  CHECK_EQ(divisions + 1, qs.size());
+  CHECK_EQ(divisions + 1, vs.size());
 
   // Tricky.  The order in Newhall's matrices is such that the entries for the
   // largest time occur first.
@@ -260,7 +260,7 @@ NewhallApproximationInЧебышёвBasis(std::vector<Value> const& q,
   for (std::int64_t i = 0, j = divisions;
        i < divisions + 1 && j >= 0;
        ++i, --j) {
-    qvs[j] = {q[i], v[i]};
+    qvs[j] = {qs[i], vs[i]};
   }
 
   auto const coefficients =
@@ -275,13 +275,13 @@ NewhallApproximationInЧебышёвBasis(std::vector<Value> const& q,
     return make_not_null_unique<                                      \
         PolynomialInЧебышёвBasis<Value, Instant, (degree)>>(          \
         NewhallApproximationInЧебышёвBasis<Value, (degree)>(          \
-            q, v, t_min, t_max, error_estimate))
+            qs, vs, t_min, t_max, error_estimate))
 
 template<typename Value>
 not_null<std::unique_ptr<PolynomialInЧебышёвBasis<Value, Instant>>>
 NewhallApproximationInЧебышёвBasis(int degree,
-                                   std::vector<Value> const& q,
-                                   std::vector<Variation<Value>> const& v,
+                                   std::vector<Value> const& qs,
+                                   std::vector<Variation<Value>> const& vs,
                                    Instant const& t_min,
                                    Instant const& t_max,
                                    Value& error_estimate) {
@@ -312,13 +312,13 @@ NewhallApproximationInЧебышёвBasis(int degree,
 template<typename Value, int degree,
          template<typename, typename, int> typename Evaluator>
 PolynomialInMonomialBasis<Value, Instant, degree, Evaluator>
-NewhallApproximationInMonomialBasis(std::vector<Value> const& q,
-                                    std::vector<Variation<Value>> const& v,
+NewhallApproximationInMonomialBasis(std::vector<Value> const& qs,
+                                    std::vector<Variation<Value>> const& vs,
                                     Instant const& t_min,
                                     Instant const& t_max,
                                     Difference<Value>& error_estimate) {
-  CHECK_EQ(divisions + 1, q.size());
-  CHECK_EQ(divisions + 1, v.size());
+  CHECK_EQ(divisions + 1, qs.size());
+  CHECK_EQ(divisions + 1, vs.size());
 
   Value const origin{};
   Time const duration_over_two = 0.5 * (t_max - t_min);
@@ -329,7 +329,7 @@ NewhallApproximationInMonomialBasis(std::vector<Value> const& q,
   for (std::int64_t i = 0, j = divisions;
        i < divisions + 1 && j >= 0;
        ++i, --j) {
-    qvs[j] = {q[i] - origin, v[i]};
+    qvs[j] = {qs[i] - origin, vs[i]};
   }
 
   Instant const t_mid = Barycentre({t_min, t_max});
@@ -346,13 +346,13 @@ NewhallApproximationInMonomialBasis(std::vector<Value> const& q,
         NewhallApproximationInMonomialBasis<Value,                     \
                                             (degree),                  \
                                             DefaultEvaluator>(         \
-            q, v, t_min, t_max, error_estimate))
+            qs, vs, t_min, t_max, error_estimate))
 
 template<typename Value>
 not_null<std::unique_ptr<Polynomial<Value, Instant>>>
 NewhallApproximationInMonomialBasis(int degree,
-                                    std::vector<Value> const& q,
-                                    std::vector<Variation<Value>> const& v,
+                                    std::vector<Value> const& qs,
+                                    std::vector<Variation<Value>> const& vs,
                                     Instant const& t_min,
                                     Instant const& t_max,
                                     Policy const& policy,
