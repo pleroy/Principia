@@ -32,43 +32,54 @@ constexpr int divisions = 8;
 // bit of type decay instead.
 //TODO(phl)Comments
 template<typename Value>
-using QV = std::array<DirectSum<Value, Variation<Value>>, divisions + 1>;
+using QV = DirectSum<Value, Variation<Value>>;
+
+template<typename Value>
+using QVs = std::array<QV<Value>, divisions + 1>;
 
 using C = DirectSum<double, Time>;
 
+template<typename Value>
+Value operator*(C const& c, QV<Value> const& qv) {
+  auto const& [λ, τ] = c;
+  auto const& [q, v] = qv;
+  return λ * q + τ * v;
+}
+
 // A helper to unroll the dot product between an array-like object (which must
-// have an operator[]) and a `QV`.
+// have an operator[]) and a `QVs`.
+//TODO(phl)use for_all_of
 template<int index = 2 * divisions + 1>
 struct DotProduct {
   template<typename Left, typename RightElement>
-  static RightElement Compute(Left const& left, QV<RightElement> const& right);
+  static RightElement Compute(Left const& left, QVs<RightElement> const& right);
 };
 
 template<>
 struct DotProduct<0> {
   template<typename Left, typename RightElement>
-  static RightElement Compute(Left const& left, QV<RightElement> const& right);
+  static RightElement Compute(Left const& left, QVs<RightElement> const& right);
 };
 
 template<int index>
 template<typename Left, typename RightElement>
 RightElement DotProduct<index>::Compute(Left const& left,
-                                        QV<RightElement> const& right) {
-  return InnerProduct(left[index], right[index]) +
+                                        QVs<RightElement> const& right) {
+  return left[index] * right[index] +
          DotProduct<index - 1>::Compute(left, right);
 }
 
 template<typename Left, typename RightElement>
 RightElement DotProduct<0>::Compute(Left const& left,
-                                    QV<RightElement> const& right) {
-  return InnerProduct(left[0], right[0]);
+                                    QVs<RightElement> const& right) {
+  return left[0] * right[0];
 }
 
 // Fills `result` (which must be array-like) with the result of multiplying a
-// matrix with a `QV`.
+// matrix with a `QVs`.
 template<int degree, typename RightElement, typename Result>
 void Multiply(FixedMatrix<C, degree + 1, divisions + 1> const& left,
-              QV<RightElement> const& right,
+              QVs<RightElement> const& right,
               Result& result) {
   auto const* row = left.template row<0>();
   for (int i = 0; i < degree + 1; ++i) {
@@ -150,14 +161,14 @@ Convert(std::array<Value, degree + 1> const& homogeneous_coefficients,
 template<typename Value, int degree>
 struct NewhallЧебышёвApproximator {
   static std::array<Value, degree + 1> HomogeneousCoefficients(
-      QV<Value> const& qv,
+      QVs<Value> const& qvs,
       Value& error_estimate);
 };
 
 template<typename Value, int degree>
 struct NewhallMonomialApproximator {
   static std::array<Value, degree + 1> HomogeneousCoefficients(
-      QV<Value> const& qv,
+      QVs<Value> const& qvs,
       Value& error_estimate);
 };
 
@@ -165,12 +176,12 @@ struct NewhallMonomialApproximator {
   template<typename Value>                                            \
   struct NewhallЧебышёвApproximator<Value, (degree)> {                \
     static std::array<Value, (degree) + 1> HomogeneousCoefficients(   \
-        QV<Value> const& qv,                                          \
+        QVs<Value> const& qvs,                                        \
         Value& error_estimate) {                                      \
       std::array<Value, degree + 1> result;                           \
       Multiply<(degree)>(                                             \
           newhall_c_matrix_чебышёв_degree_##degree##_divisions_8_w04, \
-          qv,                                                         \
+          qvs,                                                        \
           result);                                                    \
       error_estimate = result[degree];                                \
       return result;                                                  \
@@ -183,16 +194,16 @@ struct NewhallMonomialApproximator {
   template<typename Value>                                             \
   struct NewhallMonomialApproximator<Value, (degree)> {                \
     static std::array<Value, (degree) + 1> HomogeneousCoefficients(    \
-        QV<Value> const& qv,                                           \
+        QVs<Value> const& qvs,                                         \
         Value& error_estimate) {                                       \
       error_estimate = DotProduct<>::Compute(                          \
           newhall_c_matrix_чебышёв_degree_##degree##_divisions_8_w04   \
               .row<(degree)>(),                                        \
-          qv);                                                         \
+          qvs);                                                        \
       std::array<Value, (degree) + 1> result;                          \
       Multiply<(degree)>(                                              \
           newhall_c_matrix_monomial_degree_##degree##_divisions_8_w04, \
-          qv,                                                          \
+          qvs,                                                         \
           result);                                                     \
       return result;                                                   \
     }                                                                  \
@@ -243,20 +254,18 @@ NewhallApproximationInЧебышёвBasis(std::vector<Value> const& q,
   CHECK_EQ(divisions + 1, q.size());
   CHECK_EQ(divisions + 1, v.size());
 
-  Time const duration_over_two = 0.5 * (t_max - t_min);
-
   // Tricky.  The order in Newhall's matrices is such that the entries for the
   // largest time occur first.
-  QV<Value> qv;
+  QVs<Value> qvs;
   for (std::int64_t i = 0, j = divisions;
        i < divisions + 1 && j >= 0;
        ++i, --j) {
-    qv[j] = {q[i], v[i]};
+    qvs[j] = {q[i], v[i]};
   }
 
   auto const coefficients =
       NewhallЧебышёвApproximator<Difference<Value>, degree>::
-          HomogeneousCoefficients(qv, error_estimate);
+          HomogeneousCoefficients(qvs, error_estimate);
   return PolynomialInЧебышёвBasis<Value, Instant, degree>(
       coefficients, t_min, t_max);
 }
@@ -316,17 +325,17 @@ NewhallApproximationInMonomialBasis(std::vector<Value> const& q,
 
   // Tricky.  The order in Newhall's matrices is such that the entries for the
   // largest time occur first.
-  QV<Difference<Value>> qv;
+  QVs<Difference<Value>> qvs;
   for (std::int64_t i = 0, j = divisions;
        i < divisions + 1 && j >= 0;
        ++i, --j) {
-    qv[j] = {q[i] - origin, v[i]};
+    qvs[j] = {q[i] - origin, v[i]};
   }
 
   Instant const t_mid = Barycentre({t_min, t_max});
   return origin + Dehomogeneize<Difference<Value>, degree, Evaluator>(
                       NewhallMonomialApproximator<Difference<Value>, degree>::
-                          HomogeneousCoefficients(qv, error_estimate),
+                          HomogeneousCoefficients(qvs, error_estimate),
                       /*scale=*/1.0 / duration_over_two,
                       t_mid);
 }
