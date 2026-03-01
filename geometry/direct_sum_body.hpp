@@ -28,8 +28,7 @@ class Uninitializer<T0, Ti...> {
   static constexpr std::tuple<T0, Ti...> Make() {
     if constexpr (uninitialized_constructible<T0>) {
       T0 const t0(uninitialized);
-      return std::tuple_cat(std::tie(t0),
-                            Uninitializer<Ti...>::Make());
+      return std::tuple_cat(std::tie(t0), Uninitializer<Ti...>::Make());
     } else {
       T0 t0;
       return std::tuple_cat(std::tie(t0), Uninitializer<Ti...>::Make());
@@ -39,10 +38,10 @@ class Uninitializer<T0, Ti...> {
 
 template<>
 class Uninitializer<> {
-  public:
-    static constexpr std::tuple<> Make() {
-      return {};
-    }
+ public:
+  static constexpr std::tuple<> Make() {
+    return {};
+  }
 };
 
 // TODO(phl): Technically this should forward to the constructor of each T that
