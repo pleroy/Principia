@@ -40,6 +40,46 @@ using World = Frame<serialization::Frame::TestTag,
                     Handedness::Right,
                     serialization::Frame::TEST>;
 
+// A helper type for counting constructions.  It must be an affine type.
+struct ConstructionCounter {
+  static std::int64_t initialized_count;
+  static std::int64_t uninitialized_count;
+
+  constexpr ConstructionCounter(uninitialized_t) {
+    ++uninitialized_count;
+  }
+
+  constexpr ConstructionCounter() {
+    ++initialized_count;
+  }
+
+  ConstructionCounter& operator+=(double) {
+    return *this;
+  };
+  ConstructionCounter& operator-=(double) {
+    return *this;
+  };
+};
+
+std::int64_t ConstructionCounter::initialized_count = 0;
+std::int64_t ConstructionCounter::uninitialized_count = 0;
+
+double operator-(ConstructionCounter const& left,
+                 ConstructionCounter const& right) {
+  return 0.0;
+}
+
+ConstructionCounter operator+(ConstructionCounter const& left, double right) {
+  return left;
+}
+
+ConstructionCounter operator-(ConstructionCounter const& left, double right) {
+  return left;
+}
+
+static_assert(affine<ConstructionCounter>);
+
+
 TEST(DirectSumTest, AlgebraConcepts) {
   static_assert(affine<DirectSum<std::byte*, double>>);
 
@@ -121,7 +161,12 @@ TEST(DirectSumTest, Constructors) {
 }
 
 TEST(DirectSumTest, UninitializedConstruction) {
-  DirectSum<double, Length> d(uninitialized);
+  DirectSum<double, Length, ConstructionCounter> d1(uninitialized);
+  EXPECT_EQ(0, ConstructionCounter::initialized_count);
+  EXPECT_EQ(1, ConstructionCounter::uninitialized_count);
+  DirectSum<double, Length, ConstructionCounter> d2;
+  EXPECT_EQ(1, ConstructionCounter::initialized_count);
+  EXPECT_EQ(1, ConstructionCounter::uninitialized_count);
 }
 
 TEST(DirectSumTest, UnaryPlus) {

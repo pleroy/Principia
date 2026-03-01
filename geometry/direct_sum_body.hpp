@@ -36,7 +36,7 @@ class Uninitializer<T0, Ti...> {
       return std::tuple_cat(std::tie(t0),
                             Uninitializer<Ti...>::Make());
     } else {
-      extern T0 const t0;
+      T0 t0;
       return std::tuple_cat(std::tie(t0), Uninitializer<Ti...>::Make());
     }
   }
