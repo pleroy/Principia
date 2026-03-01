@@ -45,7 +45,7 @@ struct ConstructionCounter {
   static std::int64_t initialized_count;
   static std::int64_t uninitialized_count;
 
-  constexpr ConstructionCounter(uninitialized_t) {
+  constexpr explicit ConstructionCounter(uninitialized_t) {
     ++uninitialized_count;
   }
 
