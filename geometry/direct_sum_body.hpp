@@ -44,8 +44,6 @@ class Uninitializer<> {
   }
 };
 
-// TODO(phl): Technically this should forward to the constructor of each T that
-// takes an uninitialized_t.
 template<affine... T>
 constexpr DirectSum<T...>::DirectSum(uninitialized_t)
     : tuple_(Uninitializer<T...>::Make()) {}
