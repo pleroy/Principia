@@ -19,10 +19,42 @@ namespace internal {
 using namespace principia::base::_for_all_of;
 using namespace principia::numerics::_elementary_functions;
 
+template<typename T>
+concept uninitialized_constructible = requires {
+  { T(uninitialized) } -> std::same_as<T>;
+};
+
+template<affine... T>
+class Uninitializer;
+
+template<affine T0, affine... Ti>
+class Uninitializer<T0, Ti...> {
+ public:
+  static constexpr std::tuple<T0, Ti...> Make() {
+    if constexpr (uninitialized_constructible<T0>) {
+      T0 const t0(uninitialized);
+      return std::tuple_cat(std::tie(t0),
+                            Uninitializer<Ti...>::Make());
+    } else {
+      extern T0 const t0;
+      return std::tuple_cat(std::tie(t0), Uninitializer<Ti...>::Make());
+    }
+  }
+};
+
+template<>
+class Uninitializer<> {
+  public:
+    static constexpr std::tuple<> Make() {
+      return {};
+    }
+};
+
 // TODO(phl): Technically this should forward to the constructor of each T that
 // takes an uninitialized_t.
 template<affine... T>
-constexpr DirectSum<T...>::DirectSum(uninitialized_t) {}
+constexpr DirectSum<T...>::DirectSum(uninitialized_t)
+    : tuple_(Uninitializer<T...>::Make()) {}
 
 template<affine... T>
 constexpr DirectSum<T...>::DirectSum(T const&... args) : tuple_(args...) {}

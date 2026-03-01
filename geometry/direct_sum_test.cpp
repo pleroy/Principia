@@ -4,6 +4,7 @@
 #include <tuple>
 
 #include "base/algebra.hpp"
+#include "base/tags.hpp"
 #include "geometry/frame.hpp"
 #include "geometry/grassmann.hpp"
 #include "geometry/hilbert.hpp"
@@ -20,6 +21,7 @@ namespace principia {
 namespace geometry {
 
 using namespace principia::base::_algebra;
+using namespace principia::base::_tags;
 using namespace principia::geometry::_direct_sum;
 using namespace principia::geometry::_frame;
 using namespace principia::geometry::_grassmann;
@@ -116,6 +118,10 @@ TEST(DirectSumTest, DegreesOfFreedomIsMerelyAffine) {
 TEST(DirectSumTest, Constructors) {
   EXPECT_EQ(DirectSum<double>(), DirectSum{0.0});
   EXPECT_EQ(DirectSum<Length>(), DirectSum{0 * Metre});
+}
+
+TEST(DirectSumTest, UninitializedConstruction) {
+  DirectSum<double, Length> d(uninitialized);
 }
 
 TEST(DirectSumTest, UnaryPlus) {
