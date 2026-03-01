@@ -19,11 +19,6 @@ namespace internal {
 using namespace principia::base::_for_all_of;
 using namespace principia::numerics::_elementary_functions;
 
-template<typename T>
-concept uninitialized_constructible = requires {
-  { T(uninitialized) } -> std::same_as<T>;
-};
-
 template<affine... T>
 class Uninitializer;
 

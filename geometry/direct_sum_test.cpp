@@ -162,9 +162,11 @@ TEST(DirectSumTest, Constructors) {
 
 TEST(DirectSumTest, UninitializedConstruction) {
   DirectSum<double, Length, ConstructionCounter> d1(uninitialized);
+  EXPECT_EQ(get<1>(d1), 0 * Metre);
   EXPECT_EQ(0, ConstructionCounter::initialized_count);
   EXPECT_EQ(1, ConstructionCounter::uninitialized_count);
   DirectSum<double, Length, ConstructionCounter> d2;
+  EXPECT_EQ(get<1>(d2), 0 * Metre);
   EXPECT_EQ(1, ConstructionCounter::initialized_count);
   EXPECT_EQ(1, ConstructionCounter::uninitialized_count);
 }
