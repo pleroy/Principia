@@ -4,6 +4,7 @@
 #include <list>
 #include <memory>
 #include <thread>
+#include <tuple>
 
 #include "absl/base/thread_annotations.h"
 #include "absl/container/btree_map.h"
@@ -21,7 +22,7 @@ namespace internal {
 // may be cancelled by `Cancel`) or with guaranteed execution (in which case
 // they cannot be cancelled and a handle is returned that makes it possible to
 // wait for the action to complete).
-template<typename Key>
+template<typename Key, typename... Parameters>
 class Reanimator {
   struct PendingRun;
   using Handle = std::shared_ptr<PendingRun>;
@@ -29,7 +30,7 @@ class Reanimator {
  public:
   // If `Action` takes a long time, it should use `RETURN_IF_STOPPED` to observe
   // stop requests.  At most one action is executing at any point in time.
-  using Action = std::function<absl::Status(Key const&)>;
+  using Action = std::function<absl::Status(Key const&, Parameters...)>;
 
   // At most one `ProgressCallback` is executed at any point in time.
   using ProgressCallback =
@@ -47,12 +48,12 @@ class Reanimator {
 
   // Queues a run of the action with the given `key`.  This run may never happen
   // if it is cancelled.
-  void RunBestEffort(Key const& key);
+  void RunBestEffort(Key const& key, Parameters... parameters);
 
   // Queues a run of the action with the given `key`.  This run is sure to
   // happen and the caller may use the returned handle to wait for its
   // completion.
-  Handle RunGuaranteed(Key const& key);
+  Handle RunGuaranteed(Key const& key, Parameters... parameters);
 
   // Cancels all the best-effort runs with a key strictly less than
   // `before_key`.  This may cancel the action being executed if it is
@@ -75,12 +76,13 @@ class Reanimator {
   // The description of a queued or executing run.  `done` is null iff the
   // run is best-effort.
   struct PendingRun {
+    std::tuple<Parameters...> parameters;
     std::unique_ptr<absl::Notification> done;
     absl::Status status;
   };
 
   // The execution loop, run on `jthread_`.
-  void RepeatedRunActions();
+  void RepeatedlyRunActions();
 
   // Construction parameter.
   Action const action_;

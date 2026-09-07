@@ -223,5 +223,35 @@ TEST_F(ReanimatorTest, WaitWithProgressCallback) {
   starter.join();
 }
 
+TEST_F(ReanimatorTest, Parameters) {
+  std::vector<int> keys;
+  std::vector<std::string> strings;
+  std::vector<bool> bools;
+  Reanimator<int, std::string, bool> reanimator(
+      [&bools, &keys, &strings](
+          int const key, std::string const& s, bool const b) {
+        keys.push_back(key);
+        strings.push_back(s);
+        bools.push_back(b);
+        return absl::OkStatus();
+      });
+
+  // Queue three runs.
+  auto const handle1 = reanimator.RunGuaranteed(1, "1", true);
+  reanimator.RunBestEffort(2, "2", false);
+  auto const handle3 = reanimator.RunGuaranteed(3, "3", true);
+
+  reanimator.Start();
+
+  EXPECT_OK(reanimator.Wait(handle1));
+  EXPECT_OK(reanimator.Wait(handle3));
+
+  reanimator.Stop();
+
+  EXPECT_THAT(keys, UnorderedElementsAre(3, 2, 1));
+  EXPECT_THAT(strings, UnorderedElementsAre("3", "2", "1"));
+  EXPECT_THAT(bools, UnorderedElementsAre(true, false, true));
+}
+
 }  // namespace base
 }  // namespace principia

@@ -16,19 +16,20 @@ namespace internal {
 
 using namespace principia::base::_stoppable_thread;
 
-template<typename Key>
-Reanimator<Key>::Reanimator(Action action) : action_(std::move(action)) {}
+template<typename Key, typename... Parameters>
+Reanimator<Key, Parameters...>::Reanimator(Action action)
+    : action_(std::move(action)) {}
 
-template<typename Key>
-void Reanimator<Key>::Start() {
+template<typename Key, typename... Parameters>
+void Reanimator<Key, Parameters...>::Start() {
   absl::MutexLock l(&jthread_lock_);
   if (!jthread_.joinable()) {
-    jthread_ = MakeStoppableThread([this]() { RepeatedRunActions(); });
+    jthread_ = MakeStoppableThread([this]() { RepeatedlyRunActions(); });
   }
 }
 
-template<typename Key>
-void Reanimator<Key>::Stop() {
+template<typename Key, typename... Parameters>
+void Reanimator<Key, Parameters...>::Stop() {
   absl::MutexLock l(&jthread_lock_);
 
   // Force the thread to exit once all the queued actions have been executed.
@@ -46,33 +47,38 @@ void Reanimator<Key>::Stop() {
   jthread_.join();
 }
 
-template<typename Key>
-void Reanimator<Key>::RunBestEffort(Key const& key) {
+template<typename Key, typename... Parameters>
+void Reanimator<Key, Parameters...>::RunBestEffort(Key const& key,
+                                                   Parameters... parameters) {
   absl::MutexLock l(&lock_);
   CHECK(!stopped_);
 
   // Queue the call.  The `PendingRun` is just owned by the queue.
-  queue_.emplace(key, std::make_shared<PendingRun>());
+  queue_.emplace(key,
+                 std::make_shared<PendingRun>(
+                     PendingRun{.parameters = std::tuple(parameters...)}));
 }
 
-template<typename Key>
-typename Reanimator<Key>::Handle Reanimator<Key>::RunGuaranteed(
-    Key const& key) {
+template<typename Key, typename... Parameters>
+typename Reanimator<Key, Parameters...>::Handle
+Reanimator<Key, Parameters...>::RunGuaranteed(Key const& key,
+                                              Parameters... parameters) {
   absl::MutexLock l(&lock_);
   CHECK(!stopped_);
 
   // Queue the call.  The `Notification` will be notified once the action has
   // run.
   auto const handle = std::make_shared<PendingRun>(
-      PendingRun{.done = std::make_unique<absl::Notification>()});
+      PendingRun{.parameters = std::tuple(parameters...),
+                 .done = std::make_unique<absl::Notification>()});
   queue_.emplace(key, handle);
 
   // The `PendingRun` is co-owned by the queue and the caller of this function.
   return handle;
 }
 
-template<typename Key>
-void Reanimator<Key>::Cancel(Key const& before_key) {
+template<typename Key, typename... Parameters>
+void Reanimator<Key, Parameters...>::Cancel(Key const& before_key) {
   absl::MutexLock l(&jthread_lock_);
   {
     absl::MutexLock l(&lock_);
@@ -107,12 +113,13 @@ void Reanimator<Key>::Cancel(Key const& before_key) {
   }
 
   // The thread that we stopped is now gone, create a new one.
-  jthread_ = MakeStoppableThread([this]() { RepeatedRunActions(); });
+  jthread_ = MakeStoppableThread([this]() { RepeatedlyRunActions(); });
 }
 
-template<typename Key>
-absl::Status Reanimator<Key>::Wait(Handle const handle,
-                                   ProgressCallback progress_callback) {
+template<typename Key, typename... Parameters>
+absl::Status Reanimator<Key, Parameters...>::Wait(
+    Handle const handle,
+    ProgressCallback progress_callback) {
   // This object won't go away since we hold `handle`.
   auto const& pending_run = *ABSL_DIE_IF_NULL(handle);
 
@@ -135,8 +142,8 @@ absl::Status Reanimator<Key>::Wait(Handle const handle,
   return pending_run.status;
 }
 
-template<typename Key>
-void Reanimator<Key>::RepeatedRunActions() {
+template<typename Key, typename... Parameters>
+void Reanimator<Key, Parameters...>::RepeatedlyRunActions() {
   auto queue_not_empty_or_must_exit = [this] {
     lock_.AssertReaderHeld();
     return !queue_.empty() || jthread_must_exit_;
@@ -158,7 +165,8 @@ void Reanimator<Key>::RepeatedRunActions() {
     auto const [key, handle] = *queue_.rbegin();
 
     lock_.Unlock();
-    handle->status = action_(key);
+    handle->status =
+        std::apply(std::bind_front(action_, key), handle->parameters);
     lock_.Lock();
 
     // Run the progress callbacks.  This happens before unblocking the waiters
