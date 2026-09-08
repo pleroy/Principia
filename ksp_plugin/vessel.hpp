@@ -216,12 +216,16 @@ class Vessel {
 
   // Asks the reanimator thread to asynchronously reconstruct the past so that
   // the `t_min()` of the vessel ultimately ends up at or before
-  // `desired_t_min`.
+  // `desired_t_min`.  This is a best-effort operation, it might be cancelled by
+  // a subsequent reanimation.
   void RequestReanimation(Instant const& desired_t_min,
                           bool quiet = false) EXCLUDES(lock_);
 
-  // Same as `RequestReanimation`, but synchronous.  This function blocks until
-  // the `t_min()` of the vessel is at or before `desired_t_min`.
+  // Asks the reanimator thread to synchronously reconstruct the past so that
+  // the `t_min()` of the vessel ultimately ends up at or before
+  // `desired_t_min`.  This is a guaranteed operation, so it cannot be cancelled
+  // by a subsequent reanimation.  This function blocks until the `t_min()` of
+  // the vessel is at or before `desired_t_min`.
   void AwaitReanimation(Instant const& desired_t_min,
                         bool quiet = false) EXCLUDES(lock_);
 
@@ -342,7 +346,6 @@ class Vessel {
                          PrognosticatorParameters const& right);
 
   struct ReanimatorParameters {
-    Instant desired_t_min;
     bool quiet;
   };
 
@@ -376,7 +379,8 @@ class Vessel {
   Checkpointer<serialization::Vessel>::Reader
   static MakeCheckpointerReader();
 
-  absl::Status Reanimate(ReanimatorParameters const& reanimator_parameters)
+  absl::Status Reanimate(Instant const& desired_t_min,
+                         ReanimatorParameters const& reanimator_parameters)
       EXCLUDES(lock_);
 
   // `t_initial` is the time of the checkpoint, which is the end of the non-
@@ -389,8 +393,13 @@ class Vessel {
       Instant const& t_final,
       bool quiet) EXCLUDES(lock_);
 
+  // Update the vessel trajectory with the segments found in
+  // `reanimated_trajectories_`.  This function should only be called on the
+  // main thread.
+  void MergeReanimatedTrajectories() EXCLUDES(lock_);
+
   bool DesiredTMinReachedOrFullyReanimated(Instant const& desired_t_min)
-      REQUIRES_SHARED(lock_);
+      EXCLUDES(lock_);
 
   // Runs the integrator to compute the `prognostication_` based on the given
   // parameters.
@@ -458,14 +467,15 @@ class Vessel {
   // the checkpoints are animate at birth.
   Instant oldest_reanimated_checkpoint_ ABSL_GUARDED_BY(lock_) = InfinitePast;
 
-  // The techniques and terminology follow [Lov22].
-  Reanimator<ReanimatorParameters> reanimator_;
-
-  // Parameter passed to the last call to `RequestReanimation`, if any.
-  std::optional<Instant> last_desired_t_min_ ABSL_GUARDED_BY(lock_);
+  // The techniques and terminology follow [Lov22].  The key of the reanimator
+  // is the desired `t_min()` after reanimation.
+  Reanimator<Instant, ReanimatorParameters> reanimator_;
 
   // The trajectories that have been reanimated are put in this queue by
-  // ReanimateOneCheckpoint and consumed by RequestReanimation.
+  // `ReanimateOneCheckpoint` and consumed by `MergeReanimatedTrajectories`.
+  // This queue is necessary because the reanimator cannot update the vessel
+  // trajectory directly as this could race with clients iterating over the
+  // trajectory in the main thread.
   std::queue<DiscreteTrajectory<Barycentric>> reanimated_trajectories_
       ABSL_GUARDED_BY(lock_);
 
