@@ -31,6 +31,10 @@ void Reanimator<Key, Parameters...>::Start() {
 template<typename Key, typename... Parameters>
 void Reanimator<Key, Parameters...>::Stop() {
   absl::MutexLock l(&jthread_lock_);
+  if (!jthread_.joinable()) {
+    // Never started.
+    return;
+  }
 
   // Force the thread to exit once all the queued actions have been executed.
   // Also ensure that after this point it's not possible to enqueue new actions.
@@ -80,6 +84,8 @@ Reanimator<Key, Parameters...>::RunGuaranteed(Key const& key,
 template<typename Key, typename... Parameters>
 void Reanimator<Key, Parameters...>::Cancel(Key const& before_key) {
   absl::MutexLock l(&jthread_lock_);
+  CHECK(jthread_.joinable());
+
   {
     absl::MutexLock l(&lock_);
     for (auto it = queue_.begin(); it != queue_.end();) {
