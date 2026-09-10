@@ -11,6 +11,7 @@
     <Import Project="..\shared\numerics.vcxitems" Label="Shared" />
     <Import Project="..\shared\journal.vcxitems" Label="Shared" />
     <Import Project="..\shared\astronomy.vcxitems" Label="Shared" />
+    <Import Project="..\shared\version.generated.vcxitems" Label="Shared" />
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>

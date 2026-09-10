@@ -3,7 +3,7 @@
   <PropertyGroup Label="Globals">
     <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
     <HasSharedItems>true</HasSharedItems>
-    <ItemsProjectGuid>{a82cb04c-42e1-4ebe-9816-6fc033a9c2b5}</ItemsProjectGuid>
+    <ItemsProjectGuid>{36291755-D6D8-42AE-B40C-C97EE6412A73}</ItemsProjectGuid>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -14,11 +14,6 @@
     <ProjectCapability Include="SourceItemsFromImports" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="$(MSBuildThisFileDirectory)..\base\bundle.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)..\base\cpuid.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)..\base\file_log_sink.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)..\base\flags.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)..\base\string_log_sink.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)..\base\zfp_compressor.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\base\version.generated.cc" />
   </ItemGroup>
 </Project>
