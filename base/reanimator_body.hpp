@@ -96,16 +96,15 @@ void Reanimator<Key, Parameters...>::Cancel(Key const& before_key) {
         return;
       } else if (key < before_key) {
         it = queue_.erase(it);
-        // If the queue is now empty, we will mark the thread as stopped so
-        // it should exit as soon as the current action is done.
-        if (it == queue_.end()) {
-          jthread_must_exit_ = true;
-          break;
-        }
       } else {
         // Here `key >= before_key`, so we are done.
         return;
       }
+    }
+    // If the queue is now empty, we will mark the thread as stopped so it
+    // should exit as soon as the current action is done.
+    if (queue_.empty()) {
+      jthread_must_exit_ = true;
     }
   }
 

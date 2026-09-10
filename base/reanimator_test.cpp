@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -90,6 +91,17 @@ TEST_F(ReanimatorTest, RunBestEffort) {
   // possible that action 1 would finish before action 2 is queued.  Therefore,
   // we cannot assume a definite order here.
   EXPECT_THAT(processed, UnorderedElementsAre(1, 2));
+}
+
+TEST_F(ReanimatorTest, CancelNoRun) {
+  ToyReanimator reanimator([](int const) {
+    return absl::OkStatus();
+  });
+
+  reanimator.Start();
+  std::this_thread::sleep_for(100ms);
+  reanimator.Cancel(/*before_key=*/1);
+  reanimator.Stop();
 }
 
 // Checks that cancellation kills the right best-effort runs.
