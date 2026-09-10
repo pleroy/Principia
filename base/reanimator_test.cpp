@@ -26,6 +26,21 @@ class ReanimatorTest : public ::testing::Test {
   using ToyReanimator = Reanimator<int>;
 };
 
+TEST_F(ReanimatorTest, StartStop) {
+  ToyReanimator reanimator([](int const) {
+    return absl::OkStatus();
+  });
+
+  // May stop before starting.
+  reanimator.Stop();
+
+  // Idempotence.
+  reanimator.Start();
+  reanimator.Start();
+  reanimator.Stop();
+  reanimator.Stop();
+}
+
 TEST_F(ReanimatorTest, RunGuaranteed) {
   // No need for locking, at most one action is running at any point in time.
   std::vector<int> processed;
