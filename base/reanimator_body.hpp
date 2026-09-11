@@ -101,8 +101,9 @@ void Reanimator<Key, Parameters...>::Cancel(Key const& before_key) {
         return;
       }
     }
-    // If the queue is now empty, we will mark the thread as stopped so it
-    // should exit as soon as the current action is done.
+    // If the queue is now empty, we want to terminate quickly any currently
+    // running action.  This requires stopping the thread, destroying it, and
+    // creating a new one.
     if (queue_.empty()) {
       jthread_must_exit_ = true;
     }

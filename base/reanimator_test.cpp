@@ -244,7 +244,6 @@ TEST_F(ReanimatorTest, WaitWithProgressCallback) {
 
   reanimator.Stop();
 
-  // The progress callback was called at least for the run being waited for.
   EXPECT_THAT(callback_keys, ElementsAre(3, 2, 1));
 
   starter.join();
