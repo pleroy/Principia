@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/thread_annotations.h"
 #include "absl/status/status.h"
 #include "absl/synchronization/mutex.h"
 #include "base/concepts.hpp"
@@ -64,11 +65,11 @@ class ContinuousTrajectory : public Trajectory<Frame> {
   ContinuousTrajectory& operator=(ContinuousTrajectory&&) = delete;
 
   // Returns true iff this trajectory cannot be evaluated for any time.
-  bool empty() const EXCLUDES(lock_);
+  bool empty() const ABSL_LOCKS_EXCLUDED(lock_);
 
   // The average degree of the polynomials for the trajectory.  Only useful for
   // benchmarking or analyzing performance.  Do not use in real code.
-  double average_degree() const EXCLUDES(lock_);
+  double average_degree() const ABSL_LOCKS_EXCLUDED(lock_);
 
   // Appends one point to the trajectory.  `time` must be after the last time
   // passed to `Append` if the trajectory is not empty.  The `time`s passed to
@@ -76,7 +77,7 @@ class ContinuousTrajectory : public Trajectory<Frame> {
   // at construction.
   absl::Status Append(Instant const& time,
                       DegreesOfFreedom<Frame> const& degrees_of_freedom)
-      EXCLUDES(lock_);
+      ABSL_LOCKS_EXCLUDED(lock_);
 
   // Prepends the trajectory `prefix` to this one.  Ideally the last point of
   // `prefix` should match the first point of this object.
@@ -93,15 +94,15 @@ class ContinuousTrajectory : public Trajectory<Frame> {
   // trajectory cannot be evaluated for the last points, for which no polynomial
   // was constructed.  For an empty trajectory, an infinity with the proper
   // sign is returned.
-  Instant t_min() const override EXCLUDES(lock_);
-  Instant t_max() const override EXCLUDES(lock_);
+  Instant t_min() const override ABSL_LOCKS_EXCLUDED(lock_);
+  Instant t_max() const override ABSL_LOCKS_EXCLUDED(lock_);
 
   Position<Frame> EvaluatePosition(Instant const& time) const override
-      EXCLUDES(lock_);
+      ABSL_LOCKS_EXCLUDED(lock_);
   Velocity<Frame> EvaluateVelocity(Instant const& time) const override
-      EXCLUDES(lock_);
+      ABSL_LOCKS_EXCLUDED(lock_);
   DegreesOfFreedom<Frame> EvaluateDegreesOfFreedom(
-      Instant const& time) const override EXCLUDES(lock_);
+      Instant const& time) const override ABSL_LOCKS_EXCLUDED(lock_);
 
   // End of the implementation of the interface.
 
@@ -122,7 +123,7 @@ class ContinuousTrajectory : public Trajectory<Frame> {
 #endif
 
   void WriteToMessage(not_null<serialization::ContinuousTrajectory*> message)
-      const EXCLUDES(lock_);
+      const ABSL_LOCKS_EXCLUDED(lock_);
   // The parameter `desired_t_min` indicates that the trajectory must be
   // restored at a checkpoint such that, once it is appended to, its t_min() is
   // at or before `desired_t_min`.
@@ -198,7 +199,7 @@ class ContinuousTrajectory : public Trajectory<Frame> {
   absl::Status ComputeBestNewhallApproximation(
       Instant const& time,
       std::vector<DegreesOfFreedom<Frame>> const& all_degrees_of_freedom)
-      REQUIRES(lock_);
+      ABSL_EXCLUSIVE_LOCKS_REQUIRED(lock_);
 
   // Returns an iterator to the polynomial applicable for the given `time`, or
   // `begin` if `time` is before the first polynomial or `end` if `time` is
@@ -206,7 +207,7 @@ class ContinuousTrajectory : public Trajectory<Frame> {
   // that polynomial is returned.  Time complexity is O(N Log N).
   typename InstantPolynomialPairs::const_iterator
   FindPolynomialForInstantLocked(Instant const& time) const
-      REQUIRES_SHARED(lock_);
+      ABSL_SHARED_LOCKS_REQUIRED(lock_);
 
   // Construction parameters;
   Time const step_;
