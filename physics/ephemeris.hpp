@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 
+#include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -140,9 +141,9 @@ class Ephemeris {
   virtual bool empty() const;
 
   // The maximum of the `t_min`s of the trajectories.
-  virtual Instant t_min() const EXCLUDES(lock_);
+  virtual Instant t_min() const ABSL_LOCKS_EXCLUDED(lock_);
   // The mimimum of the `t_max`s of the trajectories.
-  virtual Instant t_max() const EXCLUDES(lock_);
+  virtual Instant t_max() const ABSL_LOCKS_EXCLUDED(lock_);
 
   virtual FixedStepSizeIntegrator<NewtonianMotionEquation> const&
   planetary_integrator() const;
@@ -152,11 +153,11 @@ class Ephemeris {
   // Convenience methods to evaluate the positions/velocities for all bodies in
   // this ephemeris.
   BodiesToPositions EvaluateAllPositions(Instant const& t) const
-      EXCLUDES(lock_);
+      ABSL_LOCKS_EXCLUDED(lock_);
   BodiesToVelocities EvaluateAllVelocities(Instant const& t) const
-      EXCLUDES(lock_);
+      ABSL_LOCKS_EXCLUDED(lock_);
   BodiesToDegreesOfFreedom EvaluateAllDegreesOfFreedom(Instant const& t) const
-      EXCLUDES(lock_);
+      ABSL_LOCKS_EXCLUDED(lock_);
 
   // Prolongs the ephemeris up to at least `t`.  Returns an error iff the thread
   // is stopped.  After a successful call with the second parameter defaulted,
@@ -164,7 +165,7 @@ class Ephemeris {
   virtual absl::Status Prolong(
       Instant const& t,
       std::int64_t max_ephemeris_steps = unlimited_max_ephemeris_steps)
-      EXCLUDES(lock_);
+      ABSL_LOCKS_EXCLUDED(lock_);
 
   // Asks the reanimator thread to asynchronously reconstruct the past so that
   // the `t_min()` of the ephemeris ultimately ends up at or before
@@ -204,7 +205,7 @@ class Ephemeris {
       Instant const& t,
       AdaptiveStepParameters const& parameters,
       std::int64_t max_ephemeris_steps = unlimited_max_ephemeris_steps)
-      EXCLUDES(lock_);
+      ABSL_LOCKS_EXCLUDED(lock_);
 
   // Same as above, but uses a generalized integrator.
   virtual absl::Status FlowWithAdaptiveStep(
@@ -213,7 +214,7 @@ class Ephemeris {
       Instant const& t,
       GeneralizedAdaptiveStepParameters const& parameters,
       std::int64_t max_ephemeris_steps = unlimited_max_ephemeris_steps)
-      EXCLUDES(lock_);
+      ABSL_LOCKS_EXCLUDED(lock_);
 
   // Integrates, until at most `t`, the trajectories followed by massless
   // bodies in the gravitational potential described by `*this`.  If
@@ -222,25 +223,25 @@ class Ephemeris {
   virtual absl::Status FlowWithFixedStep(
       Instant const& t,
       typename Integrator<NewtonianMotionEquation>::Instance& instance)
-      EXCLUDES(lock_);
+      ABSL_LOCKS_EXCLUDED(lock_);
 
   // Returns the Jacobian of the acceleration field exerted on the given `body`
   // by the rest of the system.
   JacobianOfAcceleration<Frame> ComputeJacobianOnMassiveBody(
       not_null<MassiveBody const*> body,
-      Instant const& t) const EXCLUDES(lock_);
+      Instant const& t) const ABSL_LOCKS_EXCLUDED(lock_);
 
   // Returns the gravitational jerk on a massless body with the given
   // `degrees_of_freedom` at time `t`.
   Vector<Jerk, Frame> ComputeGravitationalJerkOnMasslessBody(
       DegreesOfFreedom<Frame> const& degrees_of_freedom,
-      Instant const& t) const EXCLUDES(lock_);
+      Instant const& t) const ABSL_LOCKS_EXCLUDED(lock_);
 
   // Returns the gravitational jerk on the massive `body` at time `t`.  `body`
   // must be one of the bodies of this object.
   Vector<Jerk, Frame> ComputeGravitationalJerkOnMassiveBody(
       not_null<MassiveBody const*> body,
-      Instant const& t) const EXCLUDES(lock_);
+      Instant const& t) const ABSL_LOCKS_EXCLUDED(lock_);
 
   // Same as above, but for multiple bodies.  The degrees of freedom must have
   // been precomputed by `EvaluateAllDegreesOfFreedom`.
@@ -253,7 +254,7 @@ class Ephemeris {
   virtual Vector<Acceleration, Frame>
   ComputeGravitationalAccelerationOnMasslessBody(
       Position<Frame> const& position,
-      Instant const& t) const EXCLUDES(lock_);
+      Instant const& t) const ABSL_LOCKS_EXCLUDED(lock_);
 
   // Returns the gravitational acceleration on the massless body having the
   // given `trajectory` at time `t`.  `t` must be one of the times of the
@@ -261,14 +262,14 @@ class Ephemeris {
   virtual Vector<Acceleration, Frame>
   ComputeGravitationalAccelerationOnMasslessBody(
       not_null<DiscreteTrajectory<Frame>*> trajectory,
-      Instant const& t) const EXCLUDES(lock_);
+      Instant const& t) const ABSL_LOCKS_EXCLUDED(lock_);
 
   // Returns the gravitational acceleration on the massive `body` at time `t`.
   // `body` must be one of the bodies of this object.
   virtual Vector<Acceleration, Frame>
   ComputeGravitationalAccelerationOnMassiveBody(
       not_null<MassiveBody const*> body,
-      Instant const& t) const EXCLUDES(lock_);
+      Instant const& t) const ABSL_LOCKS_EXCLUDED(lock_);
 
   // Same as above, but for multiple bodies.  The positions must have been
   // precomputed by `EvaluateAllPositions`.  The client must ensure that the
@@ -282,7 +283,7 @@ class Ephemeris {
   // Returns the potential at the given `position` at time `t`.
   SpecificEnergy ComputeGravitationalPotential(
       Position<Frame> const& position,
-      Instant const& t) const EXCLUDES(lock_);
+      Instant const& t) const ABSL_LOCKS_EXCLUDED(lock_);
 
   // Computes the apsides of the relative trajectory of `body1` and `body2`.
   // Appends to the given out parameters two points for each apsis, one for
@@ -304,8 +305,8 @@ class Ephemeris {
   virtual not_null<MassiveBody const*> body_for_serialization_index(
       int serialization_index) const;
 
-  virtual void WriteToMessage(
-      not_null<serialization::Ephemeris*> message) const EXCLUDES(lock_);
+  virtual void WriteToMessage(not_null<serialization::Ephemeris*> message) const
+      ABSL_LOCKS_EXCLUDED(lock_);
   // The parameter `desired_t_min` indicates that the ephemeris must be restored
   // at a checkpoint such that, once the ephemeris is prolonged, its `t_min()`
   // is at or before `desired_t_min`.
@@ -331,22 +332,23 @@ class Ephemeris {
   // and its trajectories starting in such a way that `t_min()` is at or before
   // `desired_t_min`.  The member variable `oldest_reanimated_checkpoint_` tells
   // the reanimator where to stop.
-  absl::Status Reanimate(Instant const& desired_t_min) EXCLUDES(lock_);
+  absl::Status Reanimate(Instant const& desired_t_min)
+      ABSL_LOCKS_EXCLUDED(lock_);
 
   // Reconstructs the past state of the ephemeris between `t_initial` and
   // `t_final` using the given checkpoint `message`.
   absl::Status ReanimateOneCheckpoint(
       serialization::Ephemeris::Checkpoint const& message,
       Instant const& t_initial,
-      Instant const& t_final) EXCLUDES(lock_);
+      Instant const& t_final) ABSL_LOCKS_EXCLUDED(lock_);
 
   bool DesiredTMinReachedOrFullyReanimated(Instant const& desired_t_min)
-      REQUIRES_SHARED(lock_);
+      ABSL_SHARED_LOCKS_REQUIRED(lock_);
 
   // Callbacks for the integrators.
   void AppendMassiveBodiesState(
       typename NewtonianMotionEquation::State const& state)
-      REQUIRES(lock_);
+      ABSL_EXCLUSIVE_LOCKS_REQUIRED(lock_);
   template<typename ContinuousTrajectoryPtr>
   static std::vector<absl::Status> AppendMassiveBodiesStateToTrajectories(
       typename NewtonianMotionEquation::State const& state,
@@ -359,10 +361,10 @@ class Ephemeris {
   // ephemeris.
   NewtonianMotionEquation MakeMassiveBodiesNewtonianMotionEquation();
 
-  Instant instance_time_locked() const REQUIRES_SHARED(lock_);
+  Instant instance_time_locked() const ABSL_SHARED_LOCKS_REQUIRED(lock_);
 
-  virtual Instant t_min_locked() const REQUIRES_SHARED(lock_);
-  virtual Instant t_max_locked() const REQUIRES_SHARED(lock_);
+  virtual Instant t_min_locked() const ABSL_SHARED_LOCKS_REQUIRED(lock_);
+  virtual Instant t_max_locked() const ABSL_SHARED_LOCKS_REQUIRED(lock_);
 
   // Computes the Jacobian of the acceleration field between one body, `body1`
   // (with index `b1` in the `positions` and `jacobians` arrays) and the bodies
@@ -447,7 +449,7 @@ class Ephemeris {
       std::size_t b1,
       std::vector<Position<Frame>> const& positions,
       std::vector<Vector<Acceleration, Frame>>& accelerations) const
-      REQUIRES_SHARED(lock_);
+      ABSL_SHARED_LOCKS_REQUIRED(lock_);
 
   // Computes the potential resulting from one body, `body1` (with index `b1` in
   // the `bodies_` and `trajectories_` arrays) at the given `positions`.  The
@@ -460,7 +462,7 @@ class Ephemeris {
       std::size_t b1,
       std::vector<Position<Frame>> const& positions,
       std::vector<SpecificEnergy>& potentials) const
-      REQUIRES_SHARED(lock_);
+      ABSL_SHARED_LOCKS_REQUIRED(lock_);
 
   // Computes the accelerations between all the massive bodies in `bodies_`.
   absl::Status ComputeGravitationalAccelerationBetweenAllMassiveBodies(
@@ -477,7 +479,7 @@ class Ephemeris {
       Instant const& t,
       std::vector<Position<Frame>> const& positions,
       std::vector<Vector<Acceleration, Frame>>& accelerations) const
-      EXCLUDES(lock_);
+      ABSL_LOCKS_EXCLUDED(lock_);
 
   // Computes the potential resulting from the massive bodies in `bodies_`.  The
   // potentials are computed at the given `positions`.
@@ -485,7 +487,7 @@ class Ephemeris {
       Instant const& t,
       std::vector<Position<Frame>> const& positions,
       std::vector<SpecificEnergy>& potentials) const
-      EXCLUDES(lock_);
+      ABSL_LOCKS_EXCLUDED(lock_);
 
   // Flows the given ODE with an adaptive step integrator.
   template<typename ODE>
@@ -494,7 +496,7 @@ class Ephemeris {
       not_null<DiscreteTrajectory<Frame>*> trajectory,
       Instant const& t,
       _integration_parameters::AdaptiveStepParameters<ODE> const& parameters,
-      std::int64_t max_ephemeris_steps) EXCLUDES(lock_);
+      std::int64_t max_ephemeris_steps) ABSL_LOCKS_EXCLUDED(lock_);
 
   // Computes an estimate of the ratio `tolerance / error`.
   static double ToleranceToErrorRatio(

@@ -146,21 +146,6 @@ char const* const Architecture = "x86-64";
 // Set this to 1 to test analytical series based on piecewise Poisson series.
 #define PRINCIPIA_CONTINUOUS_TRAJECTORY_SUPPORTS_PIECEWISE_POISSON_SERIES 0
 
-// Thread-safety analysis.
-#if PRINCIPIA_COMPILER_CLANG || PRINCIPIA_COMPILER_CLANG_CL
-#  define THREAD_ANNOTATION_ATTRIBUTE__(x) __attribute__((x))
-#  define EXCLUDES(...) \
-       THREAD_ANNOTATION_ATTRIBUTE__(locks_excluded(__VA_ARGS__))
-#  define REQUIRES(...) \
-       THREAD_ANNOTATION_ATTRIBUTE__(requires_capability(__VA_ARGS__))
-#  define REQUIRES_SHARED(...) \
-       THREAD_ANNOTATION_ATTRIBUTE__(requires_shared_capability(__VA_ARGS__))
-#else
-#  define EXCLUDES(x)
-#  define REQUIRES(x)
-#  define REQUIRES_SHARED(x)
-#endif
-
 // Unicode.
 #if OS_WIN
 #  define PRINCIPIA_UNICODE_PATH(x) u ## x
