@@ -537,7 +537,7 @@ JacobianOfAcceleration<Frame> Ephemeris<Frame>::ComputeJacobianOnMassiveBody(
 template<typename Frame>
 Vector<Jerk, Frame> Ephemeris<Frame>::ComputeGravitationalJerkOnMasslessBody(
     DegreesOfFreedom<Frame> const& degrees_of_freedom,
-    Instant const& t) const EXCLUDES(lock_) {
+    Instant const& t) const {
   auto const& degrees_of_freedom_of_b1 = degrees_of_freedom;
   Vector<Jerk, Frame> jerk_on_b1;
 

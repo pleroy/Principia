@@ -6,6 +6,7 @@
 #include <variant>
 #include <vector>
 
+#include "absl/base/thread_annotations.h"
 #include "absl/container/btree_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
@@ -218,12 +219,12 @@ class Vessel {
   // the `t_min()` of the vessel ultimately ends up at or before
   // `desired_t_min`.
   void RequestReanimation(Instant const& desired_t_min,
-                          bool quiet = false) EXCLUDES(lock_);
+                          bool quiet = false) ABSL_LOCKS_EXCLUDED(lock_);
 
   // Same as `RequestReanimation`, but synchronous.  This function blocks until
   // the `t_min()` of the vessel is at or before `desired_t_min`.
   void AwaitReanimation(Instant const& desired_t_min,
-                        bool quiet = false) EXCLUDES(lock_);
+                        bool quiet = false) ABSL_LOCKS_EXCLUDED(lock_);
 
   // Creates a flight plan at the end of history using the given parameters;
   // selects that flight plan, which is the last one in `flight_plans_`.
@@ -377,7 +378,7 @@ class Vessel {
   static MakeCheckpointerReader();
 
   absl::Status Reanimate(ReanimatorParameters const& reanimator_parameters)
-      EXCLUDES(lock_);
+      ABSL_LOCKS_EXCLUDED(lock_);
 
   // `t_initial` is the time of the checkpoint, which is the end of the non-
   // collapsible segment.  `t_final` is the start of the trajectory or of the
@@ -387,10 +388,10 @@ class Vessel {
       serialization::Vessel::Checkpoint const& message,
       Instant const& t_initial,
       Instant const& t_final,
-      bool quiet) EXCLUDES(lock_);
+      bool quiet) ABSL_LOCKS_EXCLUDED(lock_);
 
   bool DesiredTMinReachedOrFullyReanimated(Instant const& desired_t_min)
-      REQUIRES_SHARED(lock_);
+      ABSL_SHARED_LOCKS_REQUIRED(lock_);
 
   // Runs the integrator to compute the `prognostication_` based on the given
   // parameters.
