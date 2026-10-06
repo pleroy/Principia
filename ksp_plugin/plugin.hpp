@@ -163,42 +163,44 @@ class Plugin {
   // base, that has an attachment.
   virtual bool HasEncounteredApocalypse(std::string* details) const;
 
-  // Sets the parent of the celestial body with index `celestial_index` to the
-  // one with index `parent_index`. Both bodies must already have been
-  // inserted. Must be called after initialization.
-  // For a KSP `CelestialBody` `b`, the arguments correspond to
-  // `b.flightGlobalsIndex`, `b.orbit.referenceBody.flightGlobalsIndex`.
-  virtual void UpdateCelestialHierarchy(Index celestial_index,
-                                        Index parent_index) const;
+  // Sets the parent of the celestial body with name `celestial_name` to the one
+  // with name `parent_name`. Both bodies must already have been inserted.  Must
+  // be called after initialization.  For a KSP `CelestialBody` `b`, the
+  // arguments correspond to `b.name`, `b.orbit.referenceBody.name`.
+  virtual void UpdateCelestialHierarchy(std::string const& celestial_name,
+                                        std::string const& parent_name) const;
 
   // Sets the celestial whose axis of rotation will coincide with the `Alice`
   // z axis.
-  virtual void SetMainBody(Index index);
-  virtual Rotation<BodyWorld, World> CelestialRotation(Index index) const;
+  virtual void SetMainBody(std::string const& name);
+  virtual Rotation<BodyWorld, World> CelestialRotation(
+      std::string const& name) const;
   virtual Rotation<CelestialSphere, World> CelestialSphereRotation() const;
 
-  virtual Angle CelestialInitialRotation(Index celestial_index) const;
-  virtual Time CelestialRotationPeriod(Index celestial_index) const;
+  virtual Angle CelestialInitialRotation(
+      std::string const& celestial_name) const;
+  virtual Time CelestialRotationPeriod(std::string const& celestial_name) const;
 
   virtual void ClearWorldRotationalReferenceFrame();
-  virtual void SetWorldRotationalReferenceFrame(Index celestial_index);
+  virtual void SetWorldRotationalReferenceFrame(
+      std::string const& celestial_name);
 
   virtual Index CelestialIndexOfBody(MassiveBody const& body) const;
 
   // Inserts a new vessel with GUID `vessel_guid` if it does not already exist,
   // and flags the vessel with GUID `vessel_guid` so it is kept when calling
   // `FreeVesselsAndPartsAndCollectPileUps`. The parent body for the vessel is
-  // set to the one with index `parent_index`, which must have been inserted
+  // set to the one with name `parent_name`, which must have been inserted
   // during initialization.
   // Sets `inserted` to true if a new vessel was inserted, to false otherwise.
   // If `InsertOrKeepVessel` is called with `loaded=false`, and returns
   // `inserted=true`, `InsertUnloadedPart` must be called for its parts
   // before the call to `AdvanceTime`, giving the vessel an initial state.
   // For a KSP `Vessel` `v`, the arguments correspond to `v.id`,
-  // `v.orbit.referenceBody.flightGlobalsIndex`, `v.loaded`.
+  // `v.orbit.referenceBody.name`, `v.loaded`.
   virtual void InsertOrKeepVessel(GUID const& vessel_guid,
                                   std::string const& vessel_name,
-                                  Index parent_index,
+                                  std::string const& parent_name,
                                   bool loaded,
                                   bool& inserted);
 
@@ -217,7 +219,7 @@ class Plugin {
   // `FreeVesselsAndPartsAndCollectPileUps`.
   // The part is created in the given `vessel`, or if it already existed in
   // another vessel, is moved to that one.  If the part is created, its degrees
-  // of freedom are set using those given and the `main_body_index`; otherwise
+  // of freedom are set using those given and the `main_body_name`; otherwise
   // these three parameters are ignored.
   virtual void InsertOrKeepLoadedPart(
       PartId part_id,
@@ -227,7 +229,7 @@ class Plugin {
       InertiaTensor<RigidPart> const& inertia_tensor,
       bool is_solid_rocket_motor,
       GUID const& vessel_guid,
-      Index main_body_index,
+      std::string const& main_body_name,
       DegreesOfFreedom<World> const& main_body_degrees_of_freedom,
       RigidMotion<EccentricPart, World> const& part_rigid_motion,
       Time const& Δt);
@@ -281,10 +283,10 @@ class Plugin {
       RigidMotion<Barycentric, World> const& barycentric_to_world) const;
 
   // Returns the `World` degrees of freedom of the `Celestial` with the given
-  // `Index`, identifying the origin of `World` with the centre of mass of the
+  // `name`, identifying the origin of `World` with the centre of mass of the
   // `Part` with the given `PartId`.
   virtual DegreesOfFreedom<World> CelestialWorldDegreesOfFreedom(
-      Index index,
+      std::string const& name,
       RigidMotion<Barycentric, World> const& barycentric_to_world,
       Instant const& time) const;
 
@@ -332,17 +334,17 @@ class Plugin {
   // A vessel with GUID `vessel_guid` must have been inserted and kept. Must
   // be called after initialization.
   virtual RelativeDegreesOfFreedom<AliceSun> VesselFromParent(
-      Index parent_index,
+      std::string const& parent_name,
       GUID const& vessel_guid) const;
 
-  // Returns the displacement and velocity of the celestial at index
-  // `celestial_index` relative to its parent at current time. For a KSP
-  // `CelestialBody` `b`, the argument corresponds to `b.flightGlobalsIndex`,
-  // the return value to `{b.orbit.pos, b.orbit.vel}`.
-  // A celestial with index `celestial_index` must have been inserted, and it
-  // must not be the sun. Must be called after initialization.
+  // Returns the displacement and velocity of the celestial with name
+  // `celestial_name` relative to its parent at current time. For a KSP
+  // `CelestialBody` `b`, the argument corresponds to `b.name`, the return value
+  // to `{b.orbit.pos, b.orbit.vel}`. A celestial with name `celestial_name`
+  // must have been inserted, and it must not be the sun. Must be called after
+  // initialization.
   virtual RelativeDegreesOfFreedom<AliceSun> CelestialFromParent(
-      Index celestial_index) const;
+      std::string const& celestial_name) const;
 
   virtual void SetPredictionAdaptiveStepParameters(
       GUID const& vessel_guid,
@@ -361,9 +363,9 @@ class Plugin {
   virtual void ExtendPredictionForFlightPlan(GUID const& vessel_guid) const;
 
   // Computes the apsides of the trajectory defined by `begin` and `end` with
-  // respect to the celestial with index `celestial_index`.
+  // respect to the celestial with name `celestial_name`.
   virtual void ComputeAndRenderApsides(
-      Index celestial_index,
+      std::string const& celestial_name,
       DiscreteTrajectoryView<Barycentric> const& trajectory,
       Position<World> const& sun_world_position,
       int max_points,
@@ -374,7 +376,7 @@ class Plugin {
   // `end` and the celestial with index `celestial_index`.
   virtual std::optional<DistinguishedPoints<World>::value_type>
   ComputeAndRenderFirstCollision(
-      Index celestial_index,
+      std::string const& celestial_name,
       DiscreteTrajectoryView<Barycentric> const& trajectory,
       Position<World> const& sun_world_position,
       int max_points,
@@ -398,8 +400,8 @@ class Plugin {
       std::vector<Renderer::Node>& ascending,
       std::vector<Renderer::Node>& descending) const;
 
-  virtual bool HasCelestial(Index index) const;
-  virtual Celestial const& GetCelestial(Index index) const;
+  virtual bool HasCelestial(std::string const& name) const;
+  virtual Celestial const& GetCelestial(std::string const& name) const;
   virtual std::vector<not_null<Celestial const*>> GetAllCelestials() const;
 
   virtual bool HasVessel(GUID const& vessel_guid) const;
@@ -414,26 +416,29 @@ class Plugin {
       const;
 
   virtual not_null<std::unique_ptr<NavigationFrame>>
-  NewBarycentricRotatingNavigationFrame(Index primary_index,
-                                        Index secondary_index) const;
+  NewBarycentricRotatingNavigationFrame(
+      std::string const& primary_name,
+      std::string const& secondary_name) const;
 
   virtual not_null<std::unique_ptr<NavigationFrame>>
-  NewBodyCentredBodyDirectionNavigationFrame(Index primary_index,
-                                             Index secondary_index) const;
+  NewBodyCentredBodyDirectionNavigationFrame(
+      std::string const& primary_name,
+      std::string const& secondary_name) const;
 
   virtual not_null<std::unique_ptr<NavigationFrame>>
-  NewBodyCentredNonRotatingNavigationFrame(Index reference_body_index) const;
+  NewBodyCentredNonRotatingNavigationFrame(
+      std::string const& reference_body_name) const;
 
   virtual not_null<std::unique_ptr<NavigationFrame>>
-  NewBodySurfaceNavigationFrame(Index reference_body_index) const;
+  NewBodySurfaceNavigationFrame(std::string const& reference_body_name) const;
 
   virtual not_null<std::unique_ptr<PlottingFrame>>
   NewRotatingPulsatingPlottingFrame(
-      std::vector<Index> const& primary_indices,
-      std::vector<Index> const& secondary_indices) const;
+      std::vector<std::string> const& primary_names,
+      std::vector<std::string> const& secondary_names) const;
 
   virtual void SetTargetVessel(GUID const& vessel_guid,
-                               Index reference_body_index);
+                               std::string const& reference_body_name);
 
   // The navball field at `current_time` for the current `plotting_frame_`.
   virtual std::unique_ptr<FrameField<World, Navball>> NavballFrameField(
@@ -447,13 +452,13 @@ class Plugin {
 
   // TODO(egg): UnmanageableVesselTangent, Normal, Binormal.
 
-  // Takes degrees of freedom relative to the celestial with the given index,
+  // Takes degrees of freedom relative to the celestial with the given name,
   // and returns the velocity in the plotting frame expressed in the coordinates
   // of `World`.  This is used to display the velocity of a vessel not known to
   // the plugin.
   virtual Velocity<World> UnmanageableVesselVelocity(
       RelativeDegreesOfFreedom<AliceSun> const& degrees_of_freedom,
-      Index parent_index) const;
+      std::string const& parent_name) const;
   // Same as `UnmanageableVesselVelocity`, but uses the known degrees of freedom
   // of a vessel in `vessels_`.
   virtual Velocity<World> VesselVelocity(GUID const& vessel_guid) const;
@@ -487,8 +492,8 @@ class Plugin {
 
  private:
   using GUIDToOwnedVessel = std::map<GUID, not_null<std::unique_ptr<Vessel>>>;
-  using IndexToOwnedCelestial =
-      std::map<Index, not_null<std::unique_ptr<Celestial>>>;
+  using NameToOwnedCelestial =
+      absl::flat_hash_map<std::string, not_null<std::unique_ptr<Celestial>>>;
   using NewtonianMotionEquation =
       Ephemeris<Barycentric>::NewtonianMotionEquation;
 
@@ -517,7 +522,7 @@ class Plugin {
   static void ReadCelestialsFromMessages(
       Ephemeris<Barycentric> const& ephemeris,
       google::protobuf::RepeatedPtrField<T> const& celestial_messages,
-      IndexToOwnedCelestial& celestials,
+      NameToOwnedCelestial& celestials,
       std::map<std::string, Index>& name_to_index);
 
   // Constructs a part using the constructor arguments, and add it to a vessel,
@@ -540,7 +545,7 @@ class Plugin {
   std::map<std::string, Index> name_to_index_;
   std::map<Index, std::string> index_to_name_;
   std::uint64_t system_fingerprint_ = 0;
-  std::map<Index, std::optional<Index>> parents_;
+  absl::flat_hash_map<std::string, std::optional<std::string>> parents_;
   // The ephemeris is only constructed once, so this is an initialization
   // object.  The other parameters must be persisted to create new vessels.
   // Since this is not persisted directly, it is optional so that it can be null
@@ -554,7 +559,7 @@ class Plugin {
   // For each part, the vessel that this part belongs to. The part is guaranteed
   // to be in the parts() map of the vessel, and owned by it.
   absl::flat_hash_map<PartId, not_null<Vessel*>> part_id_to_vessel_;
-  IndexToOwnedCelestial celestials_;
+  NameToOwnedCelestial celestials_;
 
   // Not null after initialization.
   std::unique_ptr<Ephemeris<Barycentric>> ephemeris_;

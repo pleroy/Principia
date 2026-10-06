@@ -322,26 +322,26 @@ bool Plugin::HasEncounteredApocalypse(std::string* const details) const {
   }
 }
 
-void Plugin::UpdateCelestialHierarchy(Index const celestial_index,
-                                      Index const parent_index) const {
+void Plugin::UpdateCelestialHierarchy(std::string const& celestial_name,
+                                      std::string const& parent_name) const {
   CHECK(!initializing_);
-  FindOrDie(celestials_, celestial_index)->set_parent(
-      FindOrDie(celestials_, parent_index).get());
+  FindOrDie(celestials_, celestial_name)->set_parent(
+      FindOrDie(celestials_, parent_name).get());
 }
 
-void Plugin::SetMainBody(Index const index) {
-  main_body_ = FindOrDie(celestials_, index)->body();
-  LOG_IF(FATAL, main_body_ == nullptr) << index;
+void Plugin::SetMainBody(std::string const& name) {
+  main_body_ = FindOrDie(celestials_, name)->body();
+  LOG_IF(FATAL, main_body_ == nullptr) << name;
   UpdatePlanetariumRotation();
 }
 
 Rotation<BodyWorld, World> Plugin::CelestialRotation(
-    Index const index) const {
+    std::string const& name) const {
   // `BodyWorld` with its y and z axes swapped (so that z is the polar axis).
   using BodyFixed = Frame<struct BodyFixedTag>;
   Permutation<BodyWorld, BodyFixed> const body_mirror(OddPermutation::XZY);
 
-  auto const& body = *FindOrDie(celestials_, index)->body();
+  auto const& body = *FindOrDie(celestials_, name)->body();
 
   OrthogonalMap<BodyWorld, World> const result =
       OrthogonalMap<WorldSun, World>::Identity() *
@@ -363,15 +363,16 @@ Rotation<CelestialSphere, World> Plugin::CelestialSphereRotation()
   return result.AsRotation();
 }
 
-Angle Plugin::CelestialInitialRotation(Index const celestial_index) const {
-  auto const& body = *FindOrDie(celestials_, celestial_index)->body();
+Angle Plugin::CelestialInitialRotation(
+    std::string const& celestial_name) const {
+  auto const& body = *FindOrDie(celestials_, celestial_name)->body();
   // Offset by π/2 since `AngleAt` is with respect to the y axis of the
   // celestial frame of the body, but KSP counts from the x axis.
   return body.AngleAt(game_epoch_) + π / 2 * Radian;
 }
 
-Time Plugin::CelestialRotationPeriod(Index const celestial_index) const {
-  auto const& body = *FindOrDie(celestials_, celestial_index)->body();
+Time Plugin::CelestialRotationPeriod(std::string const& celestial_name) const {
+  auto const& body = *FindOrDie(celestials_, celestial_name)->body();
   // The result will be negative if the pole is the negative pole
   // (e.g. for Venus).  This is the convention KSP uses for retrograde rotation.
   return 2 * π * Radian / body.angular_frequency();
@@ -381,8 +382,9 @@ void Plugin::ClearWorldRotationalReferenceFrame() {
   angular_velocity_of_world_ = Barycentric::nonrotating;
 }
 
-void Plugin::SetWorldRotationalReferenceFrame(Index const celestial_index) {
-  SetMainBody(celestial_index);
+void Plugin::SetWorldRotationalReferenceFrame(
+    std::string const& celestial_name) {
+  SetMainBody(celestial_name);
   angular_velocity_of_world_ = main_body_->angular_velocity();
 }
 
@@ -392,12 +394,12 @@ Index Plugin::CelestialIndexOfBody(MassiveBody const& body) const {
 
 void Plugin::InsertOrKeepVessel(GUID const& vessel_guid,
                                 std::string const& vessel_name,
-                                Index const parent_index,
+                                std::string const& parent_name,
                                 bool const loaded,
                                 bool& inserted) {
   CHECK(!initializing_);
   not_null<Celestial const*> const parent =
-      FindOrDie(celestials_, parent_index).get();
+      FindOrDie(celestials_, parent_name).get();
   auto vit = vessels_.find(vessel_guid);
   if (vit == vessels_.end()) {
     // Restore the zombie parameters if we have some, otherwise use the default.
@@ -461,7 +463,7 @@ void Plugin::InsertOrKeepLoadedPart(
     InertiaTensor<RigidPart> const& inertia_tensor,
     bool const is_solid_rocket_motor,
     GUID const& vessel_guid,
-    Index const main_body_index,
+    std::string const& main_body_name,
     DegreesOfFreedom<World> const& main_body_degrees_of_freedom,
     RigidMotion<EccentricPart, World> const& part_rigid_motion,
     Time const& Δt) {
@@ -474,7 +476,7 @@ void Plugin::InsertOrKeepLoadedPart(
   // TODO(egg): Can we use `BarycentricToWorld` here?
   BodyCentredNonRotatingReferenceFrame<Barycentric, MainBodyCentred> const
       main_body_frame{ephemeris_.get(),
-                      FindOrDie(celestials_, main_body_index)->body()};
+                      FindOrDie(celestials_, main_body_name)->body()};
   RigidMotion<World, MainBodyCentred> const world_to_main_body_centred{
       RigidTransformation<World, MainBodyCentred>{
           main_body_degrees_of_freedom.position(),
@@ -720,11 +722,11 @@ RigidMotion<EccentricPart, World> Plugin::GetPartActualMotion(
 }
 
 DegreesOfFreedom<World> Plugin::CelestialWorldDegreesOfFreedom(
-    Index const index,
+    std::string const& name,
     RigidMotion<Barycentric, World> const& barycentric_to_world,
     Instant const& time) const {
   return barycentric_to_world(
-      FindOrDie(celestials_, index)->current_degrees_of_freedom(time));
+      FindOrDie(celestials_, name)->current_degrees_of_freedom(time));
 }
 
 RigidMotion<Barycentric, World> Plugin::BarycentricToWorld(
@@ -873,13 +875,13 @@ void Plugin::WaitForVesselToCatchUp(PileUpFuture& pile_up_future,
 }
 
 RelativeDegreesOfFreedom<AliceSun> Plugin::VesselFromParent(
-    Index const parent_index,
+    std::string const& parent_name,
     GUID const& vessel_guid) const {
   CHECK(!initializing_);
   not_null<std::unique_ptr<Vessel>> const& vessel =
       FindOrDie(vessels_, vessel_guid);
   not_null<Celestial const*> const parent =
-      FindOrDie(celestials_, parent_index).get();
+      FindOrDie(celestials_, parent_name).get();
   if (vessel->parent() != parent) {
     vessel->set_parent(parent);
   }
@@ -892,12 +894,12 @@ RelativeDegreesOfFreedom<AliceSun> Plugin::VesselFromParent(
 }
 
 RelativeDegreesOfFreedom<AliceSun> Plugin::CelestialFromParent(
-    Index const celestial_index) const {
+    std::string const& celestial_name) const {
   CHECK(!initializing_);
   ephemeris_->Prolong(current_time_).IgnoreError();
-  Celestial const& celestial = *FindOrDie(celestials_, celestial_index);
+  Celestial const& celestial = *FindOrDie(celestials_, celestial_name);
   CHECK(celestial.has_parent())
-      << "Body at index " << celestial_index << " is the sun";
+      << "Body with name " << celestial_name << " is the sun";
   RelativeDegreesOfFreedom<Barycentric> const barycentric_result =
       celestial.current_degrees_of_freedom(current_time_) -
       celestial.parent()->current_degrees_of_freedom(current_time_);
@@ -1008,7 +1010,7 @@ void Plugin::ExtendPredictionForFlightPlan(GUID const& vessel_guid) const {
 }
 
 void Plugin::ComputeAndRenderApsides(
-    Index const celestial_index,
+    std::string const& celestial_name,
     DiscreteTrajectoryView<Barycentric> const& trajectory,
     Position<World> const& sun_world_position,
     int const max_points,
@@ -1016,7 +1018,7 @@ void Plugin::ComputeAndRenderApsides(
     DistinguishedPoints<World>& periapsides) const {
   DistinguishedPoints<Barycentric> barycentric_apoapsides;
   DistinguishedPoints<Barycentric> barycentric_periapsides;
-  ComputeApsides(FindOrDie(celestials_, celestial_index)->trajectory(),
+  ComputeApsides(FindOrDie(celestials_, celestial_name)->trajectory(),
                  trajectory,
                  max_points,
                  barycentric_apoapsides,
@@ -1035,13 +1037,13 @@ void Plugin::ComputeAndRenderApsides(
 
 std::optional<DistinguishedPoints<World>::value_type>
 Plugin::ComputeAndRenderFirstCollision(
-    Index const celestial_index,
+    std::string const& celestial_name,
     DiscreteTrajectoryView<Barycentric> const& trajectory,
     Position<World> const& sun_world_position,
     int max_points,
     std::function<Length(Angle const& latitude,
                          Angle const& longitude)> const& radius) const {
-  auto const& celestial = FindOrDie(celestials_, celestial_index);
+  auto const& celestial = FindOrDie(celestials_, celestial_name);
   auto const& celestial_body = *celestial->body();
   auto const& celestial_trajectory = celestial->trajectory();
 
@@ -1156,12 +1158,12 @@ void Plugin::ComputeAndRenderNodes(
                                       PlanetariumRotation());
 }
 
-bool Plugin::HasCelestial(Index const index) const {
-  return celestials_.contains(index);
+bool Plugin::HasCelestial(std::string const& name) const {
+  return celestials_.contains(name);
 }
 
-Celestial const& Plugin::GetCelestial(Index const index) const {
-  return *FindOrDie(celestials_, index);
+Celestial const& Plugin::GetCelestial(std::string const& name) const {
+  return *FindOrDie(celestials_, name);
 }
 
 std::vector<not_null<Celestial const*>> Plugin::GetAllCelestials() const {
@@ -1203,11 +1205,11 @@ not_null<std::unique_ptr<Planetarium>> Plugin::NewPlanetarium(
 
 not_null<std::unique_ptr<NavigationFrame>>
 Plugin::NewBarycentricRotatingNavigationFrame(
-    Index const primary_index,
-    Index const secondary_index) const {
+    std::string const& primary_name,
+    std::string const& secondary_name) const {
   CHECK(!initializing_);
-  Celestial const& primary = *FindOrDie(celestials_, primary_index);
-  Celestial const& secondary = *FindOrDie(celestials_, secondary_index);
+  Celestial const& primary = *FindOrDie(celestials_, primary_name);
+  Celestial const& secondary = *FindOrDie(celestials_, secondary_name);
   return make_not_null_unique<
       BarycentricRotatingReferenceFrame<Barycentric, Navigation>>(
           ephemeris_.get(),
@@ -1217,11 +1219,11 @@ Plugin::NewBarycentricRotatingNavigationFrame(
 
 not_null<std::unique_ptr<NavigationFrame>>
 Plugin::NewBodyCentredBodyDirectionNavigationFrame(
-    Index const primary_index,
-    Index const secondary_index) const {
+    std::string const& primary_name,
+    std::string const& secondary_name) const {
   CHECK(!initializing_);
-  Celestial const& primary = *FindOrDie(celestials_, primary_index);
-  Celestial const& secondary = *FindOrDie(celestials_, secondary_index);
+  Celestial const& primary = *FindOrDie(celestials_, primary_name);
+  Celestial const& secondary = *FindOrDie(celestials_, secondary_name);
   return make_not_null_unique<
       BodyCentredBodyDirectionReferenceFrame<Barycentric, Navigation>>(
           ephemeris_.get(),
@@ -1231,10 +1233,10 @@ Plugin::NewBodyCentredBodyDirectionNavigationFrame(
 
 not_null<std::unique_ptr<NavigationFrame>>
 Plugin::NewBodyCentredNonRotatingNavigationFrame(
-    Index const reference_body_index) const {
+    std::string const& reference_body_name) const {
   CHECK(!initializing_);
   Celestial const& reference_body =
-      *FindOrDie(celestials_, reference_body_index);
+      *FindOrDie(celestials_, reference_body_name);
   return make_not_null_unique<
       BodyCentredNonRotatingReferenceFrame<Barycentric, Navigation>>(
           ephemeris_.get(),
@@ -1243,10 +1245,10 @@ Plugin::NewBodyCentredNonRotatingNavigationFrame(
 
 not_null<std::unique_ptr<NavigationFrame>>
 Plugin::NewBodySurfaceNavigationFrame(
-    Index const reference_body_index) const {
+    std::string const& reference_body_name) const {
   CHECK(!initializing_);
   Celestial const& reference_body =
-      *FindOrDie(celestials_, reference_body_index);
+      *FindOrDie(celestials_, reference_body_name);
   return make_not_null_unique<
       BodySurfaceReferenceFrame<Barycentric, Navigation>>(
       ephemeris_.get(), reference_body.body());
@@ -1254,16 +1256,16 @@ Plugin::NewBodySurfaceNavigationFrame(
 
 not_null<std::unique_ptr<PlottingFrame>>
 Plugin::NewRotatingPulsatingPlottingFrame(
-    std::vector<Index> const& primary_indices,
-    std::vector<Index> const& secondary_indices) const {
+    std::vector<std::string> const& primary_names,
+    std::vector<std::string> const& secondary_names) const {
   std::vector<not_null<MassiveBody const*>> primaries;
-  for (Index const i : primary_indices) {
-    Celestial const& primary = *FindOrDie(celestials_, i);
+  for (std::string const& n : primary_names) {
+    Celestial const& primary = *FindOrDie(celestials_, n);
     primaries.push_back(primary.body());
   }
   std::vector<not_null<MassiveBody const*>> secondaries;
-  for (Index const i : secondary_indices) {
-    Celestial const& secondary = *FindOrDie(celestials_, i);
+  for (std::string const& n : secondary_names) {
+    Celestial const& secondary = *FindOrDie(celestials_, n);
     secondaries.push_back(secondary.body());
   }
   return make_not_null_unique<
@@ -1272,9 +1274,9 @@ Plugin::NewRotatingPulsatingPlottingFrame(
 }
 
 void Plugin::SetTargetVessel(GUID const& vessel_guid,
-                             Index const reference_body_index) {
+                             std::string const& reference_body_name) {
   not_null<Celestial const*> const celestial =
-      FindOrDie(celestials_, reference_body_index).get();
+      FindOrDie(celestials_, reference_body_name).get();
   not_null<Vessel*> const vessel = FindOrDie(vessels_, vessel_guid).get();
   renderer_->SetTargetVessel(vessel, celestial, ephemeris_.get());
 }
@@ -1398,10 +1400,10 @@ Vector<double, World> Plugin::VesselBinormal(GUID const& vessel_guid) const {
 
 Velocity<World> Plugin::UnmanageableVesselVelocity(
     RelativeDegreesOfFreedom<AliceSun> const& degrees_of_freedom,
-    Index const parent_index) const {
+    std::string const& parent_name) const {
   auto const parent_degrees_of_freedom =
       FindOrDie(celestials_,
-                parent_index)->current_degrees_of_freedom(current_time_);
+                parent_name)->current_degrees_of_freedom(current_time_);
   return VesselVelocity(
       current_time_,
       parent_degrees_of_freedom +
@@ -1761,7 +1763,7 @@ template<typename T>
 void Plugin::ReadCelestialsFromMessages(
     Ephemeris<Barycentric> const& ephemeris,
     google::protobuf::RepeatedPtrField<T> const& celestial_messages,
-    IndexToOwnedCelestial& celestials,
+    NameToOwnedCelestial& celestials,
     std::map<std::string, Index>& name_to_index) {
   auto const& bodies = ephemeris.bodies();
   int index = 0;
