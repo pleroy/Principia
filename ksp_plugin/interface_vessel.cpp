@@ -42,7 +42,8 @@ QP __cdecl principia__VesselFromParent(Plugin const* const plugin,
   journal::Method<journal::VesselFromParent> m(
       {plugin, parent_index, vessel_guid});
   CHECK(plugin != nullptr);
-  return m.Return(ToQP(plugin->VesselFromParent(parent_index, vessel_guid)));
+  return m.Return(
+      ToQP(plugin->VesselFromParent(Index(parent_index), vessel_guid)));
 }
 
 OrbitAnalysis* __cdecl principia__VesselGetAnalysis(

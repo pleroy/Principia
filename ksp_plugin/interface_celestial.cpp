@@ -39,7 +39,7 @@ QP __cdecl principia__CelestialFromParent(Plugin const* const plugin,
                                           int const celestial_index) {
   journal::Method<journal::CelestialFromParent> m({plugin, celestial_index});
   CHECK(plugin != nullptr);
-  return m.Return(ToQP(plugin->CelestialFromParent(celestial_index)));
+  return m.Return(ToQP(plugin->CelestialFromParent(Index(celestial_index))));
 }
 
 double __cdecl principia__CelestialInitialRotationInDegrees(
@@ -48,14 +48,15 @@ double __cdecl principia__CelestialInitialRotationInDegrees(
   journal::Method<journal::CelestialInitialRotationInDegrees> m(
       {plugin, celestial_index});
   CHECK(plugin != nullptr);
-  return m.Return(plugin->CelestialInitialRotation(celestial_index) / Degree);
+  return m.Return(plugin->CelestialInitialRotation(Index(celestial_index)) /
+                  Degree);
 }
 
 WXYZ __cdecl principia__CelestialRotation(Plugin const* const plugin,
                                           int const index) {
   journal::Method<journal::CelestialRotation> m({plugin, index});
   CHECK(plugin != nullptr);
-  return m.Return(ToWXYZ(plugin->CelestialRotation(index).quaternion()));
+  return m.Return(ToWXYZ(plugin->CelestialRotation(Index(index)).quaternion()));
 }
 
 double __cdecl principia__CelestialRotationPeriod(
@@ -64,7 +65,8 @@ double __cdecl principia__CelestialRotationPeriod(
   journal::Method<journal::CelestialRotationPeriod> m(
       {plugin, celestial_index});
   CHECK(plugin != nullptr);
-  return m.Return(plugin->CelestialRotationPeriod(celestial_index) / Second);
+  return m.Return(plugin->CelestialRotationPeriod(Index(celestial_index)) /
+                  Second);
 }
 
 WXYZ __cdecl principia__CelestialSphereRotation(Plugin const* const plugin) {
@@ -82,7 +84,7 @@ QP __cdecl principia__CelestialWorldDegreesOfFreedom(Plugin const* const plugin,
   CHECK(plugin != nullptr);
   return m.Return(ToQP(
       plugin->CelestialWorldDegreesOfFreedom(
-          index,
+          Index(index),
           plugin->BarycentricToWorld(
               origin.reference_part_is_unmoving,
               origin.reference_part_id,

@@ -710,9 +710,9 @@ void __cdecl principia__InitializePsychohistoryParameters(
   return m.Return();
 }
 
-Index __cdecl principia__InsertCelestialAbsoluteCartesian(
+int __cdecl principia__InsertCelestialAbsoluteCartesian(
     Plugin* const plugin,
-    Index const* const parent_index,
+    int const* const parent_index,
     BodyParameters const& body_parameters,
     char const* const x,
     char const* const y,
@@ -737,15 +737,15 @@ Index __cdecl principia__InsertCelestialAbsoluteCartesian(
   initial_state.set_vz(vz);
   Index const celestial_index = plugin->InsertCelestialAbsoluteCartesian(
       parent_index == nullptr ? std::nullopt
-                              : std::make_optional(*parent_index),
+                              : std::make_optional(Index(*parent_index)),
       MakeGravityModel(body_parameters),
       initial_state);
-  return m.Return(celestial_index);
+  return m.Return(celestial_index.value());
 }
 
-Index __cdecl principia__InsertCelestialJacobiKeplerian(
+int __cdecl principia__InsertCelestialJacobiKeplerian(
     Plugin* const plugin,
-    Index const* const parent_index,
+    int const* const parent_index,
     BodyParameters const& body_parameters,
     KeplerianElements const* const keplerian_elements) {
   journal::Method<journal::InsertCelestialJacobiKeplerian> m(
@@ -779,10 +779,10 @@ Index __cdecl principia__InsertCelestialJacobiKeplerian(
   }
   Index const celestial_index = plugin->InsertCelestialJacobiKeplerian(
       parent_index == nullptr ? std::nullopt
-                              : std::make_optional(*parent_index),
+                              : std::make_optional(Index(*parent_index)),
       MakeGravityModel(body_parameters),
       initial_state);
-  return m.Return(celestial_index);
+  return m.Return(celestial_index.value());
 }
 
 // Calls `plugin->InsertOrKeepVessel` with the arguments given.
@@ -804,7 +804,7 @@ void __cdecl principia__InsertOrKeepVessel(Plugin* const plugin,
       << (vessel_guid == nullptr ? "null" : std::string_view(vessel_guid));
   plugin->InsertOrKeepVessel(vessel_guid,
                              vessel_name,
-                             parent_index,
+                             Index(parent_index),
                              loaded,
                              *inserted);
   return m.Return();
@@ -859,7 +859,7 @@ void __cdecl principia__InsertOrKeepLoadedPart(
       inertia_tensor_in_rigid_part,
       is_solid_rocket_motor,
       vessel_guid,
-      main_body_index,
+      Index(main_body_index),
       FromQP<DegreesOfFreedom<World>>(main_body_world_degrees_of_freedom),
       MakePartRigidMotion(
           part_world_degrees_of_freedom, part_rotation, part_angular_velocity),
@@ -1116,7 +1116,7 @@ void __cdecl principia__SetFlag(char const* const name,
 void __cdecl principia__SetMainBody(Plugin* const plugin, int const index) {
   journal::Method<journal::SetMainBody> m({plugin, index});
   CHECK(plugin != nullptr);
-  plugin->SetMainBody(index);
+  plugin->SetMainBody(Index(index));
   return m.Return();
 }
 
@@ -1149,7 +1149,7 @@ void __cdecl principia__SetWorldRotationalReferenceFrame(Plugin* const plugin,
                                                          int const index) {
   journal::Method<journal::SetWorldRotationalReferenceFrame> m({plugin, index});
   CHECK(plugin != nullptr);
-  plugin->SetWorldRotationalReferenceFrame(index);
+  plugin->SetWorldRotationalReferenceFrame(Index(index));
   return m.Return();
 }
 
@@ -1158,7 +1158,7 @@ XYZ __cdecl principia__UnmanageableVesselVelocity(Plugin const* const plugin,
                                                   int const parent_index) {
   return ToXYZ(ABSL_DIE_IF_NULL(plugin)->UnmanageableVesselVelocity(
       FromQP<RelativeDegreesOfFreedom<AliceSun>>(degrees_of_freedom),
-      parent_index));
+      Index(parent_index)));
 }
 
 // Calls `plugin->UpdateCelestialHierarchy` with the arguments given.
@@ -1170,7 +1170,7 @@ void __cdecl principia__UpdateCelestialHierarchy(Plugin const* const plugin,
                                                         celestial_index,
                                                         parent_index});
   CHECK(plugin != nullptr);
-  plugin->UpdateCelestialHierarchy(celestial_index, parent_index);
+  plugin->UpdateCelestialHierarchy(Index(celestial_index), Index(parent_index));
   return m.Return();
 }
 

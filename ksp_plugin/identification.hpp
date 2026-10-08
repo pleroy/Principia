@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ostream>
 #include <set>
 #include <string>
 
@@ -20,8 +21,27 @@ using namespace principia::base::_not_null;
 
 // The index of a `Celestial`.  Computed by the `Plugin` when a celestial is
 // inserted, and persisted in the save.  Used to talk about celestials in the
-// interface.
-using Index = int;
+// interface.  The class is for strong typing in the C++ code, interchange is
+// done as `int`.
+class Index {
+ public:
+  explicit Index(int value);
+  int value() const;
+
+  friend bool operator==(Index const& lhs, Index const& rhs);
+  template<typename H>
+  friend H AbslHashValue(H h, Index const& m);
+
+ private:
+  int value_;
+};
+
+template<typename H>
+H AbslHashValue(H h, Index const& index) {
+  return H::combine(std::move(h), index.value_);
+}
+
+std::ostream& operator<<(std::ostream& out, Index const& index);
 
 // The GUID of a vessel, obtained by `v.id.ToString()` in C#. We use this as a
 // key in a map.

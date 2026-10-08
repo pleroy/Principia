@@ -1475,11 +1475,11 @@ void Plugin::WriteToMessage(
   }
   for (auto const& [index, owned_celestial] : celestials_) {
     auto* const celestial_message = message->add_celestial();
-    celestial_message->set_index(index);
+    celestial_message->set_index(index.value());
     if (owned_celestial->has_parent()) {
       Index const parent_index =
           FindOrDie(celestial_to_index, owned_celestial->parent());
-      celestial_message->set_parent_index(parent_index);
+      celestial_message->set_parent_index(parent_index.value());
     }
     celestial_message->set_ephemeris_index(
         ephemeris_->serialization_index_for_body(owned_celestial->body()));
@@ -1505,7 +1505,7 @@ void Plugin::WriteToMessage(
     vessel->WriteToMessage(vessel_message->mutable_vessel(),
                            serialization_index_for_pile_up);
     Index const parent_index = FindOrDie(celestial_to_index, vessel->parent());
-    vessel_message->set_parent_index(parent_index);
+    vessel_message->set_parent_index(parent_index.value());
     vessel_message->set_loaded(loaded_vessels_.contains(vessel.get()));
     vessel_message->set_kept(kept_vessels_.contains(vessel.get()));
   }
@@ -1531,7 +1531,7 @@ void Plugin::WriteToMessage(
   game_epoch_.WriteToMessage(message->mutable_game_epoch());
   current_time_.WriteToMessage(message->mutable_current_time());
   Index const sun_index = FindOrDie(celestial_to_index, sun_);
-  message->set_sun_index(sun_index);
+  message->set_sun_index(sun_index.value());
   renderer_->WriteToMessage(message->mutable_renderer());
 
   for (auto* const pile_up : pile_ups_) {
@@ -1608,7 +1608,8 @@ not_null<std::unique_ptr<Plugin>> Plugin::ReadFromMessage(
   vessel_futures.reserve(message.vessel_size());
   for (auto const& vessel_message : message.vessel()) {
     not_null<Celestial const*> const parent =
-        FindOrDie(plugin->celestials_, vessel_message.parent_index()).get();
+        FindOrDie(plugin->celestials_, Index(vessel_message.parent_index()))
+            .get();
     vessel_futures.push_back(vessel_deserialization_pool.Add(
         [expected_performance_callback, parent, &plugin, &vessel_message]() {
           return Vessel::ReadFromMessage(
@@ -1642,7 +1643,8 @@ not_null<std::unique_ptr<Plugin>> Plugin::ReadFromMessage(
     plugin->part_id_to_vessel_.emplace(part_id, vessel.get());
   }
 
-  plugin->sun_ = FindOrDie(plugin->celestials_, message.sun_index()).get();
+  plugin->sun_ =
+      FindOrDie(plugin->celestials_, Index(message.sun_index())).get();
   plugin->main_body_ = plugin->sun_->body();
   plugin->UpdatePlanetariumRotation();
 
@@ -1728,8 +1730,8 @@ Index Plugin::InitializeIndices(std::string const& name,
   // first characters of the name and some salting) and update the indices when
   // reading a legacy save.  For now, starting at 1000 will detect confusions in
   // tests.
-  static Index last_celestial_index = 1000;
-  Index const celestial_index = ++last_celestial_index;
+  static int last_celestial_index = 1000;
+  Index const celestial_index = Index(++last_celestial_index);
   bool inserted = name_to_index_.emplace(name, celestial_index).second;
   CHECK(inserted) << name;
   inserted = index_to_name_.emplace(celestial_index, name).second;
@@ -1799,9 +1801,9 @@ void Plugin::ReadCelestialsFromMessages(
   for (auto const& celestial_message : celestial_messages) {
     if (celestial_message.has_parent_index()) {
       not_null<std::unique_ptr<Celestial>> const& celestial =
-          FindOrDie(celestials, celestial_message.index());
+          FindOrDie(celestials, Index(celestial_message.index()));
       not_null<Celestial const*> const parent =
-          FindOrDie(celestials, celestial_message.parent_index()).get();
+          FindOrDie(celestials, Index(celestial_message.parent_index())).get();
       celestial->set_parent(parent);
     }
   }

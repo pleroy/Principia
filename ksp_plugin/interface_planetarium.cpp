@@ -307,7 +307,7 @@ void __cdecl principia__PlanetariumPlotCelestialPastTrajectory(
     return m.Return();
   } else {
     auto const& celestial_trajectory =
-        plugin->GetCelestial(celestial_index).trajectory();
+        plugin->GetCelestial(Index(celestial_index)).trajectory();
     Instant const desired_first_time =
         plugin->CurrentTime() - max_history_length * Second;
 
@@ -382,7 +382,7 @@ void __cdecl principia__PlanetariumPlotCelestialFutureTrajectory(
             : prediction_final_time;
 
     auto const& celestial_trajectory =
-        plugin->GetCelestial(celestial_index).trajectory();
+        plugin->GetCelestial(Index(celestial_index)).trajectory();
     // No need to request reanimation here because the current time of the
     // plugin is necessarily covered.
     TrajectoryView celestial_view(&celestial_trajectory);

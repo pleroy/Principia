@@ -785,17 +785,18 @@ inline not_null<std::unique_ptr<NavigationFrame>> NewNavigationFrame(
     case serialization::BarycentricRotatingReferenceFrame::
         kExtensionFieldNumber:
       return plugin.NewBarycentricRotatingNavigationFrame(
-          parameters.primary_index, parameters.secondary_index);
+          Index(parameters.primary_index), Index(parameters.secondary_index));
     case serialization::BodyCentredBodyDirectionReferenceFrame::
         kExtensionFieldNumber:
       return plugin.NewBodyCentredBodyDirectionNavigationFrame(
-          parameters.primary_index, parameters.secondary_index);
+          Index(parameters.primary_index), Index(parameters.secondary_index));
     case serialization::BodyCentredNonRotatingReferenceFrame::
         kExtensionFieldNumber:
       return plugin.NewBodyCentredNonRotatingNavigationFrame(
-          parameters.centre_index);
+          Index(parameters.centre_index));
     case serialization::BodySurfaceReferenceFrame::kExtensionFieldNumber:
-      return plugin.NewBodySurfaceNavigationFrame(parameters.centre_index);
+      return plugin.NewBodySurfaceNavigationFrame(
+          Index(parameters.centre_index));
     default:
       LOG(FATAL) << "Unexpected extension " << parameters.extension;
       std::abort();
@@ -814,13 +815,13 @@ inline not_null<std::unique_ptr<PlottingFrame>> NewPlottingFrame(
       for (int const* const* index_ptr = parameters.primary_index;
            *index_ptr != nullptr;
            ++index_ptr) {
-        primary_indices.push_back(**index_ptr);
+        primary_indices.push_back(Index(**index_ptr));
       }
       std::vector<Index> secondary_indices;
       for (int const* const* index_ptr = parameters.secondary_index;
            *index_ptr != nullptr;
            ++index_ptr) {
-        secondary_indices.push_back(**index_ptr);
+        secondary_indices.push_back(Index(**index_ptr));
       }
       return plugin.NewRotatingPulsatingPlottingFrame(primary_indices,
                                                       secondary_indices);
@@ -895,10 +896,10 @@ inline not_null<OrbitAnalysis*> NewOrbitAnalysis(
   if (vessel_analysis == nullptr) {
     return analysis;
   }
-  analysis->primary_index =
-      vessel_analysis->primary() == nullptr
-          ? nullptr
-          : new int(plugin.CelestialIndexOfBody(*vessel_analysis->primary()));
+  analysis->primary_index = vessel_analysis->primary() == nullptr
+                                ? nullptr
+                                : new int(plugin.CelestialIndexOfBody(
+                                      *vessel_analysis->primary()).value());
 
   auto const to_double_ptr = [&plugin](std::optional<Instant> const& t) {
     return t.has_value() ? new double(ToGameTime(plugin, *t)) : nullptr;

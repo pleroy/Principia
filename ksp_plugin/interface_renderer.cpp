@@ -71,7 +71,7 @@ void __cdecl principia__RenderedPredictionApsides(
   DistinguishedPoints<World> rendered_apoapsides;
   DistinguishedPoints<World> rendered_periapsides;
   plugin->ComputeAndRenderApsides(
-      celestial_index,
+      Index(celestial_index),
       prediction_view,
       FromXYZ<Position<World>>(sun_world_position),
       max_points,
@@ -167,7 +167,7 @@ void __cdecl principia__SetTargetVessel(Plugin* const plugin,
   journal::Method<journal::SetTargetVessel> m(
       {plugin, vessel_guid, reference_body_index});
   CHECK(plugin != nullptr);
-  plugin->SetTargetVessel(vessel_guid, reference_body_index);
+  plugin->SetTargetVessel(vessel_guid, Index(reference_body_index));
   return m.Return();
 }
 

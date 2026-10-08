@@ -9,6 +9,21 @@ namespace internal {
 using namespace principia::ksp_plugin::_part;
 using namespace principia::ksp_plugin::_vessel;
 
+Index::Index(int const index)
+    : value_(index) {}
+
+int Index::value() const {
+  return value_;
+}
+
+bool operator==(Index const& lhs, Index const& rhs) {
+  return lhs.value_ == rhs.value_;
+}
+
+std::ostream& operator<<(std::ostream& out, Index const& index) {
+  // TODO: insert return statement here
+}
+
 bool PartByPartIdComparator::operator()(not_null<Part*> const left,
                                         not_null<Part*> const right) const {
   return left->part_id() < right->part_id();
