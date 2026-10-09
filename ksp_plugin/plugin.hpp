@@ -131,12 +131,12 @@ class Plugin {
   // inserted.
   // All the bodies must be inserted using the same method.
   virtual void InsertCelestialAbsoluteCartesian(
-      Index celestial_index,
+      UUID const& celestial_uuid,
       std::optional<Index> const& parent_index,
       serialization::GravityModel::Body const& gravity_model,
       serialization::InitialState::Cartesian::Body const& initial_state);
   virtual void InsertCelestialJacobiKeplerian(
-      Index celestial_index,
+      UUID const& celestial_uuid,
       std::optional<Index> const& parent_index,
       serialization::GravityModel::Body const& gravity_model,
       serialization::InitialState::Keplerian::Body const& initial_state);
@@ -168,8 +168,8 @@ class Plugin {
   // inserted. Must be called after initialization.
   // For a KSP `CelestialBody` `b`, the arguments correspond to
   // `b.flightGlobalsIndex`, `b.orbit.referenceBody.flightGlobalsIndex`.
-  virtual void UpdateCelestialHierarchy(Index celestial_index,
-                                        Index parent_index) const;
+  virtual void UpdateCelestialHierarchy(UUID const& celestial_uuid,
+                                        UUID const& parent_uuid) const;
 
   // Sets the celestial whose axis of rotation will coincide with the `Alice`
   // z axis.
@@ -177,11 +177,11 @@ class Plugin {
   virtual Rotation<BodyWorld, World> CelestialRotation(Index index) const;
   virtual Rotation<CelestialSphere, World> CelestialSphereRotation() const;
 
-  virtual Angle CelestialInitialRotation(Index celestial_index) const;
-  virtual Time CelestialRotationPeriod(Index celestial_index) const;
+  virtual Angle CelestialInitialRotation(UUID const& celestial_uuid) const;
+  virtual Time CelestialRotationPeriod(UUID const& celestial_uuid) const;
 
   virtual void ClearWorldRotationalReferenceFrame();
-  virtual void SetWorldRotationalReferenceFrame(Index celestial_index);
+  virtual void SetWorldRotationalReferenceFrame(UUID const& celestial_uuid);
 
   virtual Index CelestialIndexOfBody(MassiveBody const& body) const;
 
@@ -198,7 +198,7 @@ class Plugin {
   // `v.orbit.referenceBody.flightGlobalsIndex`, `v.loaded`.
   virtual void InsertOrKeepVessel(GUID const& vessel_guid,
                                   std::string const& vessel_name,
-                                  Index parent_index,
+                                  UUID const& parent_uuid,
                                   bool loaded,
                                   bool& inserted);
 
@@ -227,7 +227,7 @@ class Plugin {
       InertiaTensor<RigidPart> const& inertia_tensor,
       bool is_solid_rocket_motor,
       GUID const& vessel_guid,
-      Index main_body_index,
+      UUID const& main_body_uuid,
       DegreesOfFreedom<World> const& main_body_degrees_of_freedom,
       RigidMotion<EccentricPart, World> const& part_rigid_motion,
       Time const& Δt);
@@ -332,7 +332,7 @@ class Plugin {
   // A vessel with GUID `vessel_guid` must have been inserted and kept. Must
   // be called after initialization.
   virtual RelativeDegreesOfFreedom<AliceSun> VesselFromParent(
-      Index parent_index,
+      UUID const& parent_uuid,
       GUID const& vessel_guid) const;
 
   // Returns the displacement and velocity of the celestial at index
@@ -342,7 +342,7 @@ class Plugin {
   // A celestial with index `celestial_index` must have been inserted, and it
   // must not be the sun. Must be called after initialization.
   virtual RelativeDegreesOfFreedom<AliceSun> CelestialFromParent(
-      Index celestial_index) const;
+      UUID const& celestial_uuid) const;
 
   virtual void SetPredictionAdaptiveStepParameters(
       GUID const& vessel_guid,
@@ -363,7 +363,7 @@ class Plugin {
   // Computes the apsides of the trajectory defined by `begin` and `end` with
   // respect to the celestial with index `celestial_index`.
   virtual void ComputeAndRenderApsides(
-      Index celestial_index,
+      UUID const& celestial_uuid,
       DiscreteTrajectoryView<Barycentric> const& trajectory,
       Position<World> const& sun_world_position,
       int max_points,
@@ -374,7 +374,7 @@ class Plugin {
   // `end` and the celestial with index `celestial_index`.
   virtual std::optional<DistinguishedPoints<World>::value_type>
   ComputeAndRenderFirstCollision(
-      Index celestial_index,
+      UUID const& celestial_uuid,
       DiscreteTrajectoryView<Barycentric> const& trajectory,
       Position<World> const& sun_world_position,
       int max_points,
@@ -414,18 +414,18 @@ class Plugin {
       const;
 
   virtual not_null<std::unique_ptr<NavigationFrame>>
-  NewBarycentricRotatingNavigationFrame(Index primary_index,
-                                        Index secondary_index) const;
+  NewBarycentricRotatingNavigationFrame(UUID const& primary_uuid,
+                                        UUID const& secondary_uuid) const;
 
   virtual not_null<std::unique_ptr<NavigationFrame>>
-  NewBodyCentredBodyDirectionNavigationFrame(Index primary_index,
-                                             Index secondary_index) const;
+  NewBodyCentredBodyDirectionNavigationFrame(UUID const& primary_uuid,
+                                             UUID const& secondary_uuid) const;
 
   virtual not_null<std::unique_ptr<NavigationFrame>>
-  NewBodyCentredNonRotatingNavigationFrame(Index reference_body_index) const;
+  NewBodyCentredNonRotatingNavigationFrame(UUID const& reference_body_uuid) const;
 
   virtual not_null<std::unique_ptr<NavigationFrame>>
-  NewBodySurfaceNavigationFrame(Index reference_body_index) const;
+  NewBodySurfaceNavigationFrame(UUID const& reference_body_uuid) const;
 
   virtual not_null<std::unique_ptr<PlottingFrame>>
   NewRotatingPulsatingPlottingFrame(
@@ -433,7 +433,7 @@ class Plugin {
       std::vector<Index> const& secondary_indices) const;
 
   virtual void SetTargetVessel(GUID const& vessel_guid,
-                               Index reference_body_index);
+                               UUID const& reference_body_uuid);
 
   // The navball field at `current_time` for the current `plotting_frame_`.
   virtual std::unique_ptr<FrameField<World, Navball>> NavballFrameField(
@@ -453,7 +453,7 @@ class Plugin {
   // the plugin.
   virtual Velocity<World> UnmanageableVesselVelocity(
       RelativeDegreesOfFreedom<AliceSun> const& degrees_of_freedom,
-      Index parent_index) const;
+      UUID const& parent_uuid) const;
   // Same as `UnmanageableVesselVelocity`, but uses the known degrees of freedom
   // of a vessel in `vessels_`.
   virtual Velocity<World> VesselVelocity(GUID const& vessel_guid) const;
@@ -500,7 +500,7 @@ class Plugin {
 
   void InitializeIndices(
       std::string const& name,
-      Index celestial_index,
+      UUID const& celestial_uuid,
       std::optional<Index> const& parent_index);
 
   // Computes the value returned by `PlanetariumRotation`.  Must be called

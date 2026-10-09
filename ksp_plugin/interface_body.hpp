@@ -271,9 +271,9 @@ inline bool operator==(Interval const& left, Interval const& right) {
 inline bool operator==(NavigationFrameParameters const& left,
                        NavigationFrameParameters const& right) {
   return left.extension == right.extension &&
-         left.centre_index == right.centre_index &&
-         left.primary_index == right.primary_index &&
-         left.secondary_index == right.secondary_index;
+         left.centre_uuid == right.centre_uuid &&
+         left.primary_uuid == right.primary_uuid &&
+         left.secondary_uuid == right.secondary_uuid;
 }
 
 inline bool operator==(NavigationManoeuvre const& left,
@@ -314,7 +314,7 @@ inline bool operator==(OrbitAnalysis const& left, OrbitAnalysis const& right) {
              right.ground_track_equatorial_crossings &&
          left.solar_times_of_nodes == right.solar_times_of_nodes &&
          left.mission_duration == right.mission_duration &&
-         left.primary_index == right.primary_index &&
+         left.primary_uuid == right.primary_uuid &&
          left.progress_of_next_analysis == right.progress_of_next_analysis &&
          left.recurrence == right.recurrence;
 }
@@ -750,17 +750,17 @@ inline not_null<std::unique_ptr<NavigationFrame>> NewNavigationFrame(
     case serialization::BarycentricRotatingReferenceFrame::
         kExtensionFieldNumber:
       return plugin.NewBarycentricRotatingNavigationFrame(
-          parameters.primary_index, parameters.secondary_index);
+          parameters.primary_uuid, parameters.secondary_uuid);
     case serialization::BodyCentredBodyDirectionReferenceFrame::
         kExtensionFieldNumber:
       return plugin.NewBodyCentredBodyDirectionNavigationFrame(
-          parameters.primary_index, parameters.secondary_index);
+          parameters.primary_uuid, parameters.secondary_uuid);
     case serialization::BodyCentredNonRotatingReferenceFrame::
         kExtensionFieldNumber:
       return plugin.NewBodyCentredNonRotatingNavigationFrame(
-          parameters.centre_index);
+          parameters.centre_uuid);
     case serialization::BodySurfaceReferenceFrame::kExtensionFieldNumber:
-      return plugin.NewBodySurfaceNavigationFrame(parameters.centre_index);
+      return plugin.NewBodySurfaceNavigationFrame(parameters.centre_uuid);
     default:
       LOG(FATAL) << "Unexpected extension " << parameters.extension;
       std::abort();
@@ -770,19 +770,19 @@ inline not_null<std::unique_ptr<NavigationFrame>> NewNavigationFrame(
 inline not_null<std::unique_ptr<PlottingFrame>> NewPlottingFrame(
     Plugin const& plugin,
     PlottingFrameParameters const& parameters) {
-  CHECK(parameters.primary_index != nullptr);
-  CHECK(parameters.secondary_index != nullptr);
+  CHECK(parameters.primary_uuid != nullptr);
+  CHECK(parameters.secondary_uuid != nullptr);
   switch (parameters.extension) {
     case serialization::RotatingPulsatingReferenceFrame::
         kExtensionFieldNumber: {
       std::vector<int> primary_indices;
-      for (int const* const* index_ptr = parameters.primary_index;
+      for (int const* const* index_ptr = parameters.primary_uuid;
            *index_ptr != nullptr;
            ++index_ptr) {
         primary_indices.push_back(**index_ptr);
       }
       std::vector<int> secondary_indices;
-      for (int const* const* index_ptr = parameters.secondary_index;
+      for (int const* const* index_ptr = parameters.secondary_uuid;
            *index_ptr != nullptr;
            ++index_ptr) {
         secondary_indices.push_back(**index_ptr);
@@ -861,7 +861,7 @@ inline not_null<OrbitAnalysis*> NewOrbitAnalysis(
   if (vessel_analysis == nullptr) {
     return analysis;
   }
-  analysis->primary_index =
+  analysis->primary_uuid =
       vessel_analysis->primary() == nullptr
           ? nullptr
           : new int(plugin.CelestialIndexOfBody(*vessel_analysis->primary()));
