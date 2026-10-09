@@ -643,6 +643,10 @@ void JournalProtoProcessor::ProcessRequiredFixed64Field(
       case journal::serialization::UTF_16:
         pointer_to = "char16_t const";
         break;
+      case journal::serialization::UINT64:
+        field_cs_type_[descriptor] = "uint64";
+        field_cxx_type_[descriptor] = "uint64_t";
+        return;
     }
   }
   if (field_cxx_address_of_.contains(descriptor)) {

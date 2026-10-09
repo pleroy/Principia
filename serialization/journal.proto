@@ -7,8 +7,8 @@ package principia.journal.serialization;
 // These messages must come first because the other interchange messages use
 // them and we need to generate the structs in the correct order.
 message UUID {
-  required fixed64 bytes_0_7 = 1;
-  required fixed64 bytes_8_15 = 2;
+  required fixed64 bytes_0_7 = 1 [(encoding) = UINT64];
+  required fixed64 bytes_8_15 = 2 [(encoding) = UINT64];
 }
 
 message NavigationFrameParameters {
@@ -327,7 +327,7 @@ message OrbitAnalysis {
   optional EquatorialCrossings ground_track_equatorial_crossings = 6 [(is_produced) = true];
   optional SolarTimesOfNodes solar_times_of_nodes = 11 [(is_produced) = true];
   optional ElementGraphs element_graphs = 14 [(is_produced) = true];
-  required fixed64 primary_index_address = 10 [(address_of) = "primary_index"];
+  required fixed64 primary_uuid_address = 10 [(address_of) = "primary_uuid"];
   required fixed64 elements_address = 7 [(address_of) = "elements"];
   required fixed64 recurrence_address = 8 [(address_of) = "recurrence"];
   required fixed64 ground_track_equatorial_crossings_address = 9 [(address_of) = "ground_track_equatorial_crossings"];

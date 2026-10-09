@@ -8,6 +8,7 @@ package principia.journal.serialization;
 enum Encoding {
   UTF_8 = 1;  // Represented as "char const*" in C++ code.
   UTF_16 = 2;  // Represented as "char16_t const*" in C++ code.
+  UINT64 = 3;  // Represented as "uint64_t" in C++ code.
 }
 
 extend google.protobuf.FieldOptions {
