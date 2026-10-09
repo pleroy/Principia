@@ -15,11 +15,9 @@ enum Actuator {
   INSTANT_IMPULSE = 3;
 }
 
-message CelestialJacobiKeplerian {
-  required int32 celestial_index = 1;
-  optional int32 parent_index = 2;
-  optional KeplerianElements keplerian_elements = 3;
-  required MassiveBody body = 4;
+message UUID {
+  required fixed64 bytes_0_7 = 1;
+  required fixed64 bytes_8_15 = 2;
 }
 
 message FlightPlan {

@@ -37,15 +37,9 @@ class UUID {
   friend H AbslHashValue(H h, UUID const& m);
 };
 
-std::ostream& operator<<(std::ostream& out, UUID const& date) {}
-
-bool operator==(UUID const& lhs, UUID const& rhs) {
-  return lhs.bytes_0_7_ == rhs.bytes_0_7_ && lhs.bytes_8_15_ == rhs.bytes_8_15_;
-}
-
 template<typename H>
 H AbslHashValue(H h, UUID const& uuid) {
-  return H::combine(std::move(h), uuid.bytes_0_7_., uuid.bytes_8_15_);
+  return H::combine(std::move(h), uuid.bytes_0_7_, uuid.bytes_8_15_);
 }
 
 // The GUID of a vessel, obtained by `v.id.ToString()` in C#. We use this as a
