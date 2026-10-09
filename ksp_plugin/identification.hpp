@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+#include <ostream>
 #include <set>
 #include <string>
 
@@ -17,6 +19,34 @@ namespace _identification {
 namespace internal {
 
 using namespace principia::base::_not_null;
+
+class UUID {
+ public:
+  UUID(std::uint64_t bytes_0_7, std::uint64_t bytes_8_15);
+
+  void WriteToMessage(not_null<serialization::UUID*> message) const;
+  static UUID ReadFromMessage(serialization::UUID const& message);
+
+ private:
+  std::uint64_t bytes_0_7_;
+  std::uint64_t bytes_8_15_;
+
+  friend std::ostream& operator<<(std::ostream& out, UUID const& date);
+  friend bool operator==(UUID const& lhs, UUID const& rhs);
+  template<typename H>
+  friend H AbslHashValue(H h, UUID const& m);
+};
+
+std::ostream& operator<<(std::ostream& out, UUID const& date) {}
+
+bool operator==(UUID const& lhs, UUID const& rhs) {
+  return lhs.bytes_0_7_ == rhs.bytes_0_7_ && lhs.bytes_8_15_ == rhs.bytes_8_15_;
+}
+
+template<typename H>
+H AbslHashValue(H h, UUID const& uuid) {
+  return H::combine(std::move(h), uuid.bytes_0_7_., uuid.bytes_8_15_);
+}
 
 // The GUID of a vessel, obtained by `v.id.ToString()` in C#. We use this as a
 // key in a map.
