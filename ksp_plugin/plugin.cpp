@@ -1716,9 +1716,9 @@ Plugin::Plugin(
       vessel_thread_pool_(
           /*pool_size=*/2 * std::thread::hardware_concurrency()) {}
 
-void Plugin::InitializeIndices(std::string const& name,
-                               Index const celestial_index,
-                               std::optional<Index> const& parent_index) {
+void Plugin::InsertInMaps(std::string const& name,
+                          Index const celestial_index,
+                          std::optional<Index> const& parent_index) {
   bool inserted = name_to_index_.emplace(name, celestial_index).second;
   CHECK(inserted) << name;
   inserted = index_to_name_.emplace(celestial_index, name).second;
@@ -1761,7 +1761,7 @@ template<typename T>
 void Plugin::ReadCelestialsFromMessages(
     Ephemeris<Barycentric> const& ephemeris,
     google::protobuf::RepeatedPtrField<T> const& celestial_messages,
-    IndexToOwnedCelestial& celestials,
+    CityHashToOwnedCelestial& celestials,
     std::map<std::string, Index>& name_to_index) {
   auto const& bodies = ephemeris.bodies();
   int index = 0;
