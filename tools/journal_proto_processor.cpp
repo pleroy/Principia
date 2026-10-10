@@ -284,6 +284,21 @@ void JournalProtoProcessor::ProcessRepeatedDoubleField(
   ProcessRepeatedScalarField(descriptor, "double");
 }
 
+void JournalProtoProcessor::ProcessRepeatedFixed64Field(
+    FieldDescriptor const* descriptor) {
+  FieldOptions const& options = descriptor->options();
+  CHECK(options.HasExtension(journal::serialization::encoding) &&
+        options.GetExtension(journal::serialization::encoding) ==
+            journal::serialization::UINT64)
+      << descriptor->full_name()
+      << " must have the (encoding) option set to UINT64";
+
+  ProcessRepeatedNonStringField(descriptor,
+                                /*cs_unboxed_type=*/"uint64",
+                                /*cxx_type=*/"uint64_t");
+  ProcessRepeatedScalarField(descriptor, "uint64_t");
+}
+
 void JournalProtoProcessor::ProcessRepeatedInt32Field(
     FieldDescriptor const* descriptor) {
   ProcessRepeatedNonStringField(
@@ -528,6 +543,16 @@ void JournalProtoProcessor::ProcessOptionalDoubleField(
   ProcessOptionalScalarField(descriptor, "double");
 }
 
+void JournalProtoProcessor::ProcessOptionalFixed64Field(
+    FieldDescriptor const* descriptor) {
+  ProcessOptionalNonStringField(
+      descriptor,
+      /*cs_boxed_type=*/"BoxedUint64",
+      /*cs_unboxed_type=*/"uint64",
+      /*cxx_type=*/"uint64_t");
+  ProcessOptionalScalarField(descriptor, "uint64_t");
+}
+
 void JournalProtoProcessor::ProcessOptionalInt32Field(
     FieldDescriptor const* descriptor) {
   ProcessOptionalNonStringField(
@@ -643,6 +668,10 @@ void JournalProtoProcessor::ProcessRequiredFixed64Field(
       case journal::serialization::UTF_16:
         pointer_to = "char16_t const";
         break;
+      case journal::serialization::UINT64:
+        field_cs_type_[descriptor] = "uint64";
+        field_cxx_type_[descriptor] = "uint64_t";
+        return;
     }
   }
   if (field_cxx_address_of_.contains(descriptor)) {
@@ -1012,6 +1041,9 @@ void JournalProtoProcessor::ProcessOptionalField(
     case FieldDescriptor::TYPE_DOUBLE:
       ProcessOptionalDoubleField(descriptor);
       break;
+    case FieldDescriptor::TYPE_FIXED64:
+      ProcessOptionalFixed64Field(descriptor);
+      break;
     case FieldDescriptor::TYPE_INT32:
       ProcessOptionalInt32Field(descriptor);
       break;
@@ -1038,6 +1070,9 @@ void JournalProtoProcessor::ProcessRepeatedField(
   switch (descriptor->type()) {
     case FieldDescriptor::TYPE_DOUBLE:
       ProcessRepeatedDoubleField(descriptor);
+      break;
+    case FieldDescriptor::TYPE_FIXED64:
+      ProcessRepeatedFixed64Field(descriptor);
       break;
     case FieldDescriptor::TYPE_INT32:
       ProcessRepeatedInt32Field(descriptor);
