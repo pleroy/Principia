@@ -510,16 +510,23 @@ class Modularizer {
         input_file.DirectoryName + "\\" + input_file.Name + ".new";
     using (StreamReader reader = input_file.OpenText()) {
       using (StreamWriter writer = System.IO.File.CreateText(output_filename)) {
+        bool needs_closing_compile = false;
         while (!reader.EndOfStream) {
           string line = reader.ReadLine()!;
           bool is_extra_header = false;
+          bool is_self_closing_tag;
           foreach (string extra_header in extra_headers) {
             if (line.Contains('"' +   extra_header + '"')) {
               // An extra header, it is now named .ixx.
-              line = Regex.Replace(line, @"\.hpp"">", @".ixx"">");
-              line = Regex.Replace(line, @"\.hpp"" />", @".ixx"" />");
+              is_self_closing_tag = line.Contains(" />");
+              if (is_self_closing_tag) {
+                line = Regex.Replace(line, @"\.hpp"" />", @".ixx"" />");
+              } else {
+                line = Regex.Replace(line, @"\.hpp"">", @".ixx"">");
+              }
               line = Regex.Replace(line, "ClInclude", "ClCompile");
               is_extra_header = true;
+              needs_closing_compile = !is_self_closing_tag;
               break;
             }
           }
@@ -528,10 +535,19 @@ class Modularizer {
                 line.Contains("_body.hpp\" />")) {
               // A body, don't change it.
             } else if (line.Contains(".hpp\">") || line.Contains(".hpp\" />")) {
-              line = Regex.Replace(line, @"\.hpp"">", @".ixx"">");
-              line = Regex.Replace(line, @"\.hpp"" />", @".ixx"" />");
+              is_self_closing_tag = line.Contains(" />");
+              if (is_self_closing_tag) {
+                line = Regex.Replace(line, @"\.hpp"" />", @".ixx"" />");
+              } else {
+                line = Regex.Replace(line, @"\.hpp"">", @".ixx"">");
+              }
               line = Regex.Replace(line, "ClInclude", "ClCompile");
+              needs_closing_compile = !is_self_closing_tag;
             }
+          }
+          if (needs_closing_compile && line.Contains("</ClInclude>")) {
+            line = Regex.Replace(line, "ClInclude", "ClCompile");
+            needs_closing_compile = false;
           }
           writer.WriteLine(line);
         }
