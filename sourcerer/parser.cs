@@ -747,7 +747,16 @@ public class Parser {
                                         out string[] path,
                                         out string extension) {
     string[] fragments = line.Split('.');
-    extension = fragments[^1].Replace("\"", "");
+    extension = "";
+    if (fragments.Length > 1) {
+      extension = fragments[1];
+      if (fragments.Length > 2) {
+        for (int i = 2; i < fragments.Length; ++i) {
+          extension += '.' + fragments[i];
+        }
+      }
+    }
+    extension = extension.Replace("\"", "");
     path = fragments[0].Replace("#include \"", "").Split('/');
   }
 
