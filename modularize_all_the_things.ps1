@@ -15,6 +15,7 @@
     --project:numerics `
     --project:physics `
     --project:quantities `
+    --project:testing_utilities `
     --project:tools `
     --exclude:macros.hpp `
     --exclude:matchers.hpp `
