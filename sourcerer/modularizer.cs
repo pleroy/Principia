@@ -211,11 +211,13 @@ class Modularizer {
     // Fix the project files to reference the .ixx files.
     FixProjectFile(
         new FileInfo(project.FullName + "\\" + project.Name + ".vcxproj"),
+        excluded,
         extra_headers,
         dry_run);
     FixProjectFile(
         new FileInfo(
             project.FullName + "\\" + project.Name + ".vcxproj.filters"),
+        excluded,
         extra_headers,
         dry_run);
   }
@@ -503,6 +505,7 @@ class Modularizer {
   }
 
   private static void FixProjectFile(FileInfo input_file,
+                                     HashSet<string> excluded,
                                      HashSet<string> extra_headers,
                                      bool dry_run) {
     string input_filename = input_file.FullName;
@@ -530,7 +533,15 @@ class Modularizer {
               break;
             }
           }
-          if (!is_extra_header) {
+          bool is_excluded = false;
+          foreach (string e in excluded) {
+            if (line.Contains('"' + e + '"')) {
+              // Excluded headers are unchanged.
+              is_excluded = true;
+              break;
+            }
+          }
+          if (!is_extra_header && !is_excluded) {
             if (line.Contains("_body.hpp\">") ||
                 line.Contains("_body.hpp\" />")) {
               // A body, don't change it.
