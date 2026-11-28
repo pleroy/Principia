@@ -1,9 +1,4 @@
-#pragma once
-
-#include "base/get_line.hpp"
-
-#include <memory>
-#include <string>
+// Body of link:base/get_line.ixx
 
 namespace principia {
 namespace base {

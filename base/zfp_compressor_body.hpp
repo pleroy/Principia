@@ -1,12 +1,4 @@
-#pragma once
-
-#include "base/zfp_compressor.hpp"
-
-#include <functional>
-#include <memory>
-#include <string>
-#include <utility>
-#include <vector>
+// Body of link:base/zfp_compressor.ixx
 
 namespace principia {
 namespace base {

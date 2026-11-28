@@ -1,13 +1,9 @@
-#include "base/flags.hpp"
+module principia.base.flags;
 
-#include <functional>
-#include <map>
-#include <set>
-#include <string>
-#include <string_view>
+import std;
 
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+import "absl/log/check.h";
+import "absl/log/log.h";
 
 namespace principia {
 namespace base {

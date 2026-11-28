@@ -1,6 +1,8 @@
-#include "base/bits.hpp"
+// Test for link:base/bits.ixx
 
-#include "gtest/gtest.h"
+import "gtest/gtest.h";
+
+import principia.base.bits;
 
 namespace principia {
 namespace base {

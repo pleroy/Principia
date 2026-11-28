@@ -1,7 +1,9 @@
-#include "base/flags.hpp"
+// Test for link:base/flags.ixx
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
+import "gmock/gmock.h";
+import "gtest/gtest.h";
+
+import principia.base.flags;
 
 namespace principia {
 namespace base {

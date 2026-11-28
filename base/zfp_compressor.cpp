@@ -1,15 +1,11 @@
-#include "base/zfp_compressor.hpp"
+module principia.base.zfp_compressor;
 
-#include <cstddef>
-#include <cstdint>
-#include <functional>
-#include <memory>
-#include <string>
-#include <string_view>
+import std;
 
-#include "absl/log/check.h"
-#include "absl/log/log.h"
-#include "base/array.hpp"
+import "absl/log/check.h";
+import "absl/log/log.h";
+
+import principia.base.array;
 
 namespace principia {
 namespace base {

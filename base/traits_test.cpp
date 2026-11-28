@@ -1,4 +1,6 @@
-#include "base/traits.hpp"
+// Test for link:base/traits.ixx
+
+import principia.base.traits;
 
 namespace principia {
 namespace base {

@@ -1,6 +1,4 @@
-#pragma once
-
-#include "base/monostable.hpp"
+// Body of link:base/monostable.ixx
 
 namespace principia {
 namespace base {

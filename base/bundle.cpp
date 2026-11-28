@@ -1,14 +1,11 @@
-#include "base/bundle.hpp"
+module principia.base.bundle;
 
-#include <chrono>
-#include <functional>
-#include <list>
-#include <utility>
+import std;
 
-#include "absl/log/check.h"
-#include "absl/log/log.h"
-#include "absl/status/status.h"
-#include "absl/time/time.h"
+import "absl/log/check.h";
+import "absl/log/log.h";
+import "absl/status/status.h";
+import "absl/time/time.h";
 
 namespace principia {
 namespace base {

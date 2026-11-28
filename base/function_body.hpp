@@ -1,9 +1,4 @@
-#pragma once
-
-#include <memory>
-#include <utility>
-
-#include "base/function.hpp"
+// Body of link:base/function.ixx
 
 namespace principia {
 namespace base {

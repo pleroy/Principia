@@ -1,10 +1,11 @@
-#include "base/base64.hpp"
+// Test for link:base/base64.ixx
 
-#include <cstdint>
-#include <string>
+import std;
 
-#include "base/array.hpp"
-#include "gtest/gtest.h"
+import "gtest/gtest.h";
+
+import principia.base.array;
+import principia.base.base64;
 
 namespace principia {
 namespace base {

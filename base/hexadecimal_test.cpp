@@ -1,15 +1,14 @@
-#include "base/hexadecimal.hpp"
+// Test for link:base/hexadecimal.ixx
 
-#include <cstdint>
-#include <cstring>
-#include <memory>
-#include <vector>
+import std;
 
-#include "absl/log/check.h"
-#include "absl/log/log.h"
-#include "base/array.hpp"
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
+import "absl/log/check.h";
+import "absl/log/log.h";
+import "gmock/gmock.h";
+import "gtest/gtest.h";
+
+import principia.base.array;
+import principia.base.hexadecimal;
 
 using ::testing::Each;
 using ::testing::ElementsAre;
