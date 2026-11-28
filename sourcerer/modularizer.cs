@@ -12,38 +12,12 @@ namespace principia {
 namespace sourcerer {
 
 class Modularizer {
-
-  public static void Run(string[] args) {
-    // Parse the arguments.
-    DirectoryInfo? project = null;
-    var excluded = new HashSet<string>();
-    var extra_headers = new HashSet<string>();
-    bool dry_run = true;
-    foreach (string arg in args) {
-      if (arg.StartsWith("--") && arg.Contains(":")) {
-        string[] split =
-            arg.Split([ "--", ":" ], StringSplitOptions.None);
-        string option = split[1];
-        string value = split[2];
-        if (option == "project") {
-          project = new DirectoryInfo(value);
-        } else if (option == "dry_run") {
-          dry_run = bool.Parse(value);
-        } else if (option == "exclude") {
-          excluded.Add(value);
-        } else if (option == "extra_header") {
-          extra_headers.Add(value);
-        } else {
-          throw new ArgumentException("Unknown option " + option);
-        }
-      }
-    }
-    if (project == null) {
-      throw new NullReferenceException();
-    }
-
-    // Parse all the files in our project.
-    var file_info_to_file = new Dictionary<FileInfo, Parser.File>();
+  public static void ProcessProject(DirectoryInfo project,
+                                    HashSet<string> excluded,
+                                    HashSet<string> extra_headers,
+                                    bool dry_run) {
+        // Parse all the files in our project.
+        var file_info_to_file = new Dictionary<FileInfo, Parser.File>();
     var file_name_to_file_info = new Dictionary<string, FileInfo>();
     FileInfo[] hpp_files = project.GetFiles("*.hpp");
     FileInfo[] cpp_files = project.GetFiles("*.cpp");
@@ -550,6 +524,36 @@ class Modularizer {
     conditional_includes =
         new SortedSet<Include>(includes.FindAll(inc => inc.is_conditional),
                                new IncludeComparer());
+  }
+
+  public static void Run(string[] args) {
+    // Parse the arguments.
+    var projects = new List<DirectoryInfo>();
+    var excluded = new HashSet<string>();
+    var extra_headers = new HashSet<string>();
+    bool dry_run = true;
+    foreach (string arg in args) {
+      if (arg.StartsWith("--") && arg.Contains(":")) {
+        string[] split =
+            arg.Split([ "--", ":" ], StringSplitOptions.None);
+        string option = split[1];
+        string value = split[2];
+        if (option == "project") {
+          projects.Add(new DirectoryInfo(value));
+        } else if (option == "dry_run") {
+          dry_run = bool.Parse(value);
+        } else if (option == "exclude") {
+          excluded.Add(value);
+        } else if (option == "extra_header") {
+          extra_headers.Add(value);
+        } else {
+          throw new ArgumentException("Unknown option " + option);
+        }
+      }
+    }
+    foreach (DirectoryInfo project in projects) {
+      ProcessProject(project, excluded, extra_headers, dry_run);
+    }
   }
 }
 
