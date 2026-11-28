@@ -518,6 +518,7 @@ class Modularizer {
               // An extra header, it is now named .ixx.
               line = Regex.Replace(line, @"\.hpp"">", @".ixx"">");
               line = Regex.Replace(line, @"\.hpp"" />", @".ixx"" />");
+              line = Regex.Replace(line, "ClInclude", "ClCompile");
               is_extra_header = true;
               break;
             }
@@ -529,6 +530,7 @@ class Modularizer {
             } else if (line.Contains(".hpp\">") || line.Contains(".hpp\" />")) {
               line = Regex.Replace(line, @"\.hpp"">", @".ixx"">");
               line = Regex.Replace(line, @"\.hpp"" />", @".ixx"" />");
+              line = Regex.Replace(line, "ClInclude", "ClCompile");
             }
           }
           writer.WriteLine(line);
