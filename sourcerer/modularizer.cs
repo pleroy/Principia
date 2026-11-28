@@ -105,6 +105,7 @@ class Modularizer {
 
       // Find all the includes and categorize them.
       SplitIncludes(includes,
+                    excluded,
                     out List<Include> principia_includes,
                     out List<Include> system_includes,
                     out List<Include> third_party_includes,
@@ -177,6 +178,7 @@ class Modularizer {
           FixPragmaOnce(parser_file, needs_export_module: true);
 
       SplitIncludes(FindIncludes(parser_file, stop: first_namespace),
+                    excluded,
                     out List<Include> principia_includes,
                     out List<Include> system_includes,
                     out List<Include> third_party_includes,
@@ -210,6 +212,8 @@ class Modularizer {
                                 after: last_third_party_import,
                                 all_principia_includes,
                                 skip_own_header: false);
+      FixImportConditionalHeaders(parser_file,
+                                  conditional_includes);
 
       // Drop the includes.
       FixIncludes(parser_file, principia_includes);
@@ -508,19 +512,28 @@ class Modularizer {
   }
 
   private static void SplitIncludes(List<Include> includes,
+                                    HashSet<string> excluded,
                                     out List<Include> principia_includes,
                                     out List<Include> system_includes,
                                     out List<Include> third_party_includes,
                                     out List<Include> conditional_includes) {
+    // Excluded headers are considered third-party headers, not Principia
+    // headers.
     principia_includes =
-        includes.FindAll(inc => inc.is_principia && !inc.is_conditional);
+        includes.FindAll(inc =>
+                             inc.is_principia &&
+                             !inc.is_conditional &&
+                             !excluded.Contains(
+                                 inc.path[^1] + "." + inc.extension));
     system_includes =
         includes.FindAll(inc => inc.is_system && !inc.is_conditional);
     third_party_includes =
         includes.FindAll(inc =>
-                             !inc.is_principia &&
-                             !inc.is_system &&
-                             !inc.is_conditional);
+                             (!inc.is_principia &&
+                              !inc.is_system &&
+                              !inc.is_conditional) ||
+                             excluded.Contains(
+                                 inc.path[^1] + "." + inc.extension));
     conditional_includes = includes.FindAll(inc => inc.is_conditional);
   }
 }
