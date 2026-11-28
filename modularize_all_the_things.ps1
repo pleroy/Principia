@@ -18,15 +18,15 @@
     --project:tools `
     --exclude:macros.hpp `
     --exclude:matchers.hpp `
-    --excluse:astronomy.pb.h `
-    --excluse:base.pb.h `
-    --excluse:geometry.pb.h `
-    --excluse:integrators.pb.h `
-    --excluse:journal.pb.h `
-    --excluse:ksp_plugin.pb.h `
-    --excluse:numerics.pb.h `
-    --excluse:options.pb.h `
-    --excluse:physics.pb.h `
-    --excluse:quantities.pb.h `
-    --excluse:testing_utilities.pb.h `
+    --exclude:astronomy.pb.h `
+    --exclude:base.pb.h `
+    --exclude:geometry.pb.h `
+    --exclude:integrators.pb.h `
+    --exclude:journal.pb.h `
+    --exclude:ksp_plugin.pb.h `
+    --exclude:numerics.pb.h `
+    --exclude:options.pb.h `
+    --exclude:physics.pb.h `
+    --exclude:quantities.pb.h `
+    --exclude:testing_utilities.pb.h `
     --dry_run:false
