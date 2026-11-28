@@ -13,25 +13,6 @@ using static principia.sourcerer.Rewriter;
 namespace principia {
 namespace sourcerer {
 
-public class StringArrayComparer : IComparer<string[]> {
-  public int Compare(string[]? left, string[]? right) {
-    if (left == null) {
-      return right == null ? 0 : -1;
-    } else if (right == null) {
-      return 1;
-    }
-    int i = 0;
-    while (i < left.Length && i < right.Length) {
-      int i_compare = string.CompareOrdinal(left[i], right[i]);
-      if (i_compare != 0) {
-        return i_compare;
-      }
-      ++i;
-    }
-    return left.Length - right.Length;
-  }
-}
-
 class IncludeWhatYouUsing {
 
   public static void Run(string[] args) {

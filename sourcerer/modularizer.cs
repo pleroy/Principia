@@ -79,9 +79,10 @@ class Modularizer {
 
     // Fix our body files.
     var needs_import_std = new HashSet<FileInfo>();
-    //TODO(phl):Sorted set!
-    var body_principia_includes = new Dictionary<FileInfo, List<Include>>();
-    var body_third_party_includes = new Dictionary<FileInfo, List<Include>>();
+    var body_principia_includes =
+        new Dictionary<FileInfo, SortedSet<Include>>();
+    var body_third_party_includes =
+        new Dictionary<FileInfo, SortedSet<Include>>();
     foreach (FileInfo body_file in all_body_files) {
       if (excluded.Contains(body_file.Name)) {
         continue;
@@ -106,10 +107,10 @@ class Modularizer {
       // Find all the includes and categorize them.
       SplitIncludes(includes,
                     excluded,
-                    out List<Include> principia_includes,
-                    out List<Include> system_includes,
-                    out List<Include> third_party_includes,
-                    out List<Include> conditional_includes);
+                    out SortedSet<Include> principia_includes,
+                    out SortedSet<Include> system_includes,
+                    out SortedSet<Include> third_party_includes,
+                    out SortedSet<Include> conditional_includes);
 
       if (parser_file.is_body_hpp) {
         FixPragmaOnce(parser_file, needs_export_module: false);
@@ -117,13 +118,13 @@ class Modularizer {
         // will go in the header.
         FileInfo hpp_file = corresponding_header[body_file];
         if (!body_principia_includes.TryAdd(hpp_file, principia_includes)) {
-          body_principia_includes[hpp_file].AddRange(principia_includes);
+          body_principia_includes[hpp_file].UnionWith(principia_includes);
         }
         if (system_includes.Count > 0) {
           needs_import_std.Add(hpp_file);
         }
         if (!body_third_party_includes.TryAdd(hpp_file, third_party_includes)) {
-          body_third_party_includes[hpp_file].AddRange(third_party_includes);
+          body_third_party_includes[hpp_file].UnionWith(third_party_includes);
         }
       } else {
         Node? module;
@@ -179,23 +180,25 @@ class Modularizer {
 
       SplitIncludes(FindIncludes(parser_file, stop: first_namespace),
                     excluded,
-                    out List<Include> principia_includes,
-                    out List<Include> system_includes,
-                    out List<Include> third_party_includes,
-                    out List<Include> conditional_includes);
-      var all_principia_includes = new List<Include>(principia_includes);
-      all_principia_includes.AddRange(
+                    out SortedSet<Include> principia_includes,
+                    out SortedSet<Include> system_includes,
+                    out SortedSet<Include> third_party_includes,
+                    out SortedSet<Include> conditional_includes);
+      var all_principia_includes =
+          new SortedSet<Include>(principia_includes, new IncludeComparer());
+      all_principia_includes.UnionWith(
           body_principia_includes.GetValueOrDefault(
               hpp_file,
-              new List<Include>()));
+              new SortedSet<Include>(new IncludeComparer())));
       // Don't create an import for our own header, 'cause that would be
       // circular.
-      all_principia_includes.RemoveAll(inc => inc.is_own_header);
-      var all_third_party_includes = new List<Include>(third_party_includes);
-      all_third_party_includes.AddRange(
+      all_principia_includes.RemoveWhere(inc => inc.is_own_header);
+      var all_third_party_includes =
+          new SortedSet<Include>(third_party_includes, new IncludeComparer());
+      all_third_party_includes.UnionWith(
           body_third_party_includes.GetValueOrDefault(
               hpp_file,
-              new List<Include>()));
+              new SortedSet<Include>(new IncludeComparer())));
 
       // Add the imports collected from this file and its body.
       Node? last_std_import;
@@ -289,7 +292,7 @@ class Modularizer {
   // Change conditional includes into imports, without moving them around.  They
   // may need fixing by hand afterwards.
   private static void FixImportConditionalHeaders(Parser.File file,
-                                                  List<Include>
+                                                  SortedSet<Include>
                                                       conditional_includes) {
     foreach (Include inc in conditional_includes) {
       if (inc.raw_path != null) {
@@ -306,7 +309,7 @@ class Modularizer {
   // `after` in `file`.  Returns the last inserted node.
   private static Node? FixImportPrincipiaHeaders(Parser.File file,
                                                  Node? after,
-                                                 List<Include>
+                                                 SortedSet<Include>
                                                      principia_includes,
                                                  bool skip_own_header) {
     int position_in_parent = (after?.position_in_parent + 1) ?? 0;
@@ -360,7 +363,7 @@ class Modularizer {
   // after `after` in `file`.  Returns the last inserted node.
   private static Node? FixImportThirdPartyHeaders(Parser.File file,
                                                   Node? after,
-                                                  List<Include>
+                                                  SortedSet<Include>
                                                       third_party_includes) {
     int position_in_parent = (after?.position_in_parent + 1) ?? 0;
     Node? last = after;
@@ -381,7 +384,8 @@ class Modularizer {
   }
 
   // Removes include directives for the given headers from the file.
-  private static void FixIncludes(Parser.File file, List<Include> headers) {
+  private static void
+      FixIncludes(Parser.File file, SortedSet<Include> headers) {
     foreach (Include inc in headers) {
       int position_in_parent = inc.position_in_parent;
       file.RemoveChild(inc);
@@ -513,28 +517,39 @@ class Modularizer {
 
   private static void SplitIncludes(List<Include> includes,
                                     HashSet<string> excluded,
-                                    out List<Include> principia_includes,
-                                    out List<Include> system_includes,
-                                    out List<Include> third_party_includes,
-                                    out List<Include> conditional_includes) {
+                                    out SortedSet<Include> principia_includes,
+                                    out SortedSet<Include> system_includes,
+                                    out SortedSet<Include> third_party_includes,
+                                    out SortedSet<Include>
+                                        conditional_includes) {
     // Excluded headers are considered third-party headers, not Principia
     // headers.
     principia_includes =
-        includes.FindAll(inc =>
-                             inc.is_principia &&
-                             !inc.is_conditional &&
-                             !excluded.Contains(
-                                 inc.path[^1] + "." + inc.extension));
+        new SortedSet<Include>(includes.FindAll(inc =>
+                                                    inc.is_principia &&
+                                                    !inc.is_conditional &&
+                                                    !excluded.Contains(
+                                                        inc.path[^1] +
+                                                        "." +
+                                                        inc.extension)),
+                               new IncludeComparer());
     system_includes =
-        includes.FindAll(inc => inc.is_system && !inc.is_conditional);
+        new SortedSet<Include>(
+            includes.FindAll(inc => inc.is_system && !inc.is_conditional),
+            new IncludeComparer());
     third_party_includes =
-        includes.FindAll(inc =>
-                             (!inc.is_principia &&
-                              !inc.is_system &&
-                              !inc.is_conditional) ||
-                             excluded.Contains(
-                                 inc.path[^1] + "." + inc.extension));
-    conditional_includes = includes.FindAll(inc => inc.is_conditional);
+        new SortedSet<Include>(includes.FindAll(inc =>
+                                                    (!inc.is_principia &&
+                                                        !inc.is_system &&
+                                                        !inc.is_conditional) ||
+                                                    excluded.Contains(
+                                                        inc.path[^1] +
+                                                        "." +
+                                                        inc.extension)),
+                               new IncludeComparer());
+    conditional_includes =
+        new SortedSet<Include>(includes.FindAll(inc => inc.is_conditional),
+                               new IncludeComparer());
   }
 }
 
