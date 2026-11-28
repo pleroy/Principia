@@ -508,29 +508,32 @@ class Modularizer {
     string input_filename = input_file.FullName;
     string output_filename =
         input_file.DirectoryName + "\\" + input_file.Name + ".new";
-    using StreamReader reader = input_file.OpenText();
-    using StreamWriter writer = System.IO.File.CreateText(output_filename);
-    while (!reader.EndOfStream) {
-      string line = reader.ReadLine()!;
-      bool is_extra_header = false;
-      foreach (string extra_header in extra_headers) {
-        if (line.Contains('"' +   extra_header + '"')) {
-          // An extra header, it is now named .ixx.
-          line = Regex.Replace(line, @"\.hpp"">", @".ixx"">");
-          line = Regex.Replace(line, @"\.hpp"" />", @".ixx"" />");
-          is_extra_header = true;
-          break;
+    using (StreamReader reader = input_file.OpenText()) {
+      using (StreamWriter writer = System.IO.File.CreateText(output_filename)) {
+        while (!reader.EndOfStream) {
+          string line = reader.ReadLine()!;
+          bool is_extra_header = false;
+          foreach (string extra_header in extra_headers) {
+            if (line.Contains('"' +   extra_header + '"')) {
+              // An extra header, it is now named .ixx.
+              line = Regex.Replace(line, @"\.hpp"">", @".ixx"">");
+              line = Regex.Replace(line, @"\.hpp"" />", @".ixx"" />");
+              is_extra_header = true;
+              break;
+            }
+          }
+          if (!is_extra_header) {
+            if (line.Contains("_body.hpp\">") ||
+                line.Contains("_body.hpp\" />")) {
+              // A body, don't change it.
+            } else if (line.Contains(".hpp\">") || line.Contains(".hpp\" />")) {
+              line = Regex.Replace(line, @"\.hpp"">", @".ixx"">");
+              line = Regex.Replace(line, @"\.hpp"" />", @".ixx"" />");
+            }
+          }
+          writer.WriteLine(line);
         }
       }
-      if (!is_extra_header) {
-        if (line.Contains("_body.hpp\">") || line.Contains("_body.hpp\" />")) {
-          // A body, don't change it.
-        } else if (line.Contains(".hpp\">") || line.Contains(".hpp\" />")) {
-          line = Regex.Replace(line, @"\.hpp"">", @".ixx"">");
-          line = Regex.Replace(line, @"\.hpp"" />", @".ixx"" />");
-        }
-      }
-      writer.WriteLine(line);
     }
     if (!dry_run) {
       System.IO.File.Move(output_filename, input_filename, overwrite: true);

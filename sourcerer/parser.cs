@@ -16,81 +16,80 @@ public class Parser {
     var file = new File(file_info, is_body);
     Node current = file;
 
-    using StreamReader reader = file_info.OpenText();
-    bool in_comment = false;
-    while (!reader.EndOfStream) {
-      string line = reader.ReadLine()!;
-      string uncommented_line = Uncomment(line, ref in_comment);
-      if (IsInclude(uncommented_line)) {
-        ParseIncludedPath(uncommented_line,
-                          out string[] path,
-                          out string extension);
-        var include = new Include(line,
-                                  parent: current,
-                                  path,
-                                  extension,
-                                  file_info);
-      } else if (IsPreprocessorDirective(uncommented_line)) {
-        var preprocessor_directive =
-            new PreprocessorDirective(line, parent: current);
-      } else if (IsOpeningNamespace(uncommented_line)) {
-        current = new Namespace(line,
-                                parent: current,
-                                ParseOpeningNamespace(uncommented_line));
-      } else if (IsClosingNamespace(line)) {
-        // Must use the raw line here as we use the comments to identify the
-        // line.  Don't put funky stuff on the closing namespace line, please.
-        var name = ParseClosingNamespace(line);
-        if (current is Namespace ns) {
-          Debug.Assert(ns.name == name, ns.name, name);
-          ns.closing_text = line;
+    using (StreamReader reader = file_info.OpenText()) {
+      bool in_comment = false;
+      while (!reader.EndOfStream) {
+        string line = reader.ReadLine()!;
+        string uncommented_line = Uncomment(line, ref in_comment);
+        if (IsInclude(uncommented_line)) {
+          ParseIncludedPath(uncommented_line,
+                            out string[] path,
+                            out string extension);
+          var include =
+              new Include(line, parent: current, path, extension, file_info);
+        } else if (IsPreprocessorDirective(uncommented_line)) {
+          var preprocessor_directive =
+              new PreprocessorDirective(line, parent: current);
+        } else if (IsOpeningNamespace(uncommented_line)) {
+          current =
+              new Namespace(line,
+                            parent: current,
+                            ParseOpeningNamespace(uncommented_line));
+        } else if (IsClosingNamespace(line)) {
+          // Must use the raw line here as we use the comments to identify the
+          // line.  Don't put funky stuff on the closing namespace line, please.
+          var name = ParseClosingNamespace(line);
+          if (current is Namespace ns) {
+            Debug.Assert(ns.name == name, ns.name, name);
+            ns.closing_text = line;
+          } else {
+            Debug.Assert(false);
+          }
+          current = current.parent!;
+        } else if (IsClass(uncommented_line)) {
+          var klass =
+              new Class(line, parent: current, ParseClass(uncommented_line));
+        } else if (IsConstant(uncommented_line)) {
+          var constant =
+              new Constant(line,
+                           parent: current,
+                           ParseConstant(uncommented_line));
+        } else if (IsFunction(uncommented_line)) {
+          var function =
+              new Function(line,
+                           parent: current,
+                           ParseFunction(uncommented_line));
+        } else if (IsImport(uncommented_line)) {
+          var import =
+              new Import(line, parent: current, ParseImport(uncommented_line));
+        } else if (IsStruct(uncommented_line)) {
+          var strukt =
+              new Struct(line, parent: current, ParseStruct(uncommented_line));
+        } else if (IsTypeAlias(uncommented_line)) {
+          var type_alias =
+              new TypeAlias(line,
+                            parent: current,
+                            ParseTypeAlias(uncommented_line));
+        } else if (IsUsingDirective(uncommented_line)) {
+          var using_directive =
+              new UsingDirective(line,
+                                 parent: current,
+                                 ParseUsingDirective(uncommented_line));
+        } else if (IsUsingDeclaration(uncommented_line)) {
+          ParseUsingDeclaration(uncommented_line,
+                                out bool is_exported,
+                                out string full_name);
+          if (is_exported) {
+            var export = new Export(parent: current);
+            var using_declaration =
+                new UsingDeclaration(line, parent: export, full_name);
+          } else {
+            var using_declaration =
+                new UsingDeclaration(line, parent: current, full_name);
+          }
         } else {
-          Debug.Assert(false);
+          var text = new Text(line, parent: current);
         }
-        current = current.parent!;
-      } else if (IsClass(uncommented_line)) {
-        var klass = new Class(line,
-                              parent: current,
-                              ParseClass(uncommented_line));
-      } else if (IsConstant(uncommented_line)) {
-        var constant = new Constant(line,
-                                    parent: current,
-                                    ParseConstant(uncommented_line));
-      } else if (IsFunction(uncommented_line)) {
-        var function = new Function(line,
-                                    parent: current,
-                                    ParseFunction(uncommented_line));
-      } else if (IsImport(uncommented_line)) {
-        var import = new Import(line,
-                                parent: current,
-                                ParseImport(uncommented_line));
-      } else if (IsStruct(uncommented_line)) {
-        var strukt = new Struct(line,
-                                parent: current,
-                                ParseStruct(uncommented_line));
-      } else if (IsTypeAlias(uncommented_line)) {
-        var type_alias = new TypeAlias(line,
-                                       parent: current,
-                                       ParseTypeAlias(uncommented_line));
-      } else if (IsUsingDirective(uncommented_line)) {
-        var using_directive = new UsingDirective(
-            line,
-            parent: current,
-            ParseUsingDirective(uncommented_line));
-      } else if (IsUsingDeclaration(uncommented_line)) {
-        ParseUsingDeclaration(uncommented_line,
-                              out bool is_exported,
-                              out string full_name);
-        if (is_exported) {
-          var export = new Export(parent: current);
-          var using_declaration =
-              new UsingDeclaration(line, parent: export, full_name);
-        } else {
-          var using_declaration =
-              new UsingDeclaration(line, parent: current, full_name);
-        }
-      } else {
-        var text = new Text(line, parent: current);
       }
     }
     return file;
