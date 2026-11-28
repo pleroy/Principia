@@ -1,4 +1,4 @@
-﻿.\sourcerer\bin\Debug\net7.0\sourcerer.exe `
+﻿.\sourcerer\bin\Debug\net9.0\sourcerer.exe `
     modularizer `
     --project:astronomy `
     --project:base `
