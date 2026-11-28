@@ -29,4 +29,9 @@
     --exclude:physics.pb.h `
     --exclude:quantities.pb.h `
     --exclude:testing_utilities.pb.h `
+    --extra_header:body.hpp `
+    --extra_header:massive_body.hpp `
+    --extra_header:massless_body.hpp `
+    --extra_header:oblate_body.hpp `
+    --extra_header:rotating_body.hpp `
     --dry_run:false

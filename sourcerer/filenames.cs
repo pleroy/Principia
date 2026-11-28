@@ -53,6 +53,12 @@ public class Filenames {
     }
   }
 
+  public static bool IsBodyCpp(FileInfo file_info) {
+    return !IsBenchmark(file_info) &&
+           !IsTest(file_info) &&
+           file_info.Name.EndsWith(".cpp");
+  }
+
   public static bool IsBodyHpp(FileInfo file_info) {
     return Regex.IsMatch(file_info.Name, @"^.*_body\.hpp$");
   }

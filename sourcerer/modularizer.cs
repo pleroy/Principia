@@ -58,7 +58,8 @@ class Modularizer {
     var body_third_party_includes =
         new Dictionary<FileInfo, SortedSet<Include>>();
     foreach (FileInfo body_file in all_body_files) {
-      if (excluded.Contains(body_file.Name)) {
+      if (excluded.Contains(body_file.Name) ||
+          !IsBody(body_file, extra_headers)) {
         continue;
       }
       Parser.File parser_file = file_info_to_file[body_file];
@@ -74,7 +75,7 @@ class Modularizer {
       // No link to our own header for .cpp files, the link is provided by the
       // module declaration.
       Node? link = null;
-      if (!parser_file.is_body_cpp) {
+      if (!IsBodyCpp(body_file)) {
         link = FixOwnHeaderLink(parser_file, includes);
       }
 
@@ -86,7 +87,7 @@ class Modularizer {
                     out SortedSet<Include> third_party_includes,
                     out SortedSet<Include> conditional_includes);
 
-      if (parser_file.is_body_hpp) {
+      if (IsBodyHpp(body_file)) {
         FixPragmaOnce(parser_file, needs_export_module: false);
         // If this is a body that gets included into its header, its imports
         // will go in the header.
@@ -102,7 +103,7 @@ class Modularizer {
         }
       } else {
         Node? module;
-        if (parser_file.is_body_cpp) {
+        if (IsBodyCpp(body_file)) {
           module = FixModule(parser_file, after: link);
         } else {
           module = link;
@@ -121,7 +122,7 @@ class Modularizer {
         FixImportPrincipiaHeaders(parser_file,
                                   after: last_third_party_import,
                                   principia_includes,
-                                  skip_own_header: parser_file.is_body_cpp);
+                                  skip_own_header: IsBodyCpp(body_file));
         FixImportConditionalHeaders(parser_file,
                                     conditional_includes);
       }
@@ -137,7 +138,7 @@ class Modularizer {
     // Fix our non-body header files.  This must come last because we need the
     // information that we collected from the body files.
     foreach (FileInfo hpp_file in hpp_files) {
-      if (excluded.Contains(hpp_file.Name) || IsBodyHpp(hpp_file)) {
+      if (excluded.Contains(hpp_file.Name) || IsBody(hpp_file, extra_headers)) {
         continue;
       }
       Parser.File parser_file = file_info_to_file[hpp_file];
@@ -421,12 +422,13 @@ class Modularizer {
   // line of the file.  Returns it.
   private static Node? FixOwnHeaderLink(Parser.File file,
                                         List<Include> includes) {
+    FileInfo file_info = file.file_info;
     foreach (Include inc in includes) {
       if (inc.is_own_header) {
         string usage =
-            file.is_benchmark ? "Benchmark for" :
-            file.is_test ? "Test for" :
-            (file.is_body_hpp || file.is_body_cpp) ? "Body of" : "";
+            IsBenchmark(file_info) ? "Benchmark for" :
+            IsTest(file_info) ? "Test for" :
+            (IsBodyHpp(file_info) || IsBodyCpp(file_info)) ? "Body of" : "";
         var link =
             new Text(
                 text: "// " +
