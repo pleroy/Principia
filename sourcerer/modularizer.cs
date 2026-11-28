@@ -207,6 +207,17 @@ class Modularizer {
 
       RewriteFile(hpp_file, parser_file, dry_run, move_to_ixx: true);
     }
+
+    // Fix the project files to reference the .ixx files.
+    FixProjectFile(
+        new FileInfo(project.FullName + "\\" + project.Name + ".vcxproj"),
+        extra_headers,
+        dry_run);
+    FixProjectFile(
+        new FileInfo(
+            project.FullName + "\\" + project.Name + ".vcxproj.filters"),
+        extra_headers,
+        dry_run);
   }
 
   // Ensures that `after` is followed by a blank line, unless it is `null` or
@@ -489,6 +500,41 @@ class Modularizer {
       file.RemoveChild(po);
     }
     return EnsureBlankLineAfter(node);
+  }
+
+  private static void FixProjectFile(FileInfo input_file,
+                                     HashSet<string> extra_headers,
+                                     bool dry_run) {
+    string input_filename = input_file.FullName;
+    string output_filename =
+        input_file.DirectoryName + "\\" + input_file.Name + ".new";
+    using StreamReader reader = input_file.OpenText();
+    using StreamWriter writer = System.IO.File.CreateText(output_filename);
+    while (!reader.EndOfStream) {
+      string line = reader.ReadLine()!;
+      bool is_extra_header = false;
+      foreach (string extra_header in extra_headers) {
+        if (line.Contains('"' +   extra_header + '"')) {
+          // An extra header, it is now named .ixx.
+          line = Regex.Replace(line, @"\.hpp"">", @".ixx"">");
+          line = Regex.Replace(line, @"\.hpp"" />", @".ixx"" />");
+          is_extra_header = true;
+          break;
+        }
+      }
+      if (!is_extra_header) {
+        if (line.Contains("_body.hpp\">") || line.Contains("_body.hpp\" />")) {
+          // A body, don't change it.
+        } else if (line.Contains(".hpp\">") || line.Contains(".hpp\" />")) {
+          line = Regex.Replace(line, @"\.hpp"">", @".ixx"">");
+          line = Regex.Replace(line, @"\.hpp"" />", @".ixx"" />");
+        }
+      }
+      writer.WriteLine(line);
+    }
+    if (!dry_run) {
+      System.IO.File.Move(output_filename, input_filename, overwrite: true);
+    }
   }
 
   private static void SplitIncludes(List<Include> includes,
