@@ -1,0 +1,32 @@
+﻿.\sourcerer\bin\Debug\net7.0\sourcerer.exe `
+    modularizer `
+    --project:astronomy `
+    --project:base `
+    --project:benchmarks `
+    --project:functions `
+    --project:geometry `
+    --project:graphics `
+    --project:integrators `
+    --project:journal `
+    --project:ksp_plugin `
+    --project:ksp_plugin_test `
+    --project:mathematica `
+    --project:nanobenchmarks `
+    --project:numerics `
+    --project:physics `
+    --project:quantities `
+    --project:tools `
+    --exclude:macros.hpp `
+    --exclude:matchers.hpp `
+    --excluse:astronomy.pb.h `
+    --excluse:base.pb.h `
+    --excluse:geometry.pb.h `
+    --excluse:integrators.pb.h `
+    --excluse:journal.pb.h `
+    --excluse:ksp_plugin.pb.h `
+    --excluse:numerics.pb.h `
+    --excluse:options.pb.h `
+    --excluse:physics.pb.h `
+    --excluse:quantities.pb.h `
+    --excluse:testing_utilities.pb.h `
+    --dry_run:false
